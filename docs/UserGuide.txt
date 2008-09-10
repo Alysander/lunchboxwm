@@ -1,0 +1,8 @@
+User guide
+
+double click titlebar to "maximize" (sink all tiled windows) and  select
+single click titlebar to select
+
+single click background to deselect window
+click and drag near edge of frame (inside or outside) to start resizing
+

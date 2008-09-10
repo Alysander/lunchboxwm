@@ -1,0 +1,27 @@
+  /*
+  newroot = XCreateSimpleWindow(display, root, 50, 50, 300, 300, 3,
+          WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
+  frame = XCreateSimpleWindow(display, newroot, 50, 50, 300, 300, 3,
+          WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
+  frame2 = XCreateSimpleWindow(display, newroot, 40, 40, 300, 300, 3,
+          BlackPixelOfScreen(screen), WhitePixelOfScreen(screen));
+  */
+
+  SubstructureRedirectMask for when windows are mapping to redirect them
+  EnterWindowMask for turning on the "resize hotspot"
+  LeaveWindowMask for turning off the "resize hotspot"
+  ButtonPressMask for deselecting windows
+  ButtonReleaseMask for deselecting windows/resizing windows?
+  XGrabPointer to confine the pointer to a particular area.
+  XUngrabPointer
+  XNextEvent(display, &event) for asynchronous blocking events.
+  XReparentWindow(display, window, parent, rel-x, rel-y);
+  XSelectInput(display, window, event_mask) 
+    or set attributes on create window.
+  
+  XMapWindow(display, newroot);
+  XMapWindow(display, frame);
+  XMapWindow(display, frame2);  
+  XReparentWindow(display, frame, frame2, 20, 20);
+  
+
