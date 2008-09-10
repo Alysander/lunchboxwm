@@ -27,6 +27,8 @@
 #define FRAME_XSTART 6
 #define FRAME_YSTART 28
 
+#define LIGHT_EDGE_HEIGHT 11
+
 /***** Colours for cairo as rgba percentages *******/
 #define SPOT            0.235294118, 0.549019608, 0.99, 1
 #define SPOT_EDGE       0.235294118, 0.549019608, 0.99, 0.35
@@ -130,7 +132,7 @@ int main (int argc, char* argv[]) {
           find the "touching windows"
           if they can't be resized then don't resize them
           otherwise go straight ahead
-        */        
+        */
       break;
       case Expose:
         if(event.xexpose.window == backwin)  draw_background(display, backwin);
@@ -159,8 +161,8 @@ int main (int argc, char* argv[]) {
 void draw_background(Display* display, Window backwin) {
   Visual* colours = XDefaultVisual(display, DefaultScreen(display));
   Screen* screen = DefaultScreenOfDisplay(display);
-  cairo_surface_t *background =
-    cairo_xlib_surface_create(display, backwin, colours, XWidthOfScreen(screen), XHeightOfScreen(screen));
+  cairo_surface_t *background = cairo_xlib_surface_create(display, backwin, colours, XWidthOfScreen(screen), XHeightOfScreen(screen));
+  
   cairo_t *cr = cairo_create(background);
   
   cairo_set_source_rgba(cr, BACKGROUND);
@@ -172,15 +174,52 @@ void draw_background(Display* display, Window backwin) {
   cairo_destroy (cr);
 }
 
-void draw_frame(Display* display, struct Frame frame) {
-  #define LIGHT_EDGE_HEIGHT 11
+void draw_closebutton(Display* display, Window window) {
   Visual* colours = XDefaultVisual(display, DefaultScreen(display));
-  Screen* screen = DefaultScreenOfDisplay(display);
-  cairo_surface_t *background =
-    cairo_xlib_surface_create(display, frame.frame, colours, frame.w, frame.h);
-    
+  
+  cairo_surface_t *background = cairo_xlib_surface_create(display, window, colours, 20, 20);
+  cairo_t *cr = cairo_create (background);
+  
+  //draw the close button  
+  cairo_set_source_rgba(cr, INNER_BORDER);
+  cairo_rectangle(cr, 0, 0, 20, 20);
+  cairo_fill(cr);
+
+  cairo_set_source_rgba(cr, LIGHT_EDGE);  
+  cairo_rectangle(cr, 1, 1, 18, 18);
+  cairo_fill(cr);
+  
+  cairo_set_source_rgba(cr, BODY);  
+  cairo_rectangle(cr, 2, 2+LIGHT_EDGE_HEIGHT, 16, 16 - LIGHT_EDGE_HEIGHT);
+  cairo_fill(cr);
+  
+  cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);
+  //draw the close cross
+  cairo_set_source_rgba(cr, TEXT);
+  cairo_set_line_width(cr, 2);
+  cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+  cairo_move_to(cr, 1+3+1+1, 3+2+1);
+  cairo_line_to(cr, 1+3+1+9, 3+2+9);
+  cairo_stroke(cr);
+  cairo_move_to(cr, 1+3+1+1, 3+2+9);
+  cairo_line_to(cr, 1+3+1+9, 3+2+1);  
+  cairo_stroke(cr);
+  
+  printf("draw_closebutton, frame.closebutton = %d\n", window);  
+  XMapWindow(display, window);  
+  XFlush(display);
+  cairo_surface_destroy(background);
+  cairo_destroy (cr);
+}
+
+void draw_frame(Display* display, struct Frame frame) {
+  Visual* colours = XDefaultVisual(display, DefaultScreen(display));
+  
+  cairo_surface_t *background = cairo_xlib_surface_create(display, frame.frame, colours, frame.w, frame.h);
   cairo_t *cr = cairo_create (background);
 
+  XMoveWindow(display, frame.closebutton, frame.w-20-8-1, 4);
+  
   //from basin_black.c
   //draw dark grey border
   cairo_set_source_rgba(cr, BORDER);
@@ -208,8 +247,6 @@ void draw_frame(Display* display, struct Frame frame) {
   cairo_set_source_rgba(cr, SPOT_EDGE);
   cairo_stroke(cr);
   cairo_set_line_width(cr, 1);  
-
-
   
   char *wm_name = NULL;
   printf("draw_frame, frame.window = %d\n", frame.window);
@@ -239,34 +276,7 @@ void draw_frame(Display* display, struct Frame frame) {
   cairo_set_source_rgba(cr, BACKGROUND);
   cairo_rectangle(cr, 6, 28, frame.w-12, frame.h-34);
   cairo_fill(cr);
-
-  //draw the close button
-  cairo_set_source_rgba(cr, INNER_BORDER);
-  cairo_rectangle(cr, frame.w-20-8-1, 4, 20, 20);
-  cairo_fill(cr);
-
-  cairo_set_source_rgba(cr, LIGHT_EDGE);  
-  cairo_rectangle(cr, frame.w-20-8, 5, 18, 18);
-  cairo_fill(cr);
-  
-  cairo_set_source_rgba(cr, BODY);  
-  cairo_rectangle(cr, frame.w-20-8+1, 6+LIGHT_EDGE_HEIGHT, 16, 16 - LIGHT_EDGE_HEIGHT);
-  cairo_fill(cr);
-  
-  cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);
-  //draw the close cross
-  cairo_set_source_rgba(cr, TEXT);
-  cairo_set_line_width(cr, 2);
-  cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
-  cairo_move_to(cr, frame.w-20-8+3+1+1, 4+3+2+1);
-  cairo_line_to(cr, frame.w-20-8+3+1+9, 4+3+2+9);
-  cairo_stroke(cr);
-  cairo_move_to(cr, frame.w-20-8+3+1+1, 4+3+2+9);
-  cairo_line_to(cr, frame.w-20-8+3+1+9, 4+3+2+1);  
-  cairo_stroke(cr);
-  
-  cairo_set_antialias(cr, CAIRO_ANTIALIAS_DEFAULT);    
-  
+  draw_closebutton(display, frame.closebutton);
   printf("draw_frame, frame.frame = %d\n", frame.frame);
   XMapWindow(display, frame.frame);
   printf("draw_frame, frame.window = %d\n", frame.window);  
@@ -304,8 +314,12 @@ int create_frame(Display* display, struct Framelist* frames, Window window) {
       WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
   printf("create_frame, frame.frame = %d\n", frame.frame);    
   printf("create_frame, frame.window = %d\n", frame.window);
+  frame.closebutton =
+    XCreateSimpleWindow(display, frame.frame, frame.w-20-8-1, 4, 20, 20, 0,
+      WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
+  printf("create_frame, frame.closebutton = %d\n", frame.closebutton);      
+  
   XSetWindowBorderWidth(display, frame.window, 0);
-  XSetWindowBorderWidth(display, frame.frame, 0);
   XResizeWindow(display, window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
   XReparentWindow(display, window, frame.frame, FRAME_XSTART, FRAME_YSTART);
   
@@ -313,6 +327,7 @@ int create_frame(Display* display, struct Framelist* frames, Window window) {
   //and set the mode    
   //need to establish how to place a new window
   XMapWindow(display, frame.frame);
+  XMapWindow(display, frame.closebutton);
   XMapWindow(display, frame.window);
   
   frames->list[frames->used] = frame;
