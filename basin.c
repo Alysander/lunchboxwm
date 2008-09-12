@@ -1,7 +1,6 @@
 #include "basin.h"
 #include "draw.c"
 
-int find_frame_index (struct Framelist* frames, Window window);
 void find_adjacent (struct Framelist* frames, int frame_index);   
 
 extern void draw_background(Display* display, Window backwin); //this draws a solid colour background
@@ -14,7 +13,8 @@ int main (int argc, char* argv[]) {
   Screen* screen;  
   XEvent event;
   Window root, backwin;
-
+  int start_move_x, start_move_y, start_move_index;
+  start_move_index = -1;
   struct Framelist frames = {NULL, 16, 0};
   frames.list = malloc(sizeof(struct Framelist) * 16);
 
@@ -42,22 +42,23 @@ int main (int argc, char* argv[]) {
   draw_background(display, backwin);
   
   XSelectInput(display, root, SubstructureRedirectMask);
-  XSelectInput(display, backwin, PointerMotionMask|ExposureMask); 
+  XSelectInput(display, backwin, ExposureMask);
 
   for( ; ;) {
     XNextEvent(display, &event);
     switch(event.type) {
+    
       case MapRequest:
         printf("A top level window is being mapped: %d \n", event.xmaprequest.window); 
-
         //Do we need to check if the window is already mapped?
         int index = create_frame(display, &frames, event.xmaprequest.window);
         if(index != -1) {
           draw_frame(display, frames.list[index]);
         }
       break;
+      
       case Expose:
-        printf("Expose event on window: %d\n", event.xexpose.window);
+        if(event.xexpose.window != backwin) printf("Expose event on window: %d\n", event.xexpose.window);
         if(event.xexpose.window == backwin)  draw_background(display, backwin);
         else {
           for(int i = 0; i < frames.used; i++) {
@@ -72,63 +73,48 @@ int main (int argc, char* argv[]) {
           }
         }
       break;
-      case MotionNotify:
-        for(int i = 0; i < frames.used; i++) {         
-          //TODO: change the cursor
-          if(event.xmotion.window == frames.list[i].frame) { 
-            int initial_x, initial_y;
-            Window mouse_root, mouse_child;
-            int mouse_root_x, mouse_root_y;
-            int mouse_child_x, mouse_child_y;
-            unsigned int mask;
-
-            XQueryPointer(display, root, &mouse_root, &mouse_child, &mouse_root_x, &mouse_root_y, &mouse_child_x, &mouse_child_y, &mask);
-            initial_x = mouse_child_x;
-            initial_y = mouse_child_y;
-            
-            if(XGrabPointer(display, grab_window, owner_events, event_mask, pointer_mode, keyboard_mode, confine_to, cursor, time) == GrabSucess) {
-              
-            }
-            
-//need to grab the pointer with XGrabPointer in order to get smooth event processing
-/*
-int XGrabPointer(display, grab_window, owner_events, event_mask, pointer_mode,
-          keyboard_mode, confine_to, cursor, time)
-    Display *display;
-    Window grab_window;
-    Bool owner_events;
-    unsigned int event_mask;
-    int pointer_mode, keyboard_mode;
-    Window confine_to;
-    Cursor cursor;
-    Time time;
-
-XUngrabPointer(display, time)
-CurrentTime    
-*/
-            frames.list[i].x = mouse_root_x - event.xmotion.x ;
-            frames.list[i].y = mouse_root_y - event.xmotion.y ;
-            
-            printf("(%d,%d) : %d\n", frames.list[i].x, frames.list[i].y,  event.xmotion.window);
-            
-            XMoveWindow(display, frames.list[i].frame, frames.list[i].x, frames.list[i].y);
+      
+      case ButtonPress:
+        //Change the cursor
+        for(int i = 0; i < frames.used; i++) {
+          if(event.xbutton.window == frames.list[i].frame) { //start the move
+          int initial_x, initial_y;
+            XGrabPointer(display, event.xbutton.window, True, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, None, CurrentTime);
+            start_move_x = event.xbutton.x;
+            start_move_y = event.xbutton.y;
+            start_move_index = i;
             break;
           }
-       
-        /*
-        else if its a resize hotspot
-          Detect resize mode has started
-          mouse moves,
-          find the "touching windows"
-          if they can't be resized then don't resize them
-          otherwise go straight ahead
-        */
         }
       break;
+      
+      case MotionNotify: 
+        if(event.xmotion.window != root) { //actually need to check that it isn't the resize grips
+          while(XCheckTypedEvent(display, MotionNotify, &event));
+          Window mouse_root, mouse_child;
+          int mouse_root_x, mouse_root_y;
+          int mouse_child_x, mouse_child_y;
+          unsigned int mask;
+          
+          XQueryPointer(display, root, &mouse_root, &mouse_child, &mouse_root_x, &mouse_root_y, &mouse_child_x, &mouse_child_y, &mask);        
+          frames.list[start_move_index].x = mouse_root_x - start_move_x;
+          frames.list[start_move_index].y = mouse_root_y - start_move_y;
+          XMoveWindow(display, event.xmotion.window, frames.list[start_move_index].x, frames.list[start_move_index].y);
+        }
+      break;
+      
+      case ButtonRelease:
+         XUngrabPointer(display, CurrentTime);
+         start_move_index = -1;
+      break;
+
       case UnmapNotify:
         printf("Unmap notify %d\n", event.xunmap.window);
         for(int i = 0; i < frames.used; i++) {
-          if(event.xunmap.window == frames.list[i].window) XUnmapSubwindows (display, frames.list[i].frame);
+          if(event.xunmap.window == frames.list[i].window) {
+            XUnmapWindow (display, frames.list[i].frame);
+            XUnmapWindow (display, frames.list[i].closebutton);
+          }
           break;
         }
       break;
@@ -175,7 +161,8 @@ int create_frame(Display* display, struct Framelist* frames, Window window) {
   printf("create_frame, frame.closebutton = %d\n", frame.closebutton);      
   
   XSetWindowBorderWidth(display, frame.window, 0);
-  XResizeWindow(display, window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
+  XResizeWindow(display, frame.window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
+  XAddToSaveSet(display, frame.window); //this means the window will survive after the connection is closed
   XReparentWindow(display, window, frame.frame, FRAME_XSTART, FRAME_YSTART);
   
   //and the input only hotspots    
