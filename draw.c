@@ -103,25 +103,6 @@ void draw_frame(Display* display, struct Frame frame) {
     cairo_set_line_width(cr, 1);  
   }
   
-  char *wm_name = NULL;
-  printf("draw_frame, frame.window = %d\n", frame.window);
-  XFetchName(display, frame.window, &wm_name);
-  if(wm_name != NULL) {
-    //this needs to be in a mask so that the text gets truncated  
-    //draw text shadow
-    cairo_set_source_rgba(cr, SHADOW);
-    cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 14.5); 
-    cairo_move_to(cr, 27, 20);
-    cairo_show_text(cr, wm_name);
-    //draw text    
-    cairo_set_source_rgba(cr, TEXT);
-    cairo_move_to(cr, 26, 19);  
-    cairo_show_text(cr, wm_name);
-    XFree(wm_name);
-    //end mask
-  }
-  
   //draw inner frame
   cairo_set_source_rgba(cr, BORDER);
   cairo_rectangle(cr, 5, 27, frame.w-10, frame.h-32);
@@ -133,6 +114,22 @@ void draw_frame(Display* display, struct Frame frame) {
   cairo_fill(cr);
   
   draw_closebutton(display, frame);
+    
+  if(frame.window_name != NULL) {
+    cairo_rectangle(cr, 25, 3, frame.w-20-8-1 - 25 - 4, 20); //subtract extra for pulldown list later
+    cairo_clip(cr);
+
+    cairo_set_source_rgba(cr, SHADOW);
+    cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, 14.5); 
+    cairo_move_to(cr, 27, 20);
+    cairo_show_text(cr, frame.window_name);
+    //draw text    
+    cairo_set_source_rgba(cr, TEXT);
+    cairo_move_to(cr, 26, 19);  
+    cairo_show_text(cr, frame.window_name);
+    //end mask
+  }
 
   XMapWindow(display, frame.frame);
   XMapWindow(display, frame.window);  

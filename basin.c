@@ -4,6 +4,8 @@
 #include "basin.h"
 #include "draw.c"
 
+//export DISPLAY=":2"
+
 void find_adjacent (struct Framelist* frames, int frame_index);   
 
 extern void draw_background(Display* display, Window backwin, cairo_surface_t *surface); 
@@ -20,8 +22,7 @@ void end_event_loop(int sig);
 int done = 0;
 /* set the global variable done to 1, this will terminate the event loop */
 void end_event_loop(int sig) {
-  printf("Quiting the window manager. Move the mouse on the background to complete target lock.\n");
-  //obviously no such this as a target lock, but we do need an event to unblock the event loop
+  printf("Quiting the window manager. You need to generate an event to complete the shutdown.\n");
   done = 1;
 }
 
@@ -31,13 +32,17 @@ int main (int argc, char* argv[]) {
   Visual* colours;
   XEvent event;
   Window root, backwin;
-  struct Framelist frames = {NULL, 16, 0};
-    
+  struct Framelist frames;
+
+  frames.list = NULL;
+  frames.max = 16;
+  frames.used = 0;
+  
   cairo_surface_t *backwin_s;
 
   int start_move_x, start_move_y, start_move_index;
   start_move_index = -1;
-  frames.list = malloc(sizeof(struct Framelist) * 16);
+  frames.list = malloc(sizeof(struct Frame) * frames.max);
 
   printf("\n");
   if (signal(SIGINT, end_event_loop) == SIG_ERR) {
@@ -68,7 +73,7 @@ int main (int argc, char* argv[]) {
   draw_background(display, backwin, backwin_s);
   
   XSelectInput(display, root, SubstructureRedirectMask);
-  XSelectInput(display, backwin, ExposureMask | PointerMotionMask);
+  XSelectInput(display, backwin, ExposureMask); //| PointerMotionMask
 
   while(!done) {
     XNextEvent(display, &event);
@@ -144,6 +149,17 @@ int main (int argc, char* argv[]) {
          XUngrabPointer(display, CurrentTime);
       break;
 
+      case PropertyNotify:
+        for(int i = 0; i < frames.used; i++) 
+          if(event.xproperty.window == frames.list[i].window) {
+            if( strcmp(XGetAtomName(display, event.xproperty.atom), "WM_NAME") == 0) {
+              XFetchName(display, frames.list[i].window, &frames.list[i].window_name);
+              draw_frame(display, frames.list[i]);
+            }
+            break;
+          }
+      break;
+      
       case UnmapNotify:
         printf("Unmap notify %d\n", event.xunmap.window);
         for(int i = 0; i < frames.used; i++) {
@@ -181,14 +197,15 @@ void remove_frame(Display* display, struct Framelist* frames, int index) {
   
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);
-  XReparentWindow(display, frames->list[index].window, DefaultRootWindow(display), 0, 0); //this will do nothing if the window is destoyed
-  XRemoveFromSaveSet (display, frames->list[index].window); //this will do nothing if the window is destoyed
+  XReparentWindow(display, frames->list[index].window, DefaultRootWindow(display), 0, 0);
+  //XRemoveFromSaveSet (display, frames->list[index].window); 
   XDestroyWindow(display, frames->list[index].frame);
   XSync(display, False);
   XSetErrorHandler(NULL);    
   XUngrabServer(display);
-    
-  //Do I need to do something about changing the window focus?        
+  
+  if(frames->list[index].window_name != NULL) XFree(frames->list[index].window_name);
+   
   if((frames->used != 1) && (index != frames->used - 1)) { //the frame is not the first or the last
     frames->list[index] = frames->list[frames->used - 1]; //swap the deleted frame with the last frame
   }
@@ -201,8 +218,10 @@ void remove_window(Display* display, Window framed_window) {
   
   if (XGetWMProtocols(display, framed_window, &protocols, &n)) {
   	for (int i = 0; i < n; i++)
-  		if (protocols[i] == XInternAtom(display, "WM_DELETE_WINDOW", False))
-  			found++;	
+  		if (protocols[i] == XInternAtom(display, "WM_DELETE_WINDOW", False)) {
+  			found++;
+  			break;
+  	  }
   	XFree(protocols);
   }
   
@@ -210,8 +229,8 @@ void remove_window(Display* display, Window framed_window) {
   	XClientMessageEvent event;
   	event.type = ClientMessage;
   	event.window = framed_window;
-  	event.message_type = XInternAtom(display, "WM_PROTOCOLS", False);
   	event.format = 32;
+  	event.message_type = XInternAtom(display, "WM_PROTOCOLS", False);
   	event.data.l[0] = (long)XInternAtom(display, "WM_DELETE_WINDOW", False);
 	  event.data.l[1] = CurrentTime;
     XSendEvent(display, framed_window, False, NoEventMask, (XEvent *)&event);
@@ -231,13 +250,15 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   
   if(frames->used == frames->max) {
     struct Frame* temp = NULL;
-    temp = realloc(frames->list, 2*sizeof(struct Framelist)*frames->max);
+    temp = realloc(frames->list, sizeof(struct Frame) * frames->max * 2);
     if(temp != NULL) frames->list = temp;
     else return -1;
+    frames->max *= 2;
   }
   
   //TODO: get details from WM hints if possible, these are defaults:
   struct Frame frame;
+  frame.window_name = NULL;
   frame.window = framed_window;
   frame.w = MINWIDTH*3;
   frame.h = MINHEIGHT*3;
@@ -253,9 +274,9 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
 
   XSetWindowBorderWidth(display, frame.window, 0);
   XResizeWindow(display, frame.window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
-  XAddToSaveSet(display, frame.window); //this means the window will survive after the connection is closed
+ //XAddToSaveSet(display, frame.window); //this means the window will survive after the connection is closed
   XReparentWindow(display, framed_window, frame.frame, FRAME_XSTART, FRAME_YSTART);
-  
+  XFetchName(display, frame.window, &frame.window_name);
   //and the input only hotspots    
   //and set the mode    
   //need to establish how to place a new window
@@ -269,6 +290,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);
   XSelectInput(display, frame.frame, Button1MotionMask | ButtonPressMask | ExposureMask);
   XSelectInput(display, frame.closebutton, ButtonPressMask | ExposureMask);  
+  
   frames->list[frames->used] = frame;
   frames->used++;
   return (frames->used - 1);
