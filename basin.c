@@ -6,23 +6,22 @@
 
 //export DISPLAY=":2"
 
-void find_adjacent (struct Framelist* frames, int frame_index);   
-
+/*** draw.c ***/
 extern void draw_background(Display* display, Window backwin, cairo_surface_t *surface); 
-
 extern void draw_frame (Display* display, struct Frame frame);
 extern void draw_closebutton(Display* display, struct Frame frame);
 
+/*** basin.c ***/
+void find_adjacent (struct Framelist* frames, int frame_index);   
 int create_frame (Display* display, struct Framelist* frames, Window framed_window); 
 void remove_frame(Display* display, struct Framelist* frames, int index);
 void remove_window(Display* display, Window framed_window);
 int supress_xerror(Display *display, XErrorEvent *event);
-void end_event_loop(int sig);
 
 int done = 0;
 /* set the global variable done to 1, this will terminate the event loop */
 void end_event_loop(int sig) {
-  printf("Quiting the window manager. You need to generate an event to complete the shutdown.\n");
+  printf("Quiting the window manager.\n Generate an event to continue.\n");
   done = 1;
 }
 
@@ -73,7 +72,7 @@ int main (int argc, char* argv[]) {
   draw_background(display, backwin, backwin_s);
   
   XSelectInput(display, root, SubstructureRedirectMask);
-  XSelectInput(display, backwin, ExposureMask); //| PointerMotionMask
+  XSelectInput(display, backwin, ExposureMask | ButtonPressMask); //ButtonPress for deselecting windows
 
   while(!done) {
     XNextEvent(display, &event);
@@ -194,6 +193,7 @@ void remove_frame(Display* display, struct Framelist* frames, int index) {
 
   cairo_surface_destroy(frames->list[index].frame_s);
   cairo_surface_destroy(frames->list[index].closebutton_s);  
+  cairo_surface_destroy(frames->list[index].pulldown_s);  
   
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);
@@ -271,21 +271,26 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.selected = 1;
   frame.frame = XCreateSimpleWindow(display, root, frame.x, frame.y, frame.w, frame.h, 0,  WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
   frame.closebutton = XCreateSimpleWindow(display, frame.frame, frame.w-20-8-1, 4, 20, 20, 0, WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
-
+  frame.pulldown = XCreateSimpleWindow(display, frame.frame, frame.w-20-8-1-100-4, 4, 100, 20, 0, WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
+  
   XSetWindowBorderWidth(display, frame.window, 0);
   XResizeWindow(display, frame.window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
- //XAddToSaveSet(display, frame.window); //this means the window will survive after the connection is closed
+  //XAddToSaveSet(display, frame.window); //this means the window will survive after the connection is closed
   XReparentWindow(display, framed_window, frame.frame, FRAME_XSTART, FRAME_YSTART);
   XFetchName(display, frame.window, &frame.window_name);
   //and the input only hotspots    
   //and set the mode    
   //need to establish how to place a new window
+  
   XMapWindow(display, frame.frame);
   XMapWindow(display, frame.closebutton);
+  XMapWindow(display, frame.pulldown);
   XMapWindow(display, frame.window);
+  
   frame.frame_s = cairo_xlib_surface_create(display, frame.frame, colours, frame.w, frame.h);
   frame.closebutton_s = cairo_xlib_surface_create(display, frame.closebutton, colours, 20, 20);
-
+  frame.pulldown_s = cairo_xlib_surface_create(display, frame.pulldown, colours, 100, 20);
+  
   //use the property notify to update titles  
   XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);
   XSelectInput(display, frame.frame, Button1MotionMask | ButtonPressMask | ExposureMask);

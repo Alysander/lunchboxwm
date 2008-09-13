@@ -62,7 +62,26 @@ void draw_closebutton(Display* display, struct Frame frame) {
   cairo_stroke(cr);
   
   XMapWindow(display, frame.closebutton);  
-  XFlush(display);
+//  XFlush(display);
+  cairo_destroy (cr);
+}
+
+//Draws the pulldown list and maps it
+void draw_pulldown(Display* display, struct Frame frame) {
+  cairo_t *cr = cairo_create (frame.pulldown_s);
+  cairo_set_source_rgba(cr, INNER_BORDER);
+  cairo_rectangle(cr, 0, 0, 100, 20);
+  cairo_fill(cr);
+
+  cairo_set_source_rgba(cr, LIGHT_EDGE);  
+  cairo_rectangle(cr, 1, 1, 98, 18);
+  cairo_fill(cr);
+  
+  cairo_set_source_rgba(cr, BODY);  
+  cairo_rectangle(cr, 2, 2, 96, 11); //11 will be the height of the darkened area
+  cairo_fill(cr); 
+ 
+  XMapWindow(display, frame.closebutton);  
   cairo_destroy (cr);
 }
 
@@ -72,6 +91,7 @@ void draw_frame(Display* display, struct Frame frame) {
   cairo_t *cr = cairo_create (frame.frame_s);
 
   XMoveWindow(display, frame.closebutton, frame.w-20-8-1, 4);
+  XMoveWindow(display, frame.pulldown, frame.w-20-8-1-100-4, 4);
   
   //from basin_black.c
   //draw dark grey border
@@ -114,9 +134,10 @@ void draw_frame(Display* display, struct Frame frame) {
   cairo_fill(cr);
   
   draw_closebutton(display, frame);
+  draw_pulldown(display, frame);
     
   if(frame.window_name != NULL) {
-    cairo_rectangle(cr, 25, 3, frame.w-20-8-1 - 25 - 4, 20); //subtract extra for pulldown list later
+    cairo_rectangle(cr, 25, 3, frame.w-20-8-1- 25- 4 - 100 - 4, 20); //subtract extra for pulldown list later
     cairo_clip(cr);
 
     cairo_set_source_rgba(cr, SHADOW);
@@ -133,6 +154,7 @@ void draw_frame(Display* display, struct Frame frame) {
 
   XMapWindow(display, frame.frame);
   XMapWindow(display, frame.window);  
-  XFlush(display);
+
+ // XFlush(display);
   cairo_destroy (cr);
 }
