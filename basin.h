@@ -33,5 +33,5 @@ struct Frame {
 
 struct Framelist {
   struct Frame* list;
-  int max, used;
+  unsigned int max, used;
 };
