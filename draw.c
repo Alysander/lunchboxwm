@@ -8,6 +8,7 @@
 #define FRAME_XSTART 6
 #define FRAME_YSTART 28
 #define LIGHT_EDGE_HEIGHT 7
+#define PULLDOWN_WIDTH 100
 
 /***** Colours for cairo as rgba percentages *******/
 #define SPOT            0.235294118, 0.549019608, 0.99, 1
@@ -29,7 +30,6 @@ void draw_background(Display* display, Window backwin, cairo_surface_t *surface)
   cairo_paint(cr);
   
   XMapWindow(display, backwin);
-  XFlush(display);
   cairo_destroy (cr);
 }
 
@@ -50,7 +50,7 @@ void draw_closebutton(Display* display, struct Frame frame) {
   cairo_fill(cr); 
  
   //draw the close cross
-  cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);
+  //cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);
   cairo_set_source_rgba(cr, TEXT);
   cairo_set_line_width(cr, 2);
   cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
@@ -62,7 +62,6 @@ void draw_closebutton(Display* display, struct Frame frame) {
   cairo_stroke(cr);
   
   XMapWindow(display, frame.closebutton);  
-//  XFlush(display);
   cairo_destroy (cr);
 }
 
@@ -70,18 +69,67 @@ void draw_closebutton(Display* display, struct Frame frame) {
 void draw_pulldown(Display* display, struct Frame frame) {
   cairo_t *cr = cairo_create (frame.pulldown_s);
   cairo_set_source_rgba(cr, INNER_BORDER);
-  cairo_rectangle(cr, 0, 0, 100, 20);
+  cairo_rectangle(cr, 0, 0, PULLDOWN_WIDTH, 20);
   cairo_fill(cr);
 
   cairo_set_source_rgba(cr, LIGHT_EDGE);  
-  cairo_rectangle(cr, 1, 1, 98, 18);
+  cairo_rectangle(cr, 1, 1, PULLDOWN_WIDTH - 2, 18);
   cairo_fill(cr);
   
   cairo_set_source_rgba(cr, BODY);  
-  cairo_rectangle(cr, 2, 2, 96, 11); //11 will be the height of the darkened area
+  cairo_rectangle(cr, 2, 2, PULLDOWN_WIDTH - 4, 11); //11 will be the height of the darkened area
   cairo_fill(cr); 
  
-  XMapWindow(display, frame.closebutton);  
+  cairo_set_source_rgba(cr, TEXT);  
+  cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size(cr, 11.5); 
+  cairo_move_to(cr, 22, 15);
+    
+  if(frame.mode == TILING) {
+    cairo_show_text(cr, "Tiling");
+    
+    cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
+    cairo_rectangle(cr, 5, 7, 4, 7);
+    cairo_rectangle(cr, 4, 5, 6, 10);
+    cairo_fill(cr);
+
+    cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
+    cairo_rectangle(cr, 12, 7, 4, 7);
+    cairo_rectangle(cr, 11, 5, 6, 10);
+    cairo_fill(cr);
+  }
+  else if(frame.mode == SINKING) {
+    cairo_show_text(cr, "Sinking");
+    
+  }
+  else if(frame.mode == FLOATING) {
+ 
+    cairo_show_text(cr, "Floating");
+    
+    cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD); //dont fill areas that are filled twice.
+    cairo_rectangle(cr, 4, 4, 9, 9);
+    cairo_rectangle(cr, 5, 6, 7, 6);
+    
+    cairo_rectangle(cr, 8, 8, 5, 5); //cut off the corner for the 2nd window icon
+    cairo_rectangle(cr, 8, 8, 4, 4);
+    cairo_fill(cr);
+
+    cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
+    cairo_rectangle(cr, 8, 8, 9, 9);
+    cairo_rectangle(cr, 9, 10, 7, 6);
+    cairo_fill(cr);
+    
+  }
+  
+  //draw arrow
+  //cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);
+  cairo_move_to(cr, PULLDOWN_WIDTH - 14, 8);
+  cairo_line_to(cr, PULLDOWN_WIDTH - 5, 8);
+  cairo_line_to(cr, PULLDOWN_WIDTH - 10, 13);
+  cairo_close_path(cr);
+  cairo_fill(cr);
+ 
+  XMapWindow(display, frame.closebutton);
   cairo_destroy (cr);
 }
 
@@ -91,7 +139,8 @@ void draw_frame(Display* display, struct Frame frame) {
   cairo_t *cr = cairo_create (frame.frame_s);
 
   XMoveWindow(display, frame.closebutton, frame.w-20-8-1, 4);
-  XMoveWindow(display, frame.pulldown, frame.w-20-8-1-100-4, 4);
+  XMoveWindow(display, frame.pulldown, frame.w-20-8-1-PULLDOWN_WIDTH-4, 4);
+  XMoveWindow(display, frame.window, FRAME_XSTART, FRAME_YSTART);
   
   //from basin_black.c
   //draw dark grey border
@@ -128,7 +177,7 @@ void draw_frame(Display* display, struct Frame frame) {
   cairo_rectangle(cr, 5, 27, frame.w-10, frame.h-32);
   cairo_fill(cr);
  
-  //draw an (probably unneeded) inner background
+  //draw an inner background
   cairo_set_source_rgba(cr, BACKGROUND);
   cairo_rectangle(cr, 6, 28, frame.w-12, frame.h-34);
   cairo_fill(cr);
@@ -137,7 +186,7 @@ void draw_frame(Display* display, struct Frame frame) {
   draw_pulldown(display, frame);
     
   if(frame.window_name != NULL) {
-    cairo_rectangle(cr, 25, 3, frame.w-20-8-1- 25- 4 - 100 - 4, 20); //subtract extra for pulldown list later
+    cairo_rectangle(cr, 25, 3, frame.w-20-8-1- 25- 4 - PULLDOWN_WIDTH- 4, 20); //subtract extra for pulldown list later
     cairo_clip(cr);
 
     cairo_set_source_rgba(cr, SHADOW);
@@ -155,6 +204,6 @@ void draw_frame(Display* display, struct Frame frame) {
   XMapWindow(display, frame.frame);
   XMapWindow(display, frame.window);  
 
- // XFlush(display);
+  XFlush(display);
   cairo_destroy (cr);
 }

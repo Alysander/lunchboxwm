@@ -8,7 +8,7 @@
 #define M_PI 3.14159265359
 
 //this amount in pixels * 3 are used when the top level size cannot be established
-#define MINWIDTH 80 
+#define MINWIDTH 200 
 #define MINHEIGHT 60
 
 #define FLOATING 1
@@ -19,7 +19,7 @@ struct Frame {
   Window window;
   char *window_name;
   
-  unsigned int x,y,w,h;
+  int x,y,w,h;
   int mode; //FLOATING || TILING || SINKING
   int selected;
   int min_width, max_width;
