@@ -16,24 +16,26 @@
 #define BACKGROUND      0.4, 0.4, 0.4, 1
 #define BORDER          0.13, 0.13, 0.13, 1
 #define INNER_BORDER    0.0, 0.0, 0.0, 1
+// fraser suggested skins, w/ a green
+//#define LIGHT_EDGE      0.2, 0.90, 0.2, 1
+//#define BODY            0.0, 0.99, 0.0, 1
 #define LIGHT_EDGE      0.34, 0.34, 0.34, 1
 #define BODY            0.27, 0.27, 0.27, 1
 #define SHADOW          0.0, 0.0, 0.0, 1
 #define TEXT            100, 100, 100, 1
 #define TEXT_DISABLED   0.6, 0.6, 0.6, 1
  
-//Draws a solid colour background over the root window
-void draw_background(Display* display, Window backwin, cairo_surface_t *surface) {
+/*** Draws a solid colour background over the root window ***/
+void draw_background(Display* display, cairo_surface_t *surface) {
   cairo_t *cr = cairo_create(surface);
   cairo_set_source_rgba(cr, BACKGROUND);
   
   cairo_paint(cr);
-  
-  XMapWindow(display, backwin);
+  //not sure if you have to map a pixmap...
   cairo_destroy (cr);
 }
 
-//Draws a close button on the closebutton window on the frame and then maps it
+/*** Draws a close button on the closebutton window on the frame and then maps it **/
 void draw_closebutton(Display* display, struct Frame frame) {
   cairo_t *cr = cairo_create (frame.closebutton_s);
   //draw the close button  
@@ -65,7 +67,7 @@ void draw_closebutton(Display* display, struct Frame frame) {
   cairo_destroy (cr);
 }
 
-//Draws the pulldown list and maps it
+/*** Draws the pulldown list and maps it ***/
 void draw_pulldown(Display* display, struct Frame frame) {
   cairo_t *cr = cairo_create (frame.pulldown_s);
   cairo_set_source_rgba(cr, INNER_BORDER);
@@ -100,10 +102,8 @@ void draw_pulldown(Display* display, struct Frame frame) {
   }
   else if(frame.mode == SINKING) {
     cairo_show_text(cr, "Sinking");
-    
   }
-  else if(frame.mode == FLOATING) {
- 
+  else if(frame.mode == FLOATING) { 
     cairo_show_text(cr, "Floating");
     
     cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD); //dont fill areas that are filled twice.
@@ -133,7 +133,7 @@ void draw_pulldown(Display* display, struct Frame frame) {
   cairo_destroy (cr);
 }
 
-//Draws the frame and maps the frame and the framed window
+/*** Draws the frame and maps the frame and the framed window ***/
 void draw_frame(Display* display, struct Frame frame) {
 
   cairo_t *cr = cairo_create (frame.frame_s);
@@ -201,8 +201,7 @@ void draw_frame(Display* display, struct Frame frame) {
     //end mask
   }
 
-  XMapWindow(display, frame.frame);
-  XMapWindow(display, frame.window);  
+  XMapWindow(display, frame.frame);  
 
   XFlush(display);
   cairo_destroy (cr);

@@ -14,13 +14,14 @@
 #define FLOATING 1
 #define TILING 2
 #define SINKING 3
+#define TRANSIENT 4
 
 struct Frame {
   Window window;
   char *window_name;
   
   int x,y,w,h;
-  int mode; //FLOATING || TILING || SINKING
+  int mode; //FLOATING || TILING || SINKING ||
   int selected;
   int min_width, max_width;
   int min_height, max_height; 
