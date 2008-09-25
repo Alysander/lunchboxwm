@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>  //This is used for the size hints structure
 #include <cairo/cairo.h>
 #include <cairo/cairo-xlib.h>
 #include <string.h>
@@ -24,7 +25,8 @@ struct Frame {
   int mode; //FLOATING || TILING || SINKING ||
   int selected;
   int min_width, max_width;
-  int min_height, max_height; 
+  int min_height, max_height;
+  int width_inc, height_inc;
 
   Window frame, pulldown, closebutton;
   cairo_surface_t *frame_s, *pulldown_s, *closebutton_s;  

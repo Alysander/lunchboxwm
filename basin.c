@@ -6,7 +6,6 @@
 //int main 
 void create_backwin       (Display *display, Window *backwin, Pixmap *backwin_p);
 int supress_xerror        (Display *display, XErrorEvent *event);
-void print_frames         (struct Framelist* frames);
 
 /*** draw.c ***/
 extern void draw_background(Display* display, cairo_surface_t *surface); 
@@ -51,8 +50,11 @@ int main (int argc, char* argv[]) {
 
   Window last_pressed;
   int start_move_x, start_move_y, start_win;
+
+  //for resize direction
   int resize_x = 0; //-1 means LHS, 1 means RHS
   int resize_y = 0; //-1 means top, 1 means bottom
+  //for the window being moved/resized
   start_win = -1;
   
   printf("\n");
@@ -86,7 +88,9 @@ int main (int argc, char* argv[]) {
 
   XSelectInput(display, root, SubstructureRedirectMask | ButtonPressMask);
   
-  XGrabButton(display, 1, AnyButton, root, True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None);
+  //looks like this was actually working 
+  //XGrabButton(display, 1, AnyButton, root, True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None);
+  
   create_startup_frames(display, &frames);  
   
   create_backwin(display, &backwin, &backwin_p);
@@ -105,8 +109,8 @@ int main (int argc, char* argv[]) {
     
     switch(event.type) {   
       case UnmapNotify:
-        //printf("Unmapping window: %d\n", event.xunmap.window);  
-        print_frames(&frames);
+        printf("Unmapping window: %d\n", event.xunmap.window);  
+        //print_frames(&frames);
         
         if(start_win != -1) {
           printf("Cancelling resize because a window was unmapped\n");
@@ -122,9 +126,9 @@ int main (int argc, char* argv[]) {
           }
         }
       break;
-    
+      //handle resize requests, e.g. the download dialog box folding out in synaptic
       case MapRequest:
-        printf("\n");
+        printf("Mapping window %d\n", event.xmaprequest.window);
         int index;
         index = create_frame(display, &frames, event.xmaprequest.window);
         if(index != -1) draw_frame(display, frames.list[index]);
@@ -198,7 +202,9 @@ int main (int argc, char* argv[]) {
        }
       break;
       
-      case MotionNotify: 
+      //for window moves and resizes
+      case MotionNotify:
+        
         if((event.xmotion.window != root) && (event.xmotion.window != backwin) && (start_win != -1)) { 
           while(XCheckTypedEvent(display, MotionNotify, &event));
           Window mouse_root, mouse_child;
@@ -208,35 +214,39 @@ int main (int argc, char* argv[]) {
           
           int new_width = 0;
           int new_height = 0;
+          int dx, dy;
+          int new_x, new_y;
           
-          XQueryPointer(display, root, &mouse_root, &mouse_child, &mouse_root_x, &mouse_root_y, &mouse_child_x, &mouse_child_y, &mask);
-          frames.list[start_win].x = mouse_root_x - start_move_x;
-          frames.list[start_win].y = mouse_root_y - start_move_y;
-         
-          if((frames.list[start_win].x + frames.list[start_win].w > XWidthOfScreen(screen)) //window moving off RHS
+          XQueryPointer(display, root, &mouse_root, &mouse_child, &mouse_root_x, &mouse_root_y, &mouse_child_x, &mouse_child_y, &mask);    
+          new_x = mouse_root_x - start_move_x;
+          new_y = mouse_root_y - start_move_y;
+          
+          if((new_x + frames.list[start_win].w > XWidthOfScreen(screen)) //window moving off RHS
            ||(resize_x == -1)) {  
-            new_width = XWidthOfScreen(screen) - frames.list[start_win].x;
             resize_x = -1;
+            new_width = XWidthOfScreen(screen) - new_x;
           }
-          if((frames.list[start_win].x < 0) //window moving off LHS
+          
+          if((new_x < 0) //window moving off LHS
            ||(resize_x == 1)) { 
-            new_width = frames.list[start_win].w + frames.list[start_win].x;
-            frames.list[start_win].x = 0;
-            start_move_x = mouse_root_x;
             resize_x = 1;
+            new_width = frames.list[start_win].w + new_x;
+            new_x = 0;
+            start_move_x = mouse_root_x;
           }
 
-          if((frames.list[start_win].y + frames.list[start_win].h > XHeightOfScreen(screen)) //window moving off the bottom
+          if((new_y + frames.list[start_win].h > XHeightOfScreen(screen)) //window moving off the bottom
            ||(resize_y == -1)) { 
-            new_height = XHeightOfScreen(screen) - frames.list[start_win].y;
             resize_y = -1;
+            new_height = XHeightOfScreen(screen) - new_y;
           }
-          if((frames.list[start_win].y < 0) //window moving off the top of the screen
+          
+          if((new_y < 0) //window moving off the top of the screen
             ||(resize_y == 1)) { 
-            new_height = frames.list[start_win].h + frames.list[start_win].y;
-            frames.list[start_win].y = 0;
-            start_move_y = mouse_root_y;
             resize_y = 1;
+            new_height = frames.list[start_win].h + new_y;
+            new_y = 0;
+            start_move_y = mouse_root_y;
           }
 
           if((new_width != 0  &&  new_width < frames.list[start_win].min_width) 
@@ -246,24 +256,46 @@ int main (int argc, char* argv[]) {
             if(new_height != 0) new_height = 0;    
             //Set the state to Sinking
             //Don't retile
+            break;//double check this
           }
 
           if((new_width != 0  &&  new_width > frames.list[start_win].max_width) //Don't allow too large resizes
            ||(new_height != 0  &&  new_height > frames.list[start_win].max_height)) {
             if(new_width > frames.list[start_win].max_width)   new_width = 0;
             if(new_height > frames.list[start_win].max_height) new_height = 0;
-          }          
+          } 
           
-          if(new_width != 0  ||  new_height != 0) {   //resize window if required        
-            if(new_width != 0) frames.list[start_win].w = new_width;
-            if(new_height != 0) frames.list[start_win].h = new_height;
-            
+          if(new_width != 0  ||  new_height != 0) {   //resize window if required
+            if(new_width != 0) {
+              dx = new_width - frames.list[start_win].w;
+              if(dx % frames.list[start_win].width_inc  ==  0) {
+                frames.list[start_win].w = new_width;
+                frames.list[start_win].x = new_x;
+                printf("dx is %d\n", dx);
+              }
+            }
+            else frames.list[start_win].x = new_x;
+            //allow movement if it hasn't been resized
+  
+            if(new_height != 0) {
+              dy = new_height - frames.list[start_win].y;
+              if(dy % frames.list[start_win].height_inc  ==  0) {
+                frames.list[start_win].h = new_height;
+                frames.list[start_win].y = new_y;
+                printf("dy is %d\n", dy);
+              }
+            }
+            else frames.list[start_win].y = new_y;
+
+
             XMoveResizeWindow(display, frames.list[start_win].frame, frames.list[start_win].x, frames.list[start_win].y,  frames.list[start_win].w, frames.list[start_win].h);
             cairo_xlib_surface_set_size(frames.list[start_win].frame_s, frames.list[start_win].w, frames.list[start_win].h);
             XResizeWindow(display, frames.list[start_win].window, frames.list[start_win].w - FRAME_HSPACE, frames.list[start_win].h - FRAME_VSPACE);
             
           }
           else {
+            frames.list[start_win].x = new_x;
+            frames.list[start_win].y = new_y;
             XMoveWindow(display, frames.list[start_win].frame, frames.list[start_win].x, frames.list[start_win].y);
           }
         }
@@ -286,25 +318,20 @@ int main (int argc, char* argv[]) {
     }
   }
   
-  printf(".......... \n");
   XFreePixmap(display, backwin_p);
   XDestroyWindow(display, backwin);
   //destroy the backgoround window
   for(int i = 0; i < frames.used; i++) {
-    //remove_window(display, frames.list[i].window);
     remove_frame(display, &frames, i);
   }
   XCloseDisplay(display);
   free(frames.list);
+  printf(".......... \n");  
   return 1;  
 }
 
-void print_frames(struct Framelist* frames) {
-  for(int i = 0; i < frames->used; i++) printf("Framed window %d is %d\n", i, frames->list[i].window);
-}
-
 /* Sometimes a client window is killed before it gets unmapped, we only get the unmapnotify event,
- but there is no way to tell so we just supress the error. No harm done. */
+ but there is no way to tell so we just supress the error. */
 int supress_xerror(Display *display, XErrorEvent *event) {
   (void) display;
   (void) event;
