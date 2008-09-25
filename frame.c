@@ -115,9 +115,13 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.min_height = MINHEIGHT;
   frame.max_width = XWidthOfScreen(screen);
   frame.max_height = XHeightOfScreen(screen);
+  frame.selected = 0;
+  
+  #ifdef INC_RESIZE
   frame.width_inc = 1;
   frame.height_inc = 1;
-  frame.selected = 1;
+  #endif
+ 
   
   /*** Update with specified values if they are available ***/
   if(XGetWMNormalHints(display, framed_window, &specified, &pre_ICCCM) != 0) {

@@ -51,6 +51,11 @@ int main (int argc, char* argv[]) {
   Window last_pressed;
   int start_move_x, start_move_y, start_win;
 
+  #ifdef INC_RESIZE
+  //for the inc_resize, we need to know the original x,y of the click.
+  int frozen_start_x, frozen_start_y; 
+  #endif 
+  
   //for resize direction
   int resize_x = 0; //-1 means LHS, 1 means RHS
   int resize_y = 0; //-1 means top, 1 means bottom
@@ -170,6 +175,10 @@ int main (int argc, char* argv[]) {
             XGrabPointer(display, event.xbutton.window, True, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, None, CurrentTime);
             start_move_x = event.xbutton.x;
             start_move_y = event.xbutton.y;
+            #ifdef INC_RESIZE
+            frozen_start_x = start_move_x;
+            frozen_start_y = start_move_y;
+            #endif
             start_win = i;
             resize_x = 0;
             resize_y = 0;
@@ -216,6 +225,10 @@ int main (int argc, char* argv[]) {
           int new_height = 0;
           int new_x, new_y;
           
+          #ifdef INC_RESIZE
+          int inc_x, inc_y;
+          #endif
+          
           XQueryPointer(display, root, &mouse_root, &mouse_child, &mouse_root_x, &mouse_root_y, &mouse_child_x, &mouse_child_y, &mask);    
           new_x = mouse_root_x - start_move_x;
           new_y = mouse_root_y - start_move_y;
@@ -224,12 +237,21 @@ int main (int argc, char* argv[]) {
            ||(resize_x == -1)) {  
             resize_x = -1;
             new_width = XWidthOfScreen(screen) - new_x;
+            #ifdef INC_RESIZE
+            inc_x = new_width - frames.list[start_win].w;
+            #endif
           }
           
           if((new_x < 0) //window moving off LHS
            ||(resize_x == 1)) { 
             resize_x = 1;
             new_width = frames.list[start_win].w + new_x;
+            #ifdef INC_RESIZE
+            //new_x is the correct amount but because events are reported fast it rarely exceeds 1 or 2.
+            //inc_x = new_x; 
+            inc_x = mouse_root_x - frozen_start_x;
+//            printf("inc_x %d\n", inc_x);
+            #endif
             new_x = 0;
             start_move_x = mouse_root_x;
           }
@@ -238,12 +260,19 @@ int main (int argc, char* argv[]) {
            ||(resize_y == -1)) { 
             resize_y = -1;
             new_height = XHeightOfScreen(screen) - new_y;
+            #ifdef INC_RESIZE
+            inc_y = new_height - frames.list[start_win].h;
+            #endif
           }
           
           if((new_y < 0) //window moving off the top of the screen
             ||(resize_y == 1)) { 
             resize_y = 1;
             new_height = frames.list[start_win].h + new_y;
+            #ifdef INC_RESIZE
+            inc_y = mouse_root_y - frozen_start_y;
+//            printf("inc_y %d\n", inc_y);
+            #endif
             new_y = 0;
             start_move_y = mouse_root_y;
           }
@@ -267,35 +296,33 @@ int main (int argc, char* argv[]) {
           if(new_width != 0  ||  new_height != 0) {   //resize window if required
             if(new_width != 0) {
               #ifdef INC_RESIZE
-              int dx;
-              dx = new_width - frames.list[start_win].w;
-              if(dx % frames.list[start_win].width_inc  ==  0) {
+              if(inc_x % frames.list[start_win].width_inc  ==  0) {
+//                printf("new_width %d, old width %d, inc_x %d\n", new_width, frames.list[start_win].w, inc_x);
+                frozen_start_x = mouse_root_x;
+                new_width = frames.list[start_win].w + inc_x;
               #endif
               frames.list[start_win].w = new_width;
               frames.list[start_win].x = new_x;
               #ifdef INC_RESIZE
-              printf("dx is %d\n", dx);
               }
               #endif
             }
-            else frames.list[start_win].x = new_x;
-            //allow movement if it hasn't been resized
+            else frames.list[start_win].x = new_x; //allow movement in axis if it hasn't been resized
   
             if(new_height != 0) {
               #ifdef INC_RESIZE
-              int dy;            
-              dy = new_height - frames.list[start_win].y;
-              if(dy % frames.list[start_win].height_inc  ==  0) {
+              if(inc_y % frames.list[start_win].height_inc  ==  0) {
+                frozen_start_y = mouse_root_y;
+//                printf("new_height %d, old height %d, inc_y %d\n", new_height, frames.list[start_win].h, inc_y);
+                new_height = frames.list[start_win].h + inc_y;
               #endif
               frames.list[start_win].h = new_height;
               frames.list[start_win].y = new_y;
               #ifdef INC_RESIZE
-              printf("dy is %d\n", dy);
               }
               #endif
             }
-            else frames.list[start_win].y = new_y;
-
+            else frames.list[start_win].y = new_y; //allow movement in axis if it hasn't been resized
 
             XMoveResizeWindow(display, frames.list[start_win].frame, frames.list[start_win].x, frames.list[start_win].y,  frames.list[start_win].w, frames.list[start_win].h);
             cairo_xlib_surface_set_size(frames.list[start_win].frame_s, frames.list[start_win].w, frames.list[start_win].h);

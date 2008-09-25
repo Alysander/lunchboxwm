@@ -17,7 +17,7 @@
 #define SINKING 3
 #define TRANSIENT 4
 
-/*define this to turn on (buggy for LHS and top) incremental resize */
+/*define this to turn on jumpy incremental resize */
 //#define INC_RESIZE
 
 struct Frame {
