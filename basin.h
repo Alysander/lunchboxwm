@@ -17,6 +17,9 @@
 #define SINKING 3
 #define TRANSIENT 4
 
+/*define this to turn on (buggy for LHS and top) incremental resize */
+//#define INC_RESIZE
+
 struct Frame {
   Window window;
   char *window_name;
@@ -26,8 +29,11 @@ struct Frame {
   int selected;
   int min_width, max_width;
   int min_height, max_height;
+  
+  #ifdef INC_RESIZE
   int width_inc, height_inc;
-
+  #endif
+  
   Window frame, pulldown, closebutton;
   cairo_surface_t *frame_s, *pulldown_s, *closebutton_s;  
   

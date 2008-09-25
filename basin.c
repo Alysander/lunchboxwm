@@ -214,7 +214,6 @@ int main (int argc, char* argv[]) {
           
           int new_width = 0;
           int new_height = 0;
-          int dx, dy;
           int new_x, new_y;
           
           XQueryPointer(display, root, &mouse_root, &mouse_child, &mouse_root_x, &mouse_root_y, &mouse_child_x, &mouse_child_y, &mask);    
@@ -267,23 +266,33 @@ int main (int argc, char* argv[]) {
           
           if(new_width != 0  ||  new_height != 0) {   //resize window if required
             if(new_width != 0) {
+              #ifdef INC_RESIZE
+              int dx;
               dx = new_width - frames.list[start_win].w;
               if(dx % frames.list[start_win].width_inc  ==  0) {
-                frames.list[start_win].w = new_width;
-                frames.list[start_win].x = new_x;
-                printf("dx is %d\n", dx);
+              #endif
+              frames.list[start_win].w = new_width;
+              frames.list[start_win].x = new_x;
+              #ifdef INC_RESIZE
+              printf("dx is %d\n", dx);
               }
+              #endif
             }
             else frames.list[start_win].x = new_x;
             //allow movement if it hasn't been resized
   
             if(new_height != 0) {
+              #ifdef INC_RESIZE
+              int dy;            
               dy = new_height - frames.list[start_win].y;
               if(dy % frames.list[start_win].height_inc  ==  0) {
-                frames.list[start_win].h = new_height;
-                frames.list[start_win].y = new_y;
-                printf("dy is %d\n", dy);
+              #endif
+              frames.list[start_win].h = new_height;
+              frames.list[start_win].y = new_y;
+              #ifdef INC_RESIZE
+              printf("dy is %d\n", dy);
               }
+              #endif
             }
             else frames.list[start_win].y = new_y;
 

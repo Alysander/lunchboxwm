@@ -145,11 +145,13 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
       frame.max_width = specified.max_width;
       frame.max_height = specified.max_height;
     }
+    #ifdef INC_RESIZE
     if(specified.flags & PResizeInc) {
       printf("got inc hints, w %d, h %d\n", specified.width_inc, specified.height_inc);
       frame.width_inc = specified.width_inc;
       frame.height_inc = specified.height_inc;
     }
+    #endif
   }
 
   frame.w += FRAME_HSPACE;
