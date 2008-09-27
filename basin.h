@@ -17,9 +17,6 @@
 #define SINKING 3
 #define TRANSIENT 4
 
-/*define this to turn on jumpy incremental resize */
-//#define INC_RESIZE
-
 struct Frame {
   Window window;
   char *window_name;
