@@ -4,9 +4,6 @@
 void remove_frame(Display* display, struct Framelist* frames, int index) {
 
   printf("removing window\n");
-  cairo_surface_destroy(frames->list[index].frame_s);
-  cairo_surface_destroy(frames->list[index].closebutton_s);  
-  cairo_surface_destroy(frames->list[index].pulldown_s);  
   
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);
@@ -16,7 +13,7 @@ void remove_frame(Display* display, struct Framelist* frames, int index) {
   XSync(display, False);
   XSetErrorHandler(NULL);    
   XUngrabServer(display);
-  
+  XFreePixmap(display, frames->list[index].title_menu.title_p);
   if(frames->list[index].window_name != NULL) XFree(frames->list[index].window_name);
    
   if((frames->used != 1) && (index != frames->used - 1)) { //the frame is not the first or the last
@@ -57,9 +54,9 @@ void remove_window(Display* display, Window framed_window) {
 }
 
 /*This function is used to add frames to windows that are already open when the WM is starting*/
-void create_startup_frames (Display *display, struct Framelist* frames) {
+void create_startup_frames (Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps) {
 	unsigned int windows_length;
-	Window parent, children, *windows, root;
+	Window root, parent, children, *windows;
 	XWindowAttributes attributes;
 	int index;
   root = DefaultRootWindow(display);
@@ -68,29 +65,29 @@ void create_startup_frames (Display *display, struct Framelist* frames) {
   if(windows != NULL) for (int i = 0; i < windows_length; i++)  {
     XGetWindowAttributes(display, windows[i], &attributes);
 	  if (attributes.map_state == IsViewable && !attributes.override_redirect) {
-	    index = create_frame(display, frames, windows[i]);
+	    index = create_frame(display, frames, windows[i], pixmaps);
 		  if( index != -1) draw_frame(display, frames->list[index]);
 		}
 	}
 	XFree(windows);
-	
 }
 
 
 /*returns the frame index of the newly created window or -1 if out of memory */
-int create_frame(Display* display, struct Framelist* frames, Window framed_window) { 
+int create_frame(Display* display, struct Framelist* frames, Window framed_window, struct frame_pixmaps *pixmaps) { 
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
   Visual* colours = XDefaultVisual(display, DefaultScreen(display));
-  
+  int black = BlackPixelOfScreen(screen);
+    
   XSizeHints specified;
   
-  long pre_ICCCM; //pre ICCCM recovered values.  Not sure about this one.
+  long pre_ICCCM; //pre ICCCM recovered values.  This isn't used but still needs to be passed on.
   
  	XWindowAttributes attributes; //fallback if the specified size hints don't work
   struct Frame frame;
    
-  Window transient; //this window is only used to store a return value
+  Window transient; //this window is actually used to store a return value
 	
   if(frames->used == frames->max) {
     struct Frame* temp = NULL;
@@ -117,45 +114,32 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.max_height = XHeightOfScreen(screen);
   frame.selected = 0;
   
-  #ifdef INC_RESIZE
-  frame.width_inc = 1;
-  frame.height_inc = 1;
-  #endif
- 
-  
   /*** Update with specified values if they are available ***/
   if(XGetWMNormalHints(display, framed_window, &specified, &pre_ICCCM) != 0) {
     printf("Managed to recover size hints\n");
     
     if((specified.flags & PPosition != 0) || (specified.flags & USPosition != 0)) {
-      printf("got position hints\n");
+      printf("Position specified\n");
       frame.x = specified.x;
       frame.y = specified.y;
     }
     if((specified.flags & PSize) || (specified.flags & USSize)) {
-      printf("got size hints\n");
+      printf("Size specified\n");
       frame.w = specified.width;
       frame.h = specified.height;
     }
     
     if((specified.flags & PMinSize) && (specified.min_width >= MINWIDTH) && (specified.min_height >= MINHEIGHT)) {
-      printf("got min size hints\n");
+      printf("Minimum size specified\n");
       frame.min_width = specified.min_width;
       frame.min_height = specified.min_height;
     }
     
     if(specified.flags & PMaxSize) {
-      printf("got max size hints\n");
+      printf("Maximum size specified\n");
       frame.max_width = specified.max_width;
       frame.max_height = specified.max_height;
     }
-    #ifdef INC_RESIZE
-    if(specified.flags & PResizeInc) {
-      printf("got inc hints, w %d, h %d\n", specified.width_inc, specified.height_inc);
-      frame.width_inc = specified.width_inc;
-      frame.height_inc = specified.height_inc;
-    }
-    #endif
   }
 
   frame.w += FRAME_HSPACE;
@@ -164,39 +148,90 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.mode = FLOATING;
   frame.window = framed_window;  
   
-  frame.frame = XCreateSimpleWindow(display, root, frame.x, frame.y, frame.w, frame.h, 0,  WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
-  frame.closebutton = XCreateSimpleWindow(display, frame.frame, frame.w-20-8-1, 4, 20, 20, 0, WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
-  frame.pulldown = XCreateSimpleWindow(display, frame.frame, frame.w-20-8-1-PULLDOWN_WIDTH-4, 4, PULLDOWN_WIDTH, 20, 0, WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
+  frame.frame =         XCreateSimpleWindow(display, root, frame.x, frame.y, 
+                                      frame.w, frame.h, 0, black, black); 
+  
+  frame.body =          XCreateSimpleWindow(display, frame.frame, EDGE_WIDTH, TITLEBAR_HEIGHT + 1, 
+                                      frame.w - EDGE_WIDTH*2, frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1) , 0, black, black);
 
+  frame.innerframe =    XCreateSimpleWindow(display, frame.frame, EDGE_WIDTH + H_SPACING, TITLEBAR_HEIGHT + 1, //same y as body, with a constant width as the sides (so H_SPACING)
+                                      frame.w - (EDGE_WIDTH + H_SPACING)*2, frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1 + H_SPACING), 0, black, black); 
+                                                                           
+  frame.titlebar =      XCreateSimpleWindow(display, frame.frame, EDGE_WIDTH, EDGE_WIDTH, 
+                                      frame.w - EDGE_WIDTH*2, TITLEBAR_HEIGHT, 0, black, black);
+  
+  frame.close_button =  XCreateSimpleWindow(display, frame.titlebar, frame.w - H_SPACING - BUTTON_SIZE - EDGE_WIDTH*2, V_SPACING,
+                                      BUTTON_SIZE, BUTTON_SIZE, 0, black, black);
+                                      
+  frame.mode_pulldown = XCreateSimpleWindow(display, frame.titlebar, frame.w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH*2, V_SPACING,
+                                      PULLDOWN_WIDTH, BUTTON_SIZE, 0, black, black);
+
+  frame.selection_indicator = XCreateSimpleWindow(display, frame.titlebar, H_SPACING, V_SPACING,
+                                      BUTTON_SIZE, BUTTON_SIZE,  0, black, black);
+
+  frame.title_menu.frame =  XCreateSimpleWindow(display, frame.titlebar, H_SPACING*2 + BUTTON_SIZE, V_SPACING, 
+                                      frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE, 0, black, black);
+
+  frame.title_menu.body = XCreateSimpleWindow(display, frame.title_menu.frame, EDGE_WIDTH, EDGE_WIDTH, 
+                                      frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2, BUTTON_SIZE - EDGE_WIDTH*2, 0, black, black);
+
+  frame.title_menu.title = XCreateSimpleWindow(display, frame.title_menu.body, EDGE_WIDTH, EDGE_WIDTH, 
+                                      frame.w - TITLE_MAX_WIDTH_DIFF, TITLE_MAX_HEIGHT, 0, black, black);
+                                      
+  frame.title_menu.arrow =  XCreateSimpleWindow(display, frame.title_menu.body, frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH, 
+                                      BUTTON_SIZE - EDGE_WIDTH , BUTTON_SIZE - EDGE_WIDTH*4, 0, black,  black);
+  printf("all windows created\n");                                    
   XAddToSaveSet(display, frame.window); //this means the window will survive after this programs connection is closed
   
   XSetWindowBorderWidth(display, frame.window, 0);
-  XReparentWindow(display, framed_window, frame.frame, FRAME_XSTART, FRAME_YSTART);
+  XReparentWindow(display, framed_window, frame.innerframe, EDGE_WIDTH, EDGE_WIDTH*2);
   XFetchName(display, frame.window, &frame.window_name);
-  //and the input only hotspots 
+  frame.title_menu.title_p = create_title_pixmap(display, frame.window_name);  
   
-  //need to map the windows before creating the cairo surfaces
-  XMapWindow(display, frame.frame);
-  XMapWindow(display, frame.closebutton);
-  XMapWindow(display, frame.pulldown);
-  XMapWindow(display, frame.window);
-  
+  //TODO: add the input only hotspots 
+      
   XResizeWindow(display, frame.window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
-  //need to change this so that the background pixmap is used instead.
-  frame.frame_s = cairo_xlib_surface_create(display, frame.frame, colours, frame.w, frame.h);
-  frame.closebutton_s = cairo_xlib_surface_create(display, frame.closebutton, colours, 20, 20);
-  frame.pulldown_s = cairo_xlib_surface_create(display, frame.pulldown, colours, 100, 20);
+
+  printf("reparented\n");
   
-  XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);  //use the property notify to update titles  
+  
+  XSetWindowBackgroundPixmap(display, frame.frame, pixmaps->border_p );
+  XSetWindowBackgroundPixmap (display, frame.title_menu.frame, pixmaps->border_p );
+  XSetWindowBackgroundPixmap(display, frame.innerframe, pixmaps->border_p );
+  XSetWindowBackgroundPixmap(display, frame.body, pixmaps->body_p );
+  XSetWindowBackgroundPixmap (display, frame.title_menu.body, pixmaps->body_p );
+  
+  XSetWindowBackgroundPixmap(display, frame.close_button, pixmaps->close_button_normal_p );
+  XSetWindowBackgroundPixmap(display, frame.mode_pulldown, pixmaps->pulldown_floating_normal_p );
+  XSetWindowBackgroundPixmap(display, frame.titlebar,  pixmaps->titlebar_background_p );
+  XSetWindowBackgroundPixmap(display, frame.title_menu.title, frame.title_menu.title_p);
+  XSetWindowBackgroundPixmap(display, frame.title_menu.arrow, pixmaps->arrow_normal_p);  
+//  XSetWindowBackgroundPixmap(display, frame.selection_indicator, ParentRelative);
+   
+  XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles  
   XSelectInput(display, frame.frame, Button1MotionMask | ButtonPressMask | ButtonReleaseMask | ExposureMask);
-  XSelectInput(display, frame.closebutton, ButtonPressMask | ButtonReleaseMask | ExposureMask | EnterWindowMask | LeaveWindowMask);
+  XSelectInput(display, frame.close_button, ButtonPressMask | ButtonReleaseMask | ExposureMask | EnterWindowMask | LeaveWindowMask);
+
+  XMapWindow(display, frame.frame); 
+  XMapWindow(display, frame.titlebar);
+  XMapWindow(display, frame.body);
+  XMapWindow(display, frame.close_button);
+  XMapWindow(display, frame.mode_pulldown);
+//  XMapWindow(display, frame.selection_indicator);
+  XMapWindow(display, frame.title_menu.frame);
+  XMapWindow(display, frame.title_menu.body);
+  XMapWindow(display, frame.title_menu.title);
+  XMapWindow(display, frame.title_menu.arrow);
+  XMapWindow(display, frame.innerframe);
+  XMapWindow(display, frame.window);
+
 
 	XGetTransientForHint(display, framed_window, &transient);
   if(transient != 0) {
     printf("Transient window detected\n");
     //set pop-windows to have focus
     XSetInputFocus(display, frame.window, RevertToPointerRoot, CurrentTime);
-	}   
+	}
   
   frames->list[frames->used] = frame;
   frames->used++;

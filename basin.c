@@ -4,18 +4,17 @@
 
 /*** basin.c ***/
 //int main 
-void create_backwin       (Display *display, Window *backwin, Pixmap *backwin_p);
 int supress_xerror        (Display *display, XErrorEvent *event);
 
 /*** draw.c ***/
-extern void draw_background(Display* display, cairo_surface_t *surface); 
 extern void draw_frame (Display* display, struct Frame frame);
-extern void draw_closebutton(Display* display, struct Frame frame);
+extern Pixmap create_pixmap(Display* display, enum main_pixmap type);
+extern Pixmap create_title_pixmap(Display* display, char* title);
 
 /*** frame.c ***/
 extern void find_adjacent        (struct Framelist* frames, int frame_index);
-extern int create_frame          (Display* display, struct Framelist* frames, Window framed_window); 
-extern void create_startup_frames(Display *display, struct Framelist* frames);
+extern int create_frame          (Display* display, struct Framelist* frames, Window framed_window, struct frame_pixmaps *pixmaps); 
+extern void create_startup_frames(Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps);
 extern void remove_frame         (Display* display, struct Framelist* frames, int index);
 extern void remove_window        (Display* display, Window framed_window);
 
@@ -44,23 +43,20 @@ int main (int argc, char* argv[]) {
   Display* display = NULL; 
   Screen* screen;  
   XEvent event;
-  Window root, backwin;
-  Pixmap backwin_p;
+  Window root, background_window;
+  Pixmap background_window_p;
+  
+  struct frame_pixmaps pixmaps;
+         
   struct Framelist frames = {NULL, 16, 0};
 
   Window last_pressed;
   int start_move_x, start_move_y, start_win;
 
-  #ifdef INC_RESIZE
-  //for the inc_resize, we need to know the original x,y of the click.
-  int frozen_start_x, frozen_start_y; 
-  #endif 
-  
-  //for resize direction
+  //idintifies the resize directions
   int resize_x = 0; //-1 means LHS, 1 means RHS
   int resize_y = 0; //-1 means top, 1 means bottom
-  //for the window being moved/resized
-  start_win = -1;
+  start_win = -1;//identifies the window being moved/resized
   
   printf("\n");
   
@@ -95,16 +91,35 @@ int main (int argc, char* argv[]) {
   
   //looks like this was actually working 
   //XGrabButton(display, 1, AnyButton, root, True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None);
+
+  pixmaps.border_p                    = create_pixmap(display, border);
+  pixmaps.body_p                      = create_pixmap(display, body);
+  pixmaps.titlebar_background_p       = create_pixmap(display, titlebar);
+  pixmaps.close_button_normal_p       = create_pixmap(display, close_button_normal);
+  pixmaps.close_button_pressed_p      = create_pixmap(display, close_button_pressed);
+  pixmaps.pulldown_floating_normal_p  = create_pixmap(display, pulldown_floating_normal);
+  pixmaps.pulldown_floating_pressed_p = create_pixmap(display, pulldown_floating_pressed);
+  pixmaps.pulldown_sinking_normal_p   = create_pixmap(display, pulldown_sinking_normal);
+  pixmaps.pulldown_sinking_pressed_p  = create_pixmap(display, pulldown_sinking_pressed);
+  pixmaps.pulldown_tiling_normal_p    = create_pixmap(display, pulldown_tiling_normal);
+  pixmaps.pulldown_tiling_pressed_p   = create_pixmap(display, pulldown_tiling_pressed);
+  pixmaps.arrow_normal_p              = create_pixmap(display, arrow_normal);
+  pixmaps.arrow_pressed_p             = create_pixmap(display, arrow_pressed);
+  create_startup_frames(display, &frames, &pixmaps);  
   
-  create_startup_frames(display, &frames);  
-  
-  create_backwin(display, &backwin, &backwin_p);
-  XSelectInput(display, backwin, ButtonPressMask | ButtonReleaseMask); 
+  /* Create the background window and double buffer it*/
+  background_window = XCreateSimpleWindow(display, root, 0, 0, XWidthOfScreen(screen), XHeightOfScreen(screen), 0, BlackPixelOfScreen(screen), BlackPixelOfScreen(screen));
+  background_window_p = create_pixmap(display, background);
+  XLowerWindow(display, background_window);
+  XSetWindowBackgroundPixmap (display, background_window, background_window_p );
+  XMapWindow(display, background_window);
+
+  XSelectInput(display, background_window, ButtonPressMask | ButtonReleaseMask);  //this can be the root window
   //Press for deselecting windows, Release for ending resize mode, dont need expose
   //if it is the background
   
-  //XSynchronize(display, True);  //Turns on synchronized debugging
-  
+  XSynchronize(display, True);  //Turns on synchronized debugging
+  int i = 1;
   while(!done) {
     //always look for windows that have been destroyed first
     if(XCheckTypedEvent(display, UnmapNotify, &event)) ; 
@@ -135,7 +150,7 @@ int main (int argc, char* argv[]) {
       case MapRequest:
         printf("Mapping window %d\n", event.xmaprequest.window);
         int index;
-        index = create_frame(display, &frames, event.xmaprequest.window);
+        index = create_frame(display, &frames, event.xmaprequest.window, &pixmaps);
         if(index != -1) draw_frame(display, frames.list[index]);
         XMapWindow(display, event.xmaprequest.window);
       break;
@@ -145,10 +160,6 @@ int main (int argc, char* argv[]) {
         for(int i = 0; i < frames.used; i++) {
           if(event.xexpose.window == frames.list[i].frame) { 
             draw_frame(display, frames.list[i]);
-            break;
-          }
-          else if (event.xexpose.window == frames.list[i].closebutton) { 
-            draw_closebutton(display, frames.list[i]);
             break;
           }
         }
@@ -184,9 +195,9 @@ int main (int argc, char* argv[]) {
             resize_y = 0;
             break;
           }
-          else if(event.xbutton.window == frames.list[i].closebutton) {
-            printf("pressed closebutton %d on window %d\n", frames.list[i].closebutton, frames.list[i].frame);
-            last_pressed = frames.list[i].closebutton;
+          else if(event.xbutton.window == frames.list[i].close_button) {
+            printf("pressed closebutton %d on window %d\n", frames.list[i].close_button, frames.list[i].frame);
+            last_pressed = frames.list[i].close_button;
             break;
           }
         }
@@ -199,7 +210,7 @@ int main (int argc, char* argv[]) {
         XUngrabPointer(display, CurrentTime);
         //printf("release %d, subwindow %d, root %d\n", event.xbutton.window, event.xbutton.subwindow, event.xbutton.root);
         if(last_pressed != root) for(int i = 0; i < frames.used; i++) {
-          if((last_pressed == event.xbutton.window) && (last_pressed == frames.list[i].closebutton)) {
+          if((last_pressed == event.xbutton.window) && (last_pressed == frames.list[i].close_button)) {
             //printf("released closebutton %d, window %d\n", frames.list[i].closebutton, frames.list[i].frame);
             last_pressed = root;
             XSelectInput(display, frames.list[i].window, 0);
@@ -214,7 +225,7 @@ int main (int argc, char* argv[]) {
       //for window moves and resizes
       case MotionNotify:
         
-        if((event.xmotion.window != root) && (event.xmotion.window != backwin) && (start_win != -1)) { 
+        if((event.xmotion.window != root) && (event.xmotion.window != background_window) && (start_win != -1)) { 
           while(XCheckTypedEvent(display, MotionNotify, &event));
           Window mouse_root, mouse_child;
           int mouse_root_x, mouse_root_y;
@@ -287,7 +298,12 @@ int main (int argc, char* argv[]) {
             else frames.list[start_win].y = new_y; //allow movement in axis if it hasn't been resized
 
             XMoveResizeWindow(display, frames.list[start_win].frame, frames.list[start_win].x, frames.list[start_win].y,  frames.list[start_win].w, frames.list[start_win].h);
-            cairo_xlib_surface_set_size(frames.list[start_win].frame_s, frames.list[start_win].w, frames.list[start_win].h);
+
+            XResizeWindow(display, frames.list[start_win].titlebar, frames.list[start_win].w - EDGE_WIDTH*2, TITLEBAR_HEIGHT);
+            XResizeWindow(display, frames.list[start_win].body, frames.list[start_win].w - EDGE_WIDTH*2, frames.list[start_win].h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1));
+            XResizeWindow(display, frames.list[start_win].innerframe, 
+                                   frames.list[start_win].w - (EDGE_WIDTH + H_SPACING)*2,
+                                   frames.list[start_win].h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1 + H_SPACING));
             XResizeWindow(display, frames.list[start_win].window, frames.list[start_win].w - FRAME_HSPACE, frames.list[start_win].h - FRAME_VSPACE);
             
           }
@@ -306,7 +322,8 @@ int main (int argc, char* argv[]) {
             if( strcmp(XGetAtomName(display, event.xproperty.atom), "WM_NAME") == 0) {
              //NET_WM property is now preffered because it is UTF8
               XFetchName(display, frames.list[i].window, &frames.list[i].window_name);
-              draw_frame(display, frames.list[i]);
+              //is it ok just to change the pixmap, will it update?
+              frames.list[i].title_menu.title_p = create_title_pixmap(display, frames.list[i].window_name);                
             }
             break;
           }
@@ -316,8 +333,22 @@ int main (int argc, char* argv[]) {
     }
   }
   
-  XDestroyWindow(display, backwin);  
-  XFreePixmap(display, backwin_p);
+  XDestroyWindow(display, background_window);  
+  XFreePixmap(display, background_window_p);
+  XFreePixmap(display, pixmaps.border_p);
+  XFreePixmap(display, pixmaps.body_p);
+  XFreePixmap(display, pixmaps.titlebar_background_p);
+  XFreePixmap(display, pixmaps.close_button_normal_p);
+  XFreePixmap(display, pixmaps.close_button_pressed_p);
+  XFreePixmap(display, pixmaps.pulldown_floating_normal_p);
+  XFreePixmap(display, pixmaps.pulldown_floating_pressed_p);
+  XFreePixmap(display, pixmaps.pulldown_sinking_normal_p);
+  XFreePixmap(display, pixmaps.pulldown_sinking_pressed_p);
+  XFreePixmap(display, pixmaps.pulldown_tiling_normal_p);
+  XFreePixmap(display, pixmaps.pulldown_tiling_pressed_p);
+  XFreePixmap(display, pixmaps.arrow_normal_p);
+  XFreePixmap(display, pixmaps.arrow_pressed_p);  
+  
   //destroy the backgoround window
   for(int i = 0; i < frames.used; i++) {
     remove_frame(display, &frames, i);
@@ -334,31 +365,4 @@ int supress_xerror(Display *display, XErrorEvent *event) {
   (void) display;
   (void) event;
   return 0;
-}
-
-/* This function creates the background underneath all the other windows */
-void create_backwin(Display *display, Window *backwin, Pixmap *backwin_p) {
-  Screen* screen = DefaultScreenOfDisplay(display);
-  Visual* colours = XDefaultVisual(display, DefaultScreen(display));
-  Window root = DefaultRootWindow(display);
-  cairo_surface_t *backwin_s;
-  cairo_surface_t *backwin_s_initial;
-  
-  *backwin = XCreateSimpleWindow(display, root, 0, 0, XWidthOfScreen(screen), XHeightOfScreen(screen), 0, WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
-  XLowerWindow(display, *backwin);
-  XMapWindow(display, *backwin);
-
-  *backwin_p = XCreatePixmap(display, *backwin, XWidthOfScreen(screen), XHeightOfScreen(screen), XDefaultDepth(display, DefaultScreen(display)));
-
-  //the pixmap is only draw on expose events so drawing this once to prevent a black background from showing up.
-  backwin_s_initial = cairo_xlib_surface_create(display, *backwin, colours, XWidthOfScreen(screen), XHeightOfScreen(screen)); 
-  draw_background(display, backwin_s_initial);
-  
-  backwin_s = cairo_xlib_surface_create(display, *backwin_p, colours, XWidthOfScreen(screen), XHeightOfScreen(screen));
-  draw_background(display, backwin_s);
-  
-  XSetWindowBackgroundPixmap (display, *backwin, *backwin_p );
-  XMapWindow(display, *backwin);
-  cairo_surface_destroy(backwin_s);  
-  cairo_surface_destroy(backwin_s_initial);    
 }
