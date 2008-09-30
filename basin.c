@@ -56,7 +56,7 @@ int main (int argc, char* argv[]) {
   //idintifies the resize directions
   int resize_x = 0; //-1 means LHS, 1 means RHS
   int resize_y = 0; //-1 means top, 1 means bottom
-  start_win = -1;//identifies the window being moved/resized
+  start_win = -1;   //identifies the window being moved/resized
   
   printf("\n");
   
@@ -90,7 +90,7 @@ int main (int argc, char* argv[]) {
   XSelectInput(display, root, SubstructureRedirectMask | ButtonPressMask);
   
   //looks like this was actually working 
-  //XGrabButton(display, 1, AnyButton, root, True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None);
+  XGrabButton(display, 1, AnyButton, root, True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None);
 
   pixmaps.border_p                    = create_pixmap(display, border);
   pixmaps.body_p                      = create_pixmap(display, body);
@@ -198,6 +198,11 @@ int main (int argc, char* argv[]) {
           else if(event.xbutton.window == frames.list[i].close_button) {
             printf("pressed closebutton %d on window %d\n", frames.list[i].close_button, frames.list[i].frame);
             last_pressed = frames.list[i].close_button;
+            XUngrabPointer(display, CurrentTime); //little idiosyncrasy of X11, it automatically grabs the pointer on mouse down. Not bothering with hover so no point
+            XUnmapWindow(display, frames.list[i].close_button);
+            XSetWindowBackgroundPixmap(display, frames.list[i].close_button, pixmaps.close_button_pressed_p );
+            XMapWindow(display, frames.list[i].close_button);
+            XFlush(display);
             break;
           }
         }
@@ -208,18 +213,33 @@ int main (int argc, char* argv[]) {
         resize_x = 0;
         resize_y = 0;
         XUngrabPointer(display, CurrentTime);
-        //printf("release %d, subwindow %d, root %d\n", event.xbutton.window, event.xbutton.subwindow, event.xbutton.root);
-        if(last_pressed != root) for(int i = 0; i < frames.used; i++) {
-          if((last_pressed == event.xbutton.window) && (last_pressed == frames.list[i].close_button)) {
-            //printf("released closebutton %d, window %d\n", frames.list[i].closebutton, frames.list[i].frame);
-            last_pressed = root;
-            XSelectInput(display, frames.list[i].window, 0);
-            XUnmapWindow(display, frames.list[i].window);            
-            remove_window(display, frames.list[i].window);
-            remove_frame(display, &frames, i);
-            break;
-          }
+        printf("release %d, subwindow %d, root %d\n", event.xbutton.window, event.xbutton.subwindow, event.xbutton.root);
+        
+        if(last_pressed != root) {
+          for(int i = 0; i < frames.used; i++) {
+            if((last_pressed == event.xbutton.window) && (last_pressed == frames.list[i].close_button)) {
+              //printf("released closebutton %d, window %d\n", frames.list[i].closebutton, frames.list[i].frame);
+              last_pressed = root;
+              XSelectInput(display, frames.list[i].window, 0);
+              XUnmapWindow(display, frames.list[i].window);            
+              remove_window(display, frames.list[i].window);
+              remove_frame(display, &frames, i);
+              break;
+            }
+         }
+       if(i == frames.used) { 
+         for(int i = 0; i < frames.used; i++) { //loop again to determine type
+           if(last_pressed == frames.list[i].close_button) {
+             XUnmapWindow(display, last_pressed);
+             XSetWindowBackgroundPixmap(display, last_pressed, pixmaps.close_button_normal_p );
+             XMapWindow(display, last_pressed);
+             XFlush(display);
+             last_pressed = root;
+             break;
+           }
+         }
        }
+      }
       break;
       
       //for window moves and resizes

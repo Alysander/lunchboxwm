@@ -209,8 +209,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
 //  XSetWindowBackgroundPixmap(display, frame.selection_indicator, ParentRelative);
    
   XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles  
-  XSelectInput(display, frame.frame, Button1MotionMask | ButtonPressMask | ButtonReleaseMask | ExposureMask);
-  XSelectInput(display, frame.close_button, ButtonPressMask | ButtonReleaseMask | ExposureMask | EnterWindowMask | LeaveWindowMask);
+  XSelectInput(display, frame.frame, Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
+  XSelectInput(display, frame.close_button, ButtonPressMask | ButtonReleaseMask );
 
   XMapWindow(display, frame.frame); 
   XMapWindow(display, frame.titlebar);
