@@ -97,6 +97,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
     frames->max *= 2;
   }
 
+  XAddToSaveSet(display, framed_window); //add this window to the save set as soon as possible so that if an error occurs it is still available
   XGetWindowAttributes(display, framed_window, &attributes);
   
   /*** Set up defaults ***/
@@ -180,8 +181,6 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
                                       
   frame.title_menu.arrow =  XCreateSimpleWindow(display, frame.title_menu.body, frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH, 
                                       BUTTON_SIZE - EDGE_WIDTH , BUTTON_SIZE - EDGE_WIDTH*4, 0, black,  black);
-  printf("all windows created\n");                                    
-  XAddToSaveSet(display, frame.window); //this means the window will survive after this programs connection is closed
   
   XSetWindowBorderWidth(display, frame.window, 0);
   XReparentWindow(display, framed_window, frame.innerframe, EDGE_WIDTH, EDGE_WIDTH*2);
@@ -191,9 +190,6 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   //TODO: add the input only hotspots 
       
   XResizeWindow(display, frame.window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
-
-  printf("reparented\n");
-  
   
   XSetWindowBackgroundPixmap(display, frame.frame, pixmaps->border_p );
   XSetWindowBackgroundPixmap (display, frame.title_menu.frame, pixmaps->border_p );
@@ -210,8 +206,10 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
    
   XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles  
   XSelectInput(display, frame.frame, Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
-  XSelectInput(display, frame.close_button, ButtonPressMask | ButtonReleaseMask );
-
+  XSelectInput(display, frame.close_button, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  XSelectInput(display, frame.mode_pulldown, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  XSelectInput(display, frame.title_menu.frame, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+    
   XMapWindow(display, frame.frame); 
   XMapWindow(display, frame.titlebar);
   XMapWindow(display, frame.body);
@@ -224,7 +222,6 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XMapWindow(display, frame.title_menu.arrow);
   XMapWindow(display, frame.innerframe);
   XMapWindow(display, frame.window);
-
 
 	XGetTransientForHint(display, framed_window, &transient);
   if(transient != 0) {

@@ -269,15 +269,21 @@ Pixmap create_title_pixmap(Display* display, char* title) {
 /*** Draws the frame and maps the frame and the framed window ***/
 void draw_frame(Display* display, struct Frame frame) {
 
+  XMoveResizeWindow(display, frame.frame, frame.x, frame.y,  frame.w, frame.h);
+  XResizeWindow(display, frame.titlebar, frame.w - EDGE_WIDTH*2, TITLEBAR_HEIGHT);
   XMoveWindow(display, frame.close_button, frame.w - H_SPACING - BUTTON_SIZE - EDGE_WIDTH - 1, V_SPACING);
   XMoveWindow(display, frame.mode_pulldown, frame.w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH - 1, V_SPACING);
   XMoveWindow(display, frame.title_menu.arrow, frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH);
+
   XResizeWindow(display, frame.title_menu.frame, frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE);
   XResizeWindow(display, frame.title_menu.body,frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2, BUTTON_SIZE - EDGE_WIDTH*2);
   XResizeWindow(display, frame.title_menu.title,  frame.w - TITLE_MAX_WIDTH_DIFF, TITLE_MAX_HEIGHT);
-//  if(frame.w - TITLE_MAX_WIDTH_DIFF <
-//  XMoveWindow(display, frame.window, EDGE_WIDTH, EDGE_WIDTH);
-  
+    
+  XResizeWindow(display, frame.body, frame.w - EDGE_WIDTH*2, frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1));
+  XResizeWindow(display, frame.innerframe, 
+                         frame.w - (EDGE_WIDTH + H_SPACING)*2,
+                         frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1 + H_SPACING));
+  XResizeWindow(display, frame.window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
 
   XFlush(display);
 }
