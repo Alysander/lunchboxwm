@@ -17,7 +17,8 @@ extern int create_frame          (Display* display, struct Framelist* frames, Wi
 extern void create_startup_frames(Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps);
 extern void remove_frame         (Display* display, struct Framelist* frames, int index);
 extern void remove_window        (Display* display, Window framed_window);
-
+extern void get_frame_name       (Display* display, struct Frame* frame);
+extern void get_frame_hints(Display* display, struct Frame* frame);
 #include "draw.c"
 #include "frame.c"
 
@@ -429,14 +430,10 @@ int main (int argc, char* argv[]) {
         for(i = 0; i < frames.used; i++) 
           if(event.xproperty.window == frames.list[i].window) {
             if( strcmp(XGetAtomName(display, event.xproperty.atom), "WM_NAME") == 0) {
-              XFetchName(display, frames.list[i].window, &frames.list[i].window_name);
-              XUnmapWindow(display, frames.list[i].title_menu.title);
-              frames.list[i].title_menu.title_p = create_title_pixmap(display, frames.list[i].window_name);                
-              XMapWindow(display, frames.list[i].title_menu.title);
-              XFlush(display);
+              get_frame_name(display, &frames.list[i]);
             }
             else if ( strcmp(XGetAtomName(display, event.xproperty.atom), "WM_NORMAL_HINTS") == 0) {
-              
+              get_frame_hints(display, &frames.list[i]);
             }
             break;
           }

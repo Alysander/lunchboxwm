@@ -65,8 +65,7 @@ void create_startup_frames (Display *display, struct Framelist* frames, struct f
   if(windows != NULL) for (int i = 0; i < windows_length; i++)  {
     XGetWindowAttributes(display, windows[i], &attributes);
 	  if (attributes.map_state == IsViewable && !attributes.override_redirect) {
-	    index = create_frame(display, frames, windows[i], pixmaps);
-		  if( index != -1) draw_frame(display, frames->list[index]);
+	    create_frame(display, frames, windows[i], pixmaps);
 		}
 	}
 	XFree(windows);
@@ -79,10 +78,6 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   Screen* screen = DefaultScreenOfDisplay(display);
   Visual* colours = XDefaultVisual(display, DefaultScreen(display));
   int black = BlackPixelOfScreen(screen);
-    
-  XSizeHints specified;
-  
-  long pre_ICCCM; //pre ICCCM recovered values.  This isn't used but still needs to be passed on.
   
  	XWindowAttributes attributes; //fallback if the specified size hints don't work
   struct Frame frame;
@@ -114,40 +109,12 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.max_width = XWidthOfScreen(screen);
   frame.max_height = XHeightOfScreen(screen);
   frame.selected = 0;
-  
-  /*** Update with specified values if they are available ***/
-  if(XGetWMNormalHints(display, framed_window, &specified, &pre_ICCCM) != 0) {
-    printf("Managed to recover size hints\n");
-    
-    if((specified.flags & PPosition != 0) || (specified.flags & USPosition != 0)) {
-      printf("Position specified\n");
-      frame.x = specified.x;
-      frame.y = specified.y;
-    }
-    if((specified.flags & PSize) || (specified.flags & USSize)) {
-      printf("Size specified\n");
-      frame.w = specified.width;
-      frame.h = specified.height;
-    }
-    
-    if((specified.flags & PMinSize) && (specified.min_width >= MINWIDTH) && (specified.min_height >= MINHEIGHT)) {
-      printf("Minimum size specified\n");
-      frame.min_width = specified.min_width + FRAME_HSPACE;
-      frame.min_height = specified.min_height + FRAME_VSPACE;
-    }
-    
-    if(specified.flags & PMaxSize) {
-      printf("Maximum size specified\n");
-      frame.max_width = specified.max_width + FRAME_HSPACE;
-      frame.max_height = specified.max_height + FRAME_VSPACE;
-    }
-  }
-
-  frame.w += FRAME_HSPACE;
-  frame.h += FRAME_VSPACE;
   frame.window_name = NULL;
   frame.mode = FLOATING;
-  frame.window = framed_window;  
+  frame.window = framed_window;    
+    
+  get_frame_hints(display, &frame);
+
   
   frame.frame =         XCreateSimpleWindow(display, root, frame.x, frame.y, 
                                       frame.w, frame.h, 0, black, black); 
@@ -189,9 +156,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XReparentWindow(display, frame.window, frame.innerframe, EDGE_WIDTH, EDGE_WIDTH*2);
   XFlush(display);
   frame.skip_reparent_unmap = 1;
-  XFetchName(display, frame.window, &frame.window_name);
-  frame.title_menu.title_p = create_title_pixmap(display, frame.window_name);  
-  
+    
   //TODO: add the input only hotspots 
       
   XResizeWindow(display, frame.window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
@@ -205,7 +170,6 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XSetWindowBackgroundPixmap(display, frame.close_button, pixmaps->close_button_normal_p );
   XSetWindowBackgroundPixmap(display, frame.mode_pulldown, pixmaps->pulldown_floating_normal_p );
   XSetWindowBackgroundPixmap(display, frame.titlebar,  pixmaps->titlebar_background_p );
-  XSetWindowBackgroundPixmap(display, frame.title_menu.title, frame.title_menu.title_p);
   XSetWindowBackgroundPixmap(display, frame.title_menu.arrow, pixmaps->arrow_normal_p);  
 //  XSetWindowBackgroundPixmap(display, frame.selection_indicator, ParentRelative);
    
@@ -227,6 +191,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XMapWindow(display, frame.innerframe);
   XMapWindow(display, frame.window);
 
+  get_frame_name(display, &frame);
+  
 	XGetTransientForHint(display, framed_window, &transient);
   if(transient != 0) {
     printf("Transient window detected\n");
@@ -261,3 +227,50 @@ void resize_frame(Display* display, struct Frame frame) {
   XFlush(display);
 }
 
+/*** Update with the specified name if it is available ***/
+void get_frame_name(Display* display, struct Frame* frame) {
+//TODO:  get the net_wm name if it is available
+  printf("
+  XFetchName(display, frame->window, &frame->window_name);
+  XUnmapWindow(display, frame->title_menu.title);
+  frame->title_menu.title_p = create_title_pixmap(display, frame->window_name);
+  XMapWindow(display, frame->title_menu.title);
+  XFlush(display);
+}
+
+/*** Update with specified values if they are available ***/
+void get_frame_hints(Display* display, struct Frame* frame) {
+  XSizeHints specified;
+  
+  long pre_ICCCM; //pre ICCCM recovered values.  This isn't used but still needs to be passed on.
+  
+  if(XGetWMNormalHints(display, frame->window, &specified, &pre_ICCCM) != 0) {
+    printf("Managed to recover size hints\n");
+    
+    if((specified.flags & PPosition != 0) || (specified.flags & USPosition != 0)) {
+      printf("Position specified\n");
+      frame->x = specified.x;
+      frame->y = specified.y;
+    }
+    if((specified.flags & PSize) || (specified.flags & USSize)) {
+      printf("Size specified\n");
+      frame->w = specified.width;
+      frame->h = specified.height;
+    }
+    
+    if((specified.flags & PMinSize) && (specified.min_width >= MINWIDTH) && (specified.min_height >= MINHEIGHT)) {
+      printf("Minimum size specified\n");
+      frame->min_width = specified.min_width + FRAME_HSPACE;
+      frame->min_height = specified.min_height + FRAME_VSPACE;
+    }
+    
+    if(specified.flags & PMaxSize) {
+      printf("Maximum size specified\n");
+      frame->max_width = specified.max_width + FRAME_HSPACE;
+      frame->max_height = specified.max_height + FRAME_VSPACE;
+    }
+  }
+
+  frame->w += FRAME_HSPACE;
+  frame->h += FRAME_VSPACE;
+}
