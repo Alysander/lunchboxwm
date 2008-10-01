@@ -8,6 +8,7 @@
 
 #define M_PI 3.14159265359
 
+//#define SHARP_SYMBOLS //turns off anti-aliasing on symbols
 //this amount in pixels * 3 are used when the top level size cannot be established
 #define MINWIDTH 200 
 #define MINHEIGHT 60
@@ -61,6 +62,7 @@ struct Frame {
   int selected;
   int min_width, max_width;
   int min_height, max_height;
+  int skip_reparent_unmap;
   
   Window frame, body, innerframe, titlebar, close_button, mode_pulldown, selection_indicator;
 
@@ -68,6 +70,7 @@ struct Frame {
   struct {
     Window frame, body, title, arrow; //frame is the outline, body is the inner border, title has the background pixmap and arrow is the pulldownarrow.
     Pixmap title_p; //this draws the background "bevel" and the text.
+    int width; //this is the width of the title
   } title_menu;
   
   Window NW_grip, N_grip, NE_grip, E_grip, SE_grip, S_grip, SW_grip, W_grip;  //InputOnly resize grips

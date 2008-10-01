@@ -60,15 +60,25 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
     #ifdef SHARP_SYMBOLS
     cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);
     #endif 
-    
-    //draw arrow
     cairo_set_source_rgba(cr, TEXT);
-    cairo_move_to(cr, BUTTON_SIZE - EDGE_WIDTH - 14, 6);
-    cairo_line_to(cr, BUTTON_SIZE - EDGE_WIDTH - 5, 6);
-    cairo_line_to(cr, BUTTON_SIZE - EDGE_WIDTH - 10, 11);
-    cairo_close_path(cr);
-    cairo_fill(cr); 
+    //draw arrow
+    if(type == arrow_normal) {
+      cairo_move_to(cr, BUTTON_SIZE - EDGE_WIDTH - 14, 6);
+      cairo_line_to(cr, BUTTON_SIZE - EDGE_WIDTH - 5, 6);
+      cairo_line_to(cr, BUTTON_SIZE - EDGE_WIDTH - 10, 11);
+      cairo_close_path(cr);
+      cairo_fill(cr);
+    }
+    else if(type == arrow_pressed) {
+      cairo_move_to(cr, BUTTON_SIZE - EDGE_WIDTH - 15, 5);
+      cairo_line_to(cr, BUTTON_SIZE - EDGE_WIDTH - 4, 5);
+      cairo_line_to(cr, BUTTON_SIZE - EDGE_WIDTH - 10, 11);
+      cairo_close_path(cr);
+      cairo_fill(cr);
+    }
+    
   break;
+  
   case close_button_normal:
   case close_button_pressed:
     pixmap = XCreatePixmap(display, root, BUTTON_SIZE, BUTTON_SIZE, XDefaultDepth(display, screen_number));    
@@ -104,7 +114,7 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
       cairo_line_to(cr, 1+3+1+9, 3+2+1);  
       cairo_stroke(cr);
     }
-    else {
+    else if (type == close_button_pressed) {
       //Make the symbol look bigger if it is pressed
       cairo_set_line_width(cr, 3);
       cairo_move_to(cr, 1+3+1+1, 3+2+1);
@@ -178,7 +188,7 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
       cairo_fill(cr);    
     }
     else if(type == pulldown_sinking_normal  ||  type == pulldown_sinking_pressed) {
-      //TODO:
+      //TODO: make an icon
       cairo_show_text(cr, "Sinking");
     }
     else if(type == pulldown_floating_normal  ||  type == pulldown_floating_pressed) {
@@ -265,25 +275,3 @@ Pixmap create_title_pixmap(Display* display, char* title) {
   return pixmap;
 };
 
- 
-/*** Draws the frame and maps the frame and the framed window ***/
-void draw_frame(Display* display, struct Frame frame) {
-
-  XMoveResizeWindow(display, frame.frame, frame.x, frame.y,  frame.w, frame.h);
-  XResizeWindow(display, frame.titlebar, frame.w - EDGE_WIDTH*2, TITLEBAR_HEIGHT);
-  XMoveWindow(display, frame.close_button, frame.w - H_SPACING - BUTTON_SIZE - EDGE_WIDTH - 1, V_SPACING);
-  XMoveWindow(display, frame.mode_pulldown, frame.w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH - 1, V_SPACING);
-  XMoveWindow(display, frame.title_menu.arrow, frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH);
-
-  XResizeWindow(display, frame.title_menu.frame, frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE);
-  XResizeWindow(display, frame.title_menu.body,frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2, BUTTON_SIZE - EDGE_WIDTH*2);
-  XResizeWindow(display, frame.title_menu.title,  frame.w - TITLE_MAX_WIDTH_DIFF, TITLE_MAX_HEIGHT);
-    
-  XResizeWindow(display, frame.body, frame.w - EDGE_WIDTH*2, frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1));
-  XResizeWindow(display, frame.innerframe, 
-                         frame.w - (EDGE_WIDTH + H_SPACING)*2,
-                         frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1 + H_SPACING));
-  XResizeWindow(display, frame.window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
-
-  XFlush(display);
-}

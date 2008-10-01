@@ -132,14 +132,14 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
     
     if((specified.flags & PMinSize) && (specified.min_width >= MINWIDTH) && (specified.min_height >= MINHEIGHT)) {
       printf("Minimum size specified\n");
-      frame.min_width = specified.min_width;
-      frame.min_height = specified.min_height;
+      frame.min_width = specified.min_width + FRAME_HSPACE;
+      frame.min_height = specified.min_height + FRAME_VSPACE;
     }
     
     if(specified.flags & PMaxSize) {
       printf("Maximum size specified\n");
-      frame.max_width = specified.max_width;
-      frame.max_height = specified.max_height;
+      frame.max_width = specified.max_width + FRAME_HSPACE;
+      frame.max_height = specified.max_height + FRAME_VSPACE;
     }
   }
 
@@ -183,7 +183,12 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
                                       BUTTON_SIZE - EDGE_WIDTH , BUTTON_SIZE - EDGE_WIDTH*4, 0, black,  black);
   
   XSetWindowBorderWidth(display, frame.window, 0);
-  XReparentWindow(display, framed_window, frame.innerframe, EDGE_WIDTH, EDGE_WIDTH*2);
+
+  XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles  
+  
+  XReparentWindow(display, frame.window, frame.innerframe, EDGE_WIDTH, EDGE_WIDTH*2);
+  XFlush(display);
+  frame.skip_reparent_unmap = 1;
   XFetchName(display, frame.window, &frame.window_name);
   frame.title_menu.title_p = create_title_pixmap(display, frame.window_name);  
   
@@ -204,7 +209,6 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XSetWindowBackgroundPixmap(display, frame.title_menu.arrow, pixmaps->arrow_normal_p);  
 //  XSetWindowBackgroundPixmap(display, frame.selection_indicator, ParentRelative);
    
-  XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles  
   XSelectInput(display, frame.frame, Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.close_button, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
   XSelectInput(display, frame.mode_pulldown, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
@@ -234,4 +238,26 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frames->used++;
   return (frames->used - 1);
 } 
+
+/*** Moves and resizes the subwindows of the frame ***/
+void resize_frame(Display* display, struct Frame frame) {
+
+  XMoveResizeWindow(display, frame.frame, frame.x, frame.y,  frame.w, frame.h);
+  XResizeWindow(display, frame.titlebar, frame.w - EDGE_WIDTH*2, TITLEBAR_HEIGHT);
+  XMoveWindow(display, frame.close_button, frame.w - H_SPACING - BUTTON_SIZE - EDGE_WIDTH - 1, V_SPACING);
+  XMoveWindow(display, frame.mode_pulldown, frame.w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH - 1, V_SPACING);
+  XMoveWindow(display, frame.title_menu.arrow, frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH);
+
+  XResizeWindow(display, frame.title_menu.frame, frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE);
+  XResizeWindow(display, frame.title_menu.body,frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2, BUTTON_SIZE - EDGE_WIDTH*2);
+  XResizeWindow(display, frame.title_menu.title,  frame.w - TITLE_MAX_WIDTH_DIFF, TITLE_MAX_HEIGHT);
+    
+  XResizeWindow(display, frame.body, frame.w - EDGE_WIDTH*2, frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1));
+  XResizeWindow(display, frame.innerframe, 
+                         frame.w - (EDGE_WIDTH + H_SPACING)*2,
+                         frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1 + H_SPACING));
+  XResizeWindow(display, frame.window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
+
+  XFlush(display);
+}
 
