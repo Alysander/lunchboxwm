@@ -310,13 +310,11 @@ int main (int argc, char* argv[]) {
               if(event.type == EnterNotify)  { 
                 printf("Enter notify, pressing down\n");
                 XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.arrow, pixmaps.arrow_pressed_p);
-                XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.body, pixmaps.light_border_p);
                 XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.title, frames.list[i].title_menu.title_pressed_p);
               }
               else if (event.type == LeaveNotify) {
                 printf("Leave notify, pressing up %d\n", last_pressed);
                 XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.arrow, pixmaps.arrow_normal_p);
-                XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.body, pixmaps.body_p);
                 XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.title, frames.list[i].title_menu.title_normal_p);
               }
               XMapWindow(display, frames.list[i].title_menu.frame);
@@ -362,7 +360,6 @@ int main (int argc, char* argv[]) {
               printf("Pressed the title_menu on window %d\n", frames.list[i].window);
               XUnmapWindow(display, frames.list[i].title_menu.frame);
               XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.arrow, pixmaps.arrow_normal_p);
-              XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.body, pixmaps.body_p);
               XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.title, frames.list[i].title_menu.title_normal_p);
               XMapWindow(display, frames.list[i].title_menu.frame);          
               XFlush(display);

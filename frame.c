@@ -173,7 +173,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XSetWindowBackgroundPixmap (display, frame.title_menu.frame, pixmaps->border_p );
   XSetWindowBackgroundPixmap(display, frame.innerframe, pixmaps->border_p );
   XSetWindowBackgroundPixmap(display, frame.body, pixmaps->body_p );
-  XSetWindowBackgroundPixmap (display, frame.title_menu.body, pixmaps->body_p );
+  XSetWindowBackgroundPixmap (display, frame.title_menu.body, pixmaps->light_border_p );
   
   XSetWindowBackgroundPixmap(display, frame.close_button, pixmaps->close_button_normal_p );
   XSetWindowBackgroundPixmap(display, frame.mode_pulldown, pixmaps->pulldown_floating_normal_p );
@@ -221,10 +221,10 @@ void resize_frame(Display* display, struct Frame* frame) {
 
   if(frame->title_menu.width + EDGE_WIDTH*4 + BUTTON_SIZE < frame->w - TITLEBAR_USED_WIDTH) {
     XResizeWindow(display, frame->title_menu.frame, frame->title_menu.width + EDGE_WIDTH*4 + BUTTON_SIZE, BUTTON_SIZE);
-    XResizeWindow(display, frame->title_menu.hotspot, frame->title_menu.width + EDGE_WIDTH*4 + BUTTON_SIZE, BUTTON_SIZE);    
+    XMoveWindow(display, frame->title_menu.arrow,   frame->title_menu.width + EDGE_WIDTH*2, EDGE_WIDTH);        
     XResizeWindow(display, frame->title_menu.body,  frame->title_menu.width + EDGE_WIDTH*2 + BUTTON_SIZE, BUTTON_SIZE - EDGE_WIDTH*2);
-    XMoveWindow(display, frame->title_menu.arrow,   frame->title_menu.width + EDGE_WIDTH, EDGE_WIDTH);
-    XResizeWindow(display, frame->title_menu.title, frame->title_menu.width, TITLE_MAX_HEIGHT);
+    XResizeWindow(display, frame->title_menu.title, frame->title_menu.width + EDGE_WIDTH, TITLE_MAX_HEIGHT);
+    XResizeWindow(display, frame->title_menu.hotspot, frame->title_menu.width + EDGE_WIDTH*4 + BUTTON_SIZE, BUTTON_SIZE);    
   }
   else {
     XResizeWindow(display, frame->title_menu.frame, frame->w - TITLEBAR_USED_WIDTH, BUTTON_SIZE);
