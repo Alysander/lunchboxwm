@@ -112,14 +112,11 @@ int main (int argc, char* argv[]) {
   pixmaps.close_button_deactivated_p  = create_pixmap(display, close_button_deactivated);
   
   pixmaps.pulldown_floating_normal_p  = create_pixmap(display, pulldown_floating_normal);
-  pixmaps.pulldown_floating_pressed_p = create_pixmap(display, pulldown_floating_pressed);
-  
-  pixmaps.pulldown_sinking_normal_p   = create_pixmap(display, pulldown_sinking_normal);
-  pixmaps.pulldown_sinking_pressed_p  = create_pixmap(display, pulldown_sinking_pressed);
-    
+  pixmaps.pulldown_floating_pressed_p = create_pixmap(display, pulldown_floating_pressed);   
   pixmaps.pulldown_tiling_normal_p    = create_pixmap(display, pulldown_tiling_normal);
   pixmaps.pulldown_tiling_pressed_p   = create_pixmap(display, pulldown_tiling_pressed);
-    
+  pixmaps.pulldown_deactivated_p      = create_pixmap(display, pulldown_deactivated);
+  
   pixmaps.arrow_normal_p              = create_pixmap(display, arrow_normal);
   pixmaps.arrow_pressed_p             = create_pixmap(display, arrow_pressed);
   pixmaps.arrow_deactivated_p         = create_pixmap(display, arrow_deactivated);
@@ -155,6 +152,7 @@ int main (int argc, char* argv[]) {
             if(start_win != -1) { 
               printf("Cancelling resize because a window was destroyed\n");
               start_win = -1;
+              XDestroyWindow(display, grab_window);              
             }
             XUngrabPointer(display, CurrentTime);
             remove_frame(display, &frames, i);
@@ -177,6 +175,7 @@ int main (int argc, char* argv[]) {
               if(start_win != -1) {
                 printf("Cancelling resize because a window was unmapped\n");
                 start_win = -1;
+                XDestroyWindow(display, grab_window);
               }
               XUngrabPointer(display, CurrentTime);
               remove_frame(display, &frames, i);
@@ -215,7 +214,7 @@ int main (int argc, char* argv[]) {
           if(event.xbutton.window == frames.list[i].frame  
             ||  event.xbutton.window == frames.list[i].mode_pulldown 
             ||  event.xbutton.window == frames.list[i].title_menu.hotspot) { 
-            int initial_x, initial_y;
+            int grab_y, grab_height;
             
             if(frames.list[i].mode != SINKING) 
               XSetInputFocus(display, frames.list[i].window, RevertToPointerRoot, CurrentTime);
@@ -231,18 +230,31 @@ int main (int argc, char* argv[]) {
             start_win = i;
             resize_x = 0;
             resize_y = 0;
+            
+            if(frames.list[i].h - start_move_y >= frames.list[i].min_height) grab_y = 0;
+            else grab_y = start_move_y + frames.list[i].min_height - frames.list[i].h - 1;
+            //the maximum amount that can be subtracted.
+            
+            if(frames.list[i].h - (frames.list[i].h - start_move_y) >= frames.list[i].min_height) grab_height = 0;
+            else grab_height = (frames.list[i].h - start_move_y) + frames.list[i].min_height - frames.list[i].h -2;
+            
+            grab_window = XCreateWindow(display, root, 0, grab_y,
+                XWidthOfScreen(screen),XHeightOfScreen(screen) - grab_y - grab_height, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+                
+            XLowerWindow(display, grab_window);   
+            XMapWindow(display, grab_window);
 
-//            grab_window = XCreateWindow(display, root, 0, 0, XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
-//            XMapWindow(display, grab_window);
-
-            XGrabPointer(display,  root, True, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, None, CurrentTime);
+            XGrabPointer(display,  root, True, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, grab_window, None, CurrentTime);
 
             //Make the move still work even if they have activated a pulldown list
+            if(event.xbutton.window == frames.list[i].mode_pulldown  ||   event.xbutton.window == frames.list[i].title_menu.hotspot) {
+              start_move_x += 1; //compensate for relative co-ordinates of window and subwindow
+              start_move_y += 1;
+            }
+            
             if(event.xbutton.window == frames.list[i].mode_pulldown) {
               printf("pressed mode pulldown %d on window %d\n", frames.list[i].mode_pulldown, frames.list[i].frame);
               last_pressed = frames.list[i].mode_pulldown;
-              start_move_x += 1; //compensate for relative co-ordinates of window and subwindow
-              start_move_y += 1;              
               start_move_x += frames.list[i].w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH - 1;
               start_move_y += V_SPACING;
               XGrabPointer(display,  root, True, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, None, CurrentTime);
@@ -251,9 +263,7 @@ int main (int argc, char* argv[]) {
             }
             else if(event.xbutton.window == frames.list[i].title_menu.hotspot) {
               printf("pressed title menu window %d\n", event.xbutton.window);
-              last_pressed =  frames.list[i].title_menu.hotspot;       
-              start_move_x += 1;
-              start_move_y += 1;                        
+              last_pressed =  frames.list[i].title_menu.hotspot;                             
               start_move_x += H_SPACING*2 + BUTTON_SIZE;
               start_move_y += V_SPACING;
               XGrabPointer(display,  root, True, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, None, CurrentTime);
@@ -299,12 +309,12 @@ int main (int argc, char* argv[]) {
               if(event.type == EnterNotify) {
                 if(frames.list[i].mode == FLOATING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_floating_pressed_p );
                 else if(frames.list[i].mode == TILING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_tiling_pressed_p );
-                else if(frames.list[i].mode == SINKING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_sinking_pressed_p );
+                else if(frames.list[i].mode == SINKING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_deactivated_p );
               }
               else if (event.type == LeaveNotify) {
                 if(frames.list[i].mode == FLOATING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_floating_normal_p );
                 else if(frames.list[i].mode == TILING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_tiling_normal_p );
-                else if(frames.list[i].mode == SINKING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_sinking_normal_p );
+                else if(frames.list[i].mode == SINKING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown,pixmaps.pulldown_deactivated_p );
               }
               XMapWindow(display, frames.list[i].mode_pulldown);
               XSelectInput(display, frames.list[i].mode_pulldown, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
@@ -336,10 +346,8 @@ int main (int argc, char* argv[]) {
         printf("release %d, subwindow %d, root %d\n", event.xbutton.window, event.xbutton.subwindow, event.xbutton.root);
         
         if(start_win != -1) {
-//          XDestroyWindow(display, grab_window);
+          XDestroyWindow(display, grab_window);
           start_win = -1;
-          resize_x = 0;
-          resize_y = 0;
         }
         XUngrabPointer(display, CurrentTime);        
         
@@ -358,7 +366,7 @@ int main (int argc, char* argv[]) {
               XUnmapWindow(display, frames.list[i].mode_pulldown);
               if(frames.list[i].mode == FLOATING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_floating_normal_p );
               else if(frames.list[i].mode == TILING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_tiling_normal_p );
-              else if(frames.list[i].mode == SINKING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_sinking_normal_p );
+              else if(frames.list[i].mode == SINKING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_deactivated_p );
               XMapWindow(display, frames.list[i].mode_pulldown);
               XFlush(display);
               break;
@@ -398,7 +406,7 @@ int main (int argc, char* argv[]) {
                 XUnmapWindow(display, frames.list[i].mode_pulldown);
                 if(frames.list[i].mode == FLOATING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_floating_normal_p );
                 else if(frames.list[i].mode == TILING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_tiling_normal_p );
-                else if(frames.list[i].mode == SINKING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_sinking_normal_p );
+                else if(frames.list[i].mode == SINKING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_deactivated_p );
                 XMapWindow(display, frames.list[i].mode_pulldown);
                 XFlush(display);
                 break;
@@ -518,10 +526,9 @@ int main (int argc, char* argv[]) {
   XFreePixmap(display, pixmaps.close_button_pressed_p);
   XFreePixmap(display, pixmaps.pulldown_floating_normal_p);
   XFreePixmap(display, pixmaps.pulldown_floating_pressed_p);
-  XFreePixmap(display, pixmaps.pulldown_sinking_normal_p);
-  XFreePixmap(display, pixmaps.pulldown_sinking_pressed_p);
   XFreePixmap(display, pixmaps.pulldown_tiling_normal_p);
   XFreePixmap(display, pixmaps.pulldown_tiling_pressed_p);
+  XFreePixmap(display, pixmaps.pulldown_deactivated_p);
   XFreePixmap(display, pixmaps.arrow_normal_p);
   XFreePixmap(display, pixmaps.arrow_pressed_p);  
   XFreePixmap(display, pixmaps.arrow_deactivated_p);

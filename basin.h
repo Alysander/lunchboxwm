@@ -8,8 +8,8 @@
 
 #define M_PI 3.14159265359
 
-#define SHARP_SYMBOLS //turns off anti-aliasing on symbols
-//this amount in pixels * 3 are used when the top level size cannot be established
+//#define SHARP_SYMBOLS //turns off anti-aliasing on symbols
+
 #define MINWIDTH 200 
 #define MINHEIGHT 60
 
@@ -88,8 +88,8 @@ struct frame_pixmaps {
   Pixmap border_p, light_border_p, body_p, titlebar_background_p,
          close_button_normal_p, close_button_pressed_p, close_button_deactivated_p,
          pulldown_floating_normal_p, pulldown_floating_pressed_p,
-         pulldown_sinking_normal_p, pulldown_sinking_pressed_p, 
          pulldown_tiling_normal_p, pulldown_tiling_pressed_p,
+         pulldown_deactivated_p,
          selection_p, 
          arrow_normal_p, arrow_pressed_p, arrow_deactivated_p,
          arrow_clipping_normal_p, arrow_clipping_pressed_p, arrow_clipping_deactivated_p;
@@ -108,9 +108,9 @@ enum main_pixmap {
   close_button_deactivated,
   pulldown_floating_normal,
   pulldown_floating_pressed,
-  pulldown_sinking_normal,
+  pulldown_deactivated, //normal is shown when the window is deactivated
   //the pulldowns deactivated mode is when the sinking mode is pressed
-  pulldown_sinking_pressed,
+
   pulldown_tiling_normal,
   pulldown_tiling_pressed,
   arrow_normal,
@@ -122,7 +122,7 @@ enum main_pixmap {
 };
 
 enum title_pixmap {
-  title_normal,
+  title_normal, 
   title_pressed,
   title_deactivated
 };

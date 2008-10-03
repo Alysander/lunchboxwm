@@ -149,11 +149,10 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
   break;
   case pulldown_floating_normal:
   case pulldown_floating_pressed:
-  case pulldown_sinking_normal:
-  case pulldown_sinking_pressed:
   case pulldown_tiling_normal:
   case pulldown_tiling_pressed:
-  
+  case pulldown_deactivated:
+    
     pixmap = XCreatePixmap(display, root, PULLDOWN_WIDTH, BUTTON_SIZE, XDefaultDepth(display, screen_number));    
     surface = cairo_xlib_surface_create(display, pixmap, colours, PULLDOWN_WIDTH, BUTTON_SIZE);
     cr = cairo_create(surface);
@@ -172,15 +171,8 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
     cairo_rectangle(cr, EDGE_WIDTH*2, EDGE_WIDTH*2, PULLDOWN_WIDTH - EDGE_WIDTH*4, 11); //11 will be the height of the darkened area
     cairo_fill(cr); 
 
-    if(type == pulldown_sinking_pressed) {
-      cairo_set_source_rgba(cr, TEXT_DEACTIVATED);
-      cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); 
-    }
-    else {
-      cairo_set_source_rgba(cr, TEXT);  
-      cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); 
-    }
-    
+    cairo_set_source_rgba(cr, TEXT);  
+    cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); 
 
     cairo_set_font_size(cr, 13.5); 
     cairo_move_to(cr, 22, 15); 
@@ -198,7 +190,8 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
       cairo_rectangle(cr, 11, 5, 6, 10);
       cairo_fill(cr);    
     }
-    else if(type == pulldown_sinking_normal  ||  type == pulldown_sinking_pressed ) {
+    else if(type == pulldown_deactivated ) {
+      cairo_set_source_rgba(cr, TEXT_DEACTIVATED);    
       cairo_show_text(cr, "Sinking");
               
       cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD); //means don't fill areas that are filled twice.

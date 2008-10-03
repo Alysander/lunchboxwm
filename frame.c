@@ -112,7 +112,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.max_height = XHeightOfScreen(screen);
   frame.selected = 1;
   frame.window_name = NULL;
-  frame.mode = SINKING;
+  frame.mode = FLOATING;
   frame.window = framed_window;    
     
   get_frame_hints(display, &frame);
@@ -188,7 +188,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   }
   else if (frame.mode == SINKING) {
     XSetWindowBackgroundPixmap(display, frame.close_button, pixmaps->close_button_deactivated_p );
-    XSetWindowBackgroundPixmap(display, frame.mode_pulldown, pixmaps->pulldown_sinking_pressed_p );
+    XSetWindowBackgroundPixmap(display, frame.mode_pulldown, pixmaps->pulldown_deactivated_p );
     XSetWindowBackgroundPixmap(display, frame.title_menu.arrow, pixmaps->arrow_deactivated_p);        
   }
 
@@ -259,7 +259,6 @@ void resize_frame(Display* display, struct Frame* frame) {
 /*** Update with the specified name if it is available ***/
 void get_frame_name(Display* display, struct Frame* frame) {
   XFetchName(display, frame->window, &frame->window_name);
-  printf("Recovered name: %s\n", frame->window_name);
   XUnmapWindow(display, frame->title_menu.title);
   XFlush(display);
 
@@ -271,9 +270,6 @@ void get_frame_name(Display* display, struct Frame* frame) {
   else XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_normal_p);  
 
   frame->title_menu.width = get_title_width(display, frame->window_name);
-
-  printf("Width is %d\n", frame->title_menu.width);
-
   XMapWindow(display, frame->title_menu.title);
   XFlush(display);
 }
