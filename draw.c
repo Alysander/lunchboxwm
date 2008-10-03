@@ -53,18 +53,25 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
     pixmap = XCreatePixmap(display, root, BUTTON_SIZE, BUTTON_SIZE, XDefaultDepth(display, screen_number));
     surface = cairo_xlib_surface_create(display, pixmap, colours, BUTTON_SIZE, BUTTON_SIZE);
     cr = cairo_create(surface);
-    //need to draw the background somehow
-    //draw selection spot indicator
-    cairo_set_source_rgba(cr, SHADOW);
-    cairo_arc(cr, 15, 15.5, 6, 0, 2* M_PI);
+    //this is the negative of the position of the selection_indicator window relative to the titlebar
+    cairo_translate(cr, -H_SPACING, -V_SPACING);
+    
+    //drawing the background
+    cairo_set_source_rgba(cr, LIGHT_EDGE);  
+    cairo_rectangle(cr, 0, 0, BUTTON_SIZE + H_SPACING, LIGHT_EDGE_HEIGHT);
+    cairo_fill(cr); 
+    cairo_set_source_rgba(cr, BODY);  
+    cairo_rectangle(cr, 0, LIGHT_EDGE_HEIGHT, BUTTON_SIZE + H_SPACING, TITLEBAR_HEIGHT - LIGHT_EDGE_HEIGHT);
     cairo_fill(cr);
+    
+    //draw selection spot indicator    
     cairo_set_source_rgba(cr, SPOT);
-    cairo_arc(cr, 15, 14.5, 6, 0, 2* M_PI);
-    cairo_fill_preserve(cr);
+    cairo_arc(cr, 14, 14, 8, 0, 2* M_PI);
+    cairo_fill(cr);
+    cairo_arc(cr, 14, 14, 7.5, 0, 2* M_PI);
     cairo_set_line_width(cr, 1);
-    cairo_set_source_rgba(cr, SPOT_EDGE);
+    cairo_set_source_rgba(cr, BORDER);
     cairo_stroke(cr);
-    cairo_set_line_width(cr, 1);
   break;
   
   /*** Button background pixmaps start here ***/
@@ -140,17 +147,12 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
     cairo_stroke(cr);
   
   break;
-
-  //if pressed make the arrow bigger
   case pulldown_floating_normal:
   case pulldown_floating_pressed:
-  case pulldown_floating_deactivated:
   case pulldown_sinking_normal:
   case pulldown_sinking_pressed:
-  case pulldown_sinking_deactivated:
   case pulldown_tiling_normal:
   case pulldown_tiling_pressed:
-  case pulldown_tiling_deactivated:
   
     pixmap = XCreatePixmap(display, root, PULLDOWN_WIDTH, BUTTON_SIZE, XDefaultDepth(display, screen_number));    
     surface = cairo_xlib_surface_create(display, pixmap, colours, PULLDOWN_WIDTH, BUTTON_SIZE);
@@ -164,20 +166,26 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
     cairo_rectangle(cr, EDGE_WIDTH, EDGE_WIDTH, PULLDOWN_WIDTH - EDGE_WIDTH*2, BUTTON_SIZE - EDGE_WIDTH*2);
     cairo_fill(cr);
 
-    if(type == pulldown_sinking_pressed  ||  type == pulldown_tiling_pressed  ||  type == pulldown_floating_pressed)  cairo_set_source_rgba(cr, LIGHT_EDGE);  
+    if( type == pulldown_tiling_pressed  ||  type == pulldown_floating_pressed)  cairo_set_source_rgba(cr, LIGHT_EDGE);  
     else cairo_set_source_rgba(cr, BODY);  
     
     cairo_rectangle(cr, EDGE_WIDTH*2, EDGE_WIDTH*2, PULLDOWN_WIDTH - EDGE_WIDTH*4, 11); //11 will be the height of the darkened area
     cairo_fill(cr); 
 
-    if(type == pulldown_sinking_deactivated  ||  type == pulldown_tiling_deactivated  ||  type == pulldown_floating_deactivated) cairo_set_source_rgba(cr, TEXT_DEACTIVATED);  
-    else cairo_set_source_rgba(cr, TEXT);  
+    if(type == pulldown_sinking_pressed) {
+      cairo_set_source_rgba(cr, TEXT_DEACTIVATED);
+      cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); 
+    }
+    else {
+      cairo_set_source_rgba(cr, TEXT);  
+      cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); 
+    }
     
-    cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+
     cairo_set_font_size(cr, 13.5); 
     cairo_move_to(cr, 22, 15); 
     
-    if(type == pulldown_tiling_normal  ||  type == pulldown_tiling_pressed) {
+    if(type == pulldown_tiling_normal  ||  type == pulldown_tiling_pressed  ) {
       cairo_show_text(cr, "Tiling");
       
       cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
@@ -190,9 +198,30 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
       cairo_rectangle(cr, 11, 5, 6, 10);
       cairo_fill(cr);    
     }
-    else if(type == pulldown_sinking_normal  ||  type == pulldown_sinking_pressed) {
-      //TODO: make an icon
+    else if(type == pulldown_sinking_normal  ||  type == pulldown_sinking_pressed ) {
       cairo_show_text(cr, "Sinking");
+              
+      cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD); //means don't fill areas that are filled twice.
+      cairo_rectangle(cr, 4, 4, 11, 12);
+      cairo_rectangle(cr, 5, 6, 9, 9);
+      cairo_fill(cr); 
+
+      #ifdef SHARP_SYMBOLS
+      cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);    
+      #endif
+
+      cairo_move_to(cr, 7, 10);
+      cairo_line_to(cr, 12, 10);
+      cairo_line_to(cr, 9, 13);
+      cairo_close_path(cr);
+      cairo_fill(cr);    
+      
+      cairo_set_fill_rule (cr, CAIRO_FILL_RULE_WINDING);
+      
+      cairo_rectangle(cr, 9, 8, 1, 4);
+      cairo_fill(cr);
+      cairo_stroke(cr);
+      
     }
     else if(type == pulldown_floating_normal  ||  type == pulldown_floating_pressed) {
       cairo_show_text(cr, "Floating");
@@ -208,7 +237,9 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
       cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
       cairo_rectangle(cr, 8, 8, 9, 9);
       cairo_rectangle(cr, 9, 10, 7, 6);
-      cairo_fill(cr);    
+      cairo_fill(cr); 
+      
+      
     } 
     #ifdef SHARP_SYMBOLS
     cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);    
@@ -259,7 +290,8 @@ Pixmap create_title_pixmap(Display* display, const char* title, enum title_pixma
   //draw text    
   if(type == title_deactivated) {
     cairo_set_source_rgba(cr, TEXT_DEACTIVATED);
-    cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  
   }
   else  {
     cairo_set_source_rgba(cr, TEXT);  

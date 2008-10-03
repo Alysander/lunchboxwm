@@ -110,9 +110,9 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.min_height = MINHEIGHT;
   frame.max_width = XWidthOfScreen(screen);
   frame.max_height = XHeightOfScreen(screen);
-  frame.selected = 0;
+  frame.selected = 1;
   frame.window_name = NULL;
-  frame.mode = FLOATING;
+  frame.mode = SINKING;
   frame.window = framed_window;    
     
   get_frame_hints(display, &frame);
@@ -170,17 +170,31 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.skip_resize_configure = 1;
   
   XSetWindowBackgroundPixmap(display, frame.frame, pixmaps->border_p );
-  XSetWindowBackgroundPixmap (display, frame.title_menu.frame, pixmaps->border_p );
+  XSetWindowBackgroundPixmap(display, frame.title_menu.frame, pixmaps->border_p );
   XSetWindowBackgroundPixmap(display, frame.innerframe, pixmaps->border_p );
   XSetWindowBackgroundPixmap(display, frame.body, pixmaps->body_p );
-  XSetWindowBackgroundPixmap (display, frame.title_menu.body, pixmaps->light_border_p );
+  XSetWindowBackgroundPixmap(display, frame.title_menu.body, pixmaps->light_border_p );
   
-  XSetWindowBackgroundPixmap(display, frame.close_button, pixmaps->close_button_normal_p );
-  XSetWindowBackgroundPixmap(display, frame.mode_pulldown, pixmaps->pulldown_floating_normal_p );
   XSetWindowBackgroundPixmap(display, frame.titlebar,  pixmaps->titlebar_background_p );
-  XSetWindowBackgroundPixmap(display, frame.title_menu.arrow, pixmaps->arrow_normal_p);  
-//  XSetWindowBackgroundPixmap(display, frame.selection_indicator, ParentRelative);
-   
+  if(frame.mode == FLOATING) {
+    XSetWindowBackgroundPixmap(display, frame.close_button, pixmaps->close_button_normal_p );
+    XSetWindowBackgroundPixmap(display, frame.mode_pulldown, pixmaps->pulldown_floating_normal_p );
+    XSetWindowBackgroundPixmap(display, frame.title_menu.arrow, pixmaps->arrow_normal_p);    
+  }
+  else if (frame.mode == TILING) {
+    XSetWindowBackgroundPixmap(display, frame.close_button, pixmaps->close_button_normal_p );
+    XSetWindowBackgroundPixmap(display, frame.mode_pulldown, pixmaps->pulldown_tiling_normal_p );
+    XSetWindowBackgroundPixmap(display, frame.title_menu.arrow, pixmaps->arrow_normal_p);      
+  }
+  else if (frame.mode == SINKING) {
+    XSetWindowBackgroundPixmap(display, frame.close_button, pixmaps->close_button_deactivated_p );
+    XSetWindowBackgroundPixmap(display, frame.mode_pulldown, pixmaps->pulldown_sinking_pressed_p );
+    XSetWindowBackgroundPixmap(display, frame.title_menu.arrow, pixmaps->arrow_deactivated_p);        
+  }
+
+  if(frame.selected != 0) XSetWindowBackgroundPixmap(display, frame.selection_indicator, pixmaps->selection_p);
+  else XSetWindowBackgroundPixmap(display, frame.selection_indicator, ParentRelative);
+  
   XSelectInput(display, frame.frame, Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.close_button, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
   XSelectInput(display, frame.mode_pulldown, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
@@ -191,7 +205,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XMapWindow(display, frame.body);
   XMapWindow(display, frame.close_button);
   XMapWindow(display, frame.mode_pulldown);
-//  XMapWindow(display, frame.selection_indicator);
+  XMapWindow(display, frame.selection_indicator);
   XMapWindow(display, frame.title_menu.frame);
   XMapWindow(display, frame.title_menu.body);
   XMapWindow(display, frame.title_menu.arrow);

@@ -87,9 +87,9 @@ struct Framelist {
 struct frame_pixmaps {
   Pixmap border_p, light_border_p, body_p, titlebar_background_p,
          close_button_normal_p, close_button_pressed_p, close_button_deactivated_p,
-         pulldown_floating_normal_p, pulldown_floating_pressed_p, pulldown_floating_deactivated_p,
-         pulldown_sinking_normal_p, pulldown_sinking_pressed_p, pulldown_sinking_deactivated_p,
-         pulldown_tiling_normal_p, pulldown_tiling_pressed_p, pulldown_tiling_deactivated_p,
+         pulldown_floating_normal_p, pulldown_floating_pressed_p,
+         pulldown_sinking_normal_p, pulldown_sinking_pressed_p, 
+         pulldown_tiling_normal_p, pulldown_tiling_pressed_p,
          selection_p, 
          arrow_normal_p, arrow_pressed_p, arrow_deactivated_p,
          arrow_clipping_normal_p, arrow_clipping_pressed_p, arrow_clipping_deactivated_p;
@@ -108,13 +108,11 @@ enum main_pixmap {
   close_button_deactivated,
   pulldown_floating_normal,
   pulldown_floating_pressed,
-  pulldown_floating_deactivated,
   pulldown_sinking_normal,
+  //the pulldowns deactivated mode is when the sinking mode is pressed
   pulldown_sinking_pressed,
-  pulldown_sinking_deactivated,
   pulldown_tiling_normal,
   pulldown_tiling_pressed,
-  pulldown_tiling_deactivated,
   arrow_normal,
   arrow_clipping_normal,
   arrow_pressed,
