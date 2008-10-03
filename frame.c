@@ -2,8 +2,6 @@
 /* This function reparents a framed window to root and then destroys the frame as well as cleaning up the frames drawing surfaces */
 /* It is used when the framed window has been unmapped or destroyed, or is about to be*/
 void remove_frame(Display* display, struct Framelist* frames, int index) {
-
-  printf("removing window\n");
   
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);
@@ -13,7 +11,11 @@ void remove_frame(Display* display, struct Framelist* frames, int index) {
   XSync(display, False);
   XSetErrorHandler(NULL);    
   XUngrabServer(display);
-  XFreePixmap(display, frames->list[index].title_menu.title_p);
+  
+  XFreePixmap(display, frames->list[index].title_menu.title_normal_p);
+  XFreePixmap(display, frames->list[index].title_menu.title_pressed_p);
+  XFreePixmap(display, frames->list[index].title_menu.title_deactivated_p);
+  
   if(frames->list[index].window_name != NULL) XFree(frames->list[index].window_name);
    
   if((frames->used != 1) && (index != frames->used - 1)) { //the frame is not the first or the last
@@ -114,7 +116,6 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.window = framed_window;    
     
   get_frame_hints(display, &frame);
-
   
   frame.frame =         XCreateSimpleWindow(display, root, frame.x, frame.y, 
                                       frame.w, frame.h, 0, black, black); 
@@ -137,6 +138,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.selection_indicator = XCreateSimpleWindow(display, frame.titlebar, H_SPACING, V_SPACING,
                                       BUTTON_SIZE, BUTTON_SIZE,  0, black, black);
 
+
   frame.title_menu.frame =  XCreateSimpleWindow(display, frame.titlebar, H_SPACING*2 + BUTTON_SIZE, V_SPACING, 
                                       frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE, 0, black, black);
 
@@ -149,17 +151,23 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.title_menu.arrow =  XCreateSimpleWindow(display, frame.title_menu.body, frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH, 
                                       BUTTON_SIZE - EDGE_WIDTH , BUTTON_SIZE - EDGE_WIDTH*4, 0, black,  black);
   
+  frame.title_menu.hotspot =   XCreateWindow(display, frame.titlebar, H_SPACING*2 + BUTTON_SIZE, V_SPACING,
+                                      frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+  get_frame_name(display, &frame);
   XSetWindowBorderWidth(display, frame.window, 0);
 
-  XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles  
+  //TODO: add resize hotspots
   
+  XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles  
+
+  resize_frame(display, &frame); //this is called here to resize the title menu if it needs to be resized
+    
   XReparentWindow(display, frame.window, frame.innerframe, EDGE_WIDTH, EDGE_WIDTH*2);
   XFlush(display);
   frame.skip_reparent_unmap = 1;
-    
-  //TODO: add the input only hotspots 
       
   XResizeWindow(display, frame.window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
+  frame.skip_resize_configure = 1;
   
   XSetWindowBackgroundPixmap(display, frame.frame, pixmaps->border_p );
   XSetWindowBackgroundPixmap (display, frame.title_menu.frame, pixmaps->border_p );
@@ -176,7 +184,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XSelectInput(display, frame.frame, Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.close_button, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
   XSelectInput(display, frame.mode_pulldown, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-  XSelectInput(display, frame.title_menu.frame, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  XSelectInput(display, frame.title_menu.hotspot, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
     
   XMapWindow(display, frame.frame); 
   XMapWindow(display, frame.titlebar);
@@ -186,13 +194,11 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
 //  XMapWindow(display, frame.selection_indicator);
   XMapWindow(display, frame.title_menu.frame);
   XMapWindow(display, frame.title_menu.body);
-  XMapWindow(display, frame.title_menu.title);
   XMapWindow(display, frame.title_menu.arrow);
+  XMapWindow(display, frame.title_menu.hotspot);
   XMapWindow(display, frame.innerframe);
   XMapWindow(display, frame.window);
-
-  get_frame_name(display, &frame);
-  
+    
 	XGetTransientForHint(display, framed_window, &transient);
   if(transient != 0) {
     printf("Transient window detected\n");
@@ -206,34 +212,54 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
 } 
 
 /*** Moves and resizes the subwindows of the frame ***/
-void resize_frame(Display* display, struct Frame frame) {
+void resize_frame(Display* display, struct Frame* frame) {
 
-  XMoveResizeWindow(display, frame.frame, frame.x, frame.y,  frame.w, frame.h);
-  XResizeWindow(display, frame.titlebar, frame.w - EDGE_WIDTH*2, TITLEBAR_HEIGHT);
-  XMoveWindow(display, frame.close_button, frame.w - H_SPACING - BUTTON_SIZE - EDGE_WIDTH - 1, V_SPACING);
-  XMoveWindow(display, frame.mode_pulldown, frame.w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH - 1, V_SPACING);
-  XMoveWindow(display, frame.title_menu.arrow, frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH);
+  XMoveResizeWindow(display, frame->frame, frame->x, frame->y,  frame->w, frame->h);
+  XResizeWindow(display, frame->titlebar, frame->w - EDGE_WIDTH*2, TITLEBAR_HEIGHT);
+  XMoveWindow(display, frame->close_button, frame->w - H_SPACING - BUTTON_SIZE - EDGE_WIDTH - 1, V_SPACING);
+  XMoveWindow(display, frame->mode_pulldown, frame->w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH - 1, V_SPACING);
 
-  XResizeWindow(display, frame.title_menu.frame, frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE);
-  XResizeWindow(display, frame.title_menu.body,frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2, BUTTON_SIZE - EDGE_WIDTH*2);
-  XResizeWindow(display, frame.title_menu.title,  frame.w - TITLE_MAX_WIDTH_DIFF, TITLE_MAX_HEIGHT);
-    
-  XResizeWindow(display, frame.body, frame.w - EDGE_WIDTH*2, frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1));
-  XResizeWindow(display, frame.innerframe, 
-                         frame.w - (EDGE_WIDTH + H_SPACING)*2,
-                         frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1 + H_SPACING));
-  XResizeWindow(display, frame.window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
-
+  if(frame->title_menu.width + EDGE_WIDTH*4 + BUTTON_SIZE < frame->w - TITLEBAR_USED_WIDTH) {
+    XResizeWindow(display, frame->title_menu.frame, frame->title_menu.width + EDGE_WIDTH*4 + BUTTON_SIZE, BUTTON_SIZE);
+    XResizeWindow(display, frame->title_menu.hotspot, frame->title_menu.width + EDGE_WIDTH*4 + BUTTON_SIZE, BUTTON_SIZE);    
+    XResizeWindow(display, frame->title_menu.body,  frame->title_menu.width + EDGE_WIDTH*2 + BUTTON_SIZE, BUTTON_SIZE - EDGE_WIDTH*2);
+    XMoveWindow(display, frame->title_menu.arrow,   frame->title_menu.width + EDGE_WIDTH, EDGE_WIDTH);
+    XResizeWindow(display, frame->title_menu.title, frame->title_menu.width, TITLE_MAX_HEIGHT);
+  }
+  else {
+    XResizeWindow(display, frame->title_menu.frame, frame->w - TITLEBAR_USED_WIDTH, BUTTON_SIZE);
+    XResizeWindow(display, frame->title_menu.hotspot, frame->w - TITLEBAR_USED_WIDTH, BUTTON_SIZE);
+    XResizeWindow(display, frame->title_menu.body,  frame->w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2, BUTTON_SIZE - EDGE_WIDTH*2);
+    XResizeWindow(display, frame->title_menu.title, frame->w - TITLE_MAX_WIDTH_DIFF, TITLE_MAX_HEIGHT);
+    XMoveWindow(display, frame->title_menu.arrow, frame->w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH);
+  }
+  XResizeWindow(display, frame->body, frame->w - EDGE_WIDTH*2, frame->h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1));
+  XResizeWindow(display, frame->innerframe, 
+                         frame->w - (EDGE_WIDTH + H_SPACING)*2,
+                         frame->h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1 + H_SPACING));
+  XResizeWindow(display, frame->window, frame->w - FRAME_HSPACE, frame->h - FRAME_VSPACE);
+  frame->skip_resize_configure++;
   XFlush(display);
 }
 
 /*** Update with the specified name if it is available ***/
 void get_frame_name(Display* display, struct Frame* frame) {
-//TODO:  get the net_wm name if it is available
-  printf("
   XFetchName(display, frame->window, &frame->window_name);
+  printf("Recovered name: %s\n", frame->window_name);
   XUnmapWindow(display, frame->title_menu.title);
-  frame->title_menu.title_p = create_title_pixmap(display, frame->window_name);
+  XFlush(display);
+
+  frame->title_menu.title_normal_p = create_title_pixmap(display, frame->window_name, title_normal);
+  frame->title_menu.title_pressed_p = create_title_pixmap(display, frame->window_name, title_pressed);
+  frame->title_menu.title_deactivated_p = create_title_pixmap(display, frame->window_name, title_deactivated);
+      
+  if(frame->mode == SINKING) XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_deactivated_p);  
+  else XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_normal_p);  
+
+  frame->title_menu.width = get_title_width(display, frame->window_name);
+
+  printf("Width is %d\n", frame->title_menu.width);
+
   XMapWindow(display, frame->title_menu.title);
   XFlush(display);
 }

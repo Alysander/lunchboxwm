@@ -8,7 +8,7 @@
 
 #define M_PI 3.14159265359
 
-//#define SHARP_SYMBOLS //turns off anti-aliasing on symbols
+#define SHARP_SYMBOLS //turns off anti-aliasing on symbols
 //this amount in pixels * 3 are used when the top level size cannot be established
 #define MINWIDTH 200 
 #define MINHEIGHT 60
@@ -45,12 +45,11 @@
 #define SPOT_EDGE       0.235294118, 0.549019608, 0.99, 0.35
 #define BACKGROUND      0.4, 0.4, 0.4, 1
 #define BORDER          0.13, 0.13, 0.13, 1
-#define INNER_BORDER    0.0, 0.0, 0.0, 1
 #define LIGHT_EDGE      0.34, 0.34, 0.34, 1
 #define BODY            0.27, 0.27, 0.27, 1
 #define SHADOW          0.0, 0.0, 0.0, 1
 #define TEXT            1.00, 1.00, 1.00, 1
-#define TEXT_DISABLED   0.6, 0.6, 0.6, 1
+#define TEXT_DEACTIVATED   0.6, 0.6, 0.6, 1
 
 
 struct Frame {
@@ -63,13 +62,17 @@ struct Frame {
   int min_width, max_width;
   int min_height, max_height;
   int skip_reparent_unmap;
+  int skip_resize_configure;
   
   Window frame, body, innerframe, titlebar, close_button, mode_pulldown, selection_indicator;
 
-  //because the title menu needs to change size regularly we re-use the same tricks as used in the window frame itself
+  //because the title menu needs to change size regularly we re-use the same tricks as used in the structure of window frame itself
   struct {
-    Window frame, body, title, arrow; //frame is the outline, body is the inner border, title has the background pixmap and arrow is the pulldownarrow.
-    Pixmap title_p; //this draws the background "bevel" and the text.
+    //frame is the outline, body is the inner border, title has the background pixmap and arrow is the pulldownarrow, 
+    //hotspot is an input_only window to make the events
+    //easier to handle (rather than lots of logical ORs)
+    Window frame, body, title, arrow, hotspot; 
+    Pixmap title_normal_p, title_pressed_p, title_deactivated_p; //this draws the background "bevel" and the text.
     int width; //this is the width of the title
   } title_menu;
   
@@ -82,31 +85,46 @@ struct Framelist {
 };
 
 struct frame_pixmaps {
-  Pixmap border_p, body_p, titlebar_background_p,
-         close_button_normal_p, close_button_pressed_p,
-         pulldown_floating_normal_p, pulldown_floating_pressed_p,
-         pulldown_sinking_normal_p, pulldown_sinking_pressed_p,
-         pulldown_tiling_normal_p, pulldown_tiling_pressed_p,
-         selection_indicator_p, 
-         arrow_normal_p, //the arrow is used in the title_menu
-         arrow_pressed_p;
+  Pixmap border_p, light_border_p, body_p, titlebar_background_p,
+         close_button_normal_p, close_button_pressed_p, close_button_deactivated_p,
+         pulldown_floating_normal_p, pulldown_floating_pressed_p, pulldown_floating_deactivated_p,
+         pulldown_sinking_normal_p, pulldown_sinking_pressed_p, pulldown_sinking_deactivated_p,
+         pulldown_tiling_normal_p, pulldown_tiling_pressed_p, pulldown_tiling_deactivated_p,
+         selection_p, 
+         arrow_normal_p, arrow_pressed_p, arrow_deactivated_p,
+         arrow_clipping_normal_p, arrow_clipping_pressed_p, arrow_clipping_deactivated_p;
 };
 
-//passed as an argument to create_pixmap to select which one to draw
+/** This enum is passed as an argument to create_pixmap to select which one to draw **/
 enum main_pixmap {
   background,
   body,
   border,
+  light_border,
   titlebar,
+  selection,
   close_button_normal,
   close_button_pressed,
+  close_button_deactivated,
   pulldown_floating_normal,
   pulldown_floating_pressed,
+  pulldown_floating_deactivated,
   pulldown_sinking_normal,
   pulldown_sinking_pressed,
+  pulldown_sinking_deactivated,
   pulldown_tiling_normal,
   pulldown_tiling_pressed,
-  selection,
+  pulldown_tiling_deactivated,
   arrow_normal,
-  arrow_pressed
+  arrow_clipping_normal,
+  arrow_pressed,
+  arrow_clipping_pressed,
+  arrow_deactivated,
+  arrow_clipping_deactivated
+};
+
+enum title_pixmap {
+  title_normal,
+  title_pressed,
+  title_deactivated
 };
