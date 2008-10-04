@@ -1,10 +1,12 @@
 #include <errno.h>
 #include <signal.h>
+#include <X11/Xcursor/Xcursor.h>
 #include "basin.h"
 
 /*** basin.c ***/
 //int main 
-int supress_xerror        (Display *display, XErrorEvent *event);
+int supress_xerror (Display *display, XErrorEvent *event);
+//void load_pixmaps (Display *display, struct frame_pixmaps *pixmaps);
 
 /*** draw.c ***/
 extern Pixmap create_pixmap(Display* display, enum main_pixmap type);
@@ -45,36 +47,35 @@ void end_event_loop(int sig) {
 int main (int argc, char* argv[]) {
   Display* display = NULL; 
   Screen* screen;  
+  int screen_number;
+  
   XEvent event;
-  Window root, background_window;
-  Window grab_window;
-  Pixmap background_window_p;
-    
+  Window root, background_window, grab_window, last_pressed;
+  Pixmap background_window_p;   
+   
   struct frame_pixmaps pixmaps;
-         
+  struct cursors mouse_cursors;       
   struct Framelist frames = {NULL, 16, 0};
 
-  Window last_pressed;
-  int start_move_x, start_move_y, start_win;
-
-  //idintifies the resize directions
+  int start_move_x, start_move_y;
+  int start_win = -1; //identifies the window being moved/resized
   int resize_x = 0; //-1 means LHS, 1 means RHS
   int resize_y = 0; //-1 means top, 1 means bottom
-  start_win = -1;   //identifies the window being moved/resized
-  printf("\n");
+  int i; //i is the iterator for the window array
+
   
   frames.list = malloc(sizeof(struct Frame) * frames.max);
   if(frames.list == NULL) {
-    printf("No available memory\n");
+    printf("\nError: No available memory\n");
     return -1;
   }
   
-  if (signal(SIGINT, end_event_loop) == SIG_ERR) {
-    printf("Could not set the error handler\n");
+  if(signal(SIGINT, end_event_loop) == SIG_ERR) {
+    printf("\nError: Could not set the error handler\n Is this a POSIX conformant system?\n");
     return -1;
   }
   
-  printf("Opening Basin using the DISPLAY environment variable\n");
+  printf("\nOpening Basin using the DISPLAY environment variable\n");
   printf("This can hang if the wrong screen number is given\n");
   display = XOpenDisplay(NULL);
   
@@ -85,22 +86,20 @@ int main (int argc, char* argv[]) {
     printf("Where foo is the correct screen\n");
     return -1;
   }
-    
+  
+  if(XcursorSetTheme(display, "DMZ-White") == False) {
+    printf("Error: could not find the cursor theme\n");
+    XCloseDisplay(display);
+    return -1;
+  }
+  
   root = DefaultRootWindow(display);
   last_pressed = root; //last_pressed is used to determine if close buttons etc. should be activated
   screen = DefaultScreenOfDisplay(display);
-  int screen_number = DefaultScreen (display);
+  screen_number = DefaultScreen (display);
   
   XSelectInput(display, root, SubstructureRedirectMask | ButtonMotionMask | ButtonPressMask | ButtonReleaseMask);
 
-/*  
-  Button press mask for raising/setting focus,
-  Motion mask for moves/resizes
-  ButtonReleaseMask for when the close button has been pressed but release on the wrong window
-  printf("grab returned %d\n",
-  XGrabButton(display, 1, AnyMask, root, True, ButtonPressMask | ButtonReleaseMask, GrabModeSync, GrabModeAsync, None, None)
-  );
-*/
   pixmaps.border_p                    = create_pixmap(display, border);  
   pixmaps.light_border_p              = create_pixmap(display, light_border);  //this pixmap is only used for the pressed state of the title_menu
   pixmaps.body_p                      = create_pixmap(display, body);
@@ -121,6 +120,28 @@ int main (int argc, char* argv[]) {
   pixmaps.arrow_pressed_p             = create_pixmap(display, arrow_pressed);
   pixmaps.arrow_deactivated_p         = create_pixmap(display, arrow_deactivated);
   
+  //some of these names are DMZ-White specific
+  cursors.normal = XcursorLibraryLoadCursor(display, "left_ptr");
+  cursors.pressable = XcursorLibraryLoadCursor(display, "hand2");
+  cursors.hand =    XcursorLibraryLoadCursor(display, "hand1");
+  cursors.grab =    XcursorLibraryLoadCursor(display, "grabbing");
+  cursors.resize_h = XcursorLibraryLoadCursor(display, "h_double_arrow");
+  cursors.resize_v = XcursorLibraryLoadCursor(display, "double_arrow");
+  cursors.resize_tr_bl =  XcursorLibraryLoadCursor(display, "fd_double_arrow");
+  cursors.resize_tl_br =  XcursorLibraryLoadCursor(display, "bd_double_arrow");
+  cursors.resize_t =  XcursorLibraryLoadCursor(display, "top_side");
+  cursors.resize_l =  XcursorLibraryLoadCursor(display, "left_side");
+  cursors.resize_r =  XcursorLibraryLoadCursor(display, "right_side");
+  cursors.resize_b =  XcursorLibraryLoadCursor(display, "bottom_side");
+  cursors.resize_tl = XcursorLibraryLoadCursor(display, "top_left_corner");
+  cursors.resize_tr = XcursorLibraryLoadCursor(display, "top_right_corner");
+  cursors.resize_br = XcursorLibraryLoadCursor(display, "bottom_right_corner");
+  cursors.resize_bl = XcursorLibraryLoadCursor(display, "bottom_left_corner");
+  
+  XDefineCursor(display, background_window, cursors.normal);
+
+  /* detach this cursor from our window. */
+
   create_startup_frames(display, &frames, &pixmaps);  
   
   /* Create the background window and double buffer it*/
@@ -131,7 +152,7 @@ int main (int argc, char* argv[]) {
   XMapWindow(display, background_window);
   
   //XSynchronize(display, True);  //Turns on synchronized debugging
-  int i;
+  
   while(!done) {
     //always look for windows that have been destroyed first
     if(XCheckTypedEvent(display, DestroyNotify, &event)) ;

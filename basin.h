@@ -68,20 +68,28 @@ struct Frame {
 
   //because the title menu needs to change size regularly we re-use the same tricks as used in the structure of window frame itself
   struct {
-    //frame is the outline, body is the inner border, title has the background pixmap and arrow is the pulldownarrow, 
-    //hotspot is an input_only window to make the events
-    //easier to handle (rather than lots of logical ORs)
-    Window frame, body, title, arrow, hotspot; 
+    Window frame, //frame is the outline, body is the inner border, title has the background pixmap and arrow is the pulldownarrow, 
+           body,
+           title,
+           arrow,
+           hotspot; //hotspot is an input_only window to make the events easier to handle (rather than lots of logical ORs)
+
     Pixmap title_normal_p, title_pressed_p, title_deactivated_p; //this draws the background "bevel" and the text.
     int width; //this is the width of the title
   } title_menu;
   
-  Window NW_grip, N_grip, NE_grip, E_grip, SE_grip, S_grip, SW_grip, W_grip;  //InputOnly resize grips
+  Window tl_grip, t_grip, tr_grip, r_grip, br_grip, b_grip, bl_grip, l_grip;  //InputOnly resize grips  for the bottom left, top right etc.
 };
 
 struct Framelist {
   struct Frame* list;
   unsigned int max, used;
+};
+
+struct mouse_cursors {
+  Cursor normal, hand, grab, pressable,
+  resize_h, resize_v, resize_tr_bl, resize_tl_br,  //for tiling windows use double arrows
+  resize_t, resize_l, resize_r, resize_b, resize_tl, resize_tr, resize_br, resize_bl; //for floating windows use single arrows
 };
 
 struct frame_pixmaps {
