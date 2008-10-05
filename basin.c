@@ -85,14 +85,17 @@ int main (int argc, char* argv[]) {
     printf("Where foo is the correct screen\n");
     return -1;
   }
+
+  //XSynchronize(display, True);  //Turns on synchronized debugging  
   
-  if(XcursorSetTheme(display, "DMZ-White") != True) { 
+  if(XcursorSetTheme(display, "DMZ-White") == True) { 
+    XcursorSetDefaultSize (display, 24);
+    XSync(display, False);
+  }
+  else {
     printf("Error: could not find the cursor theme\n");
     XCloseDisplay(display);
     return -1;
-  }
-  else {
-    XcursorSetDefaultSize (display, 24);
   }
   
   root = DefaultRootWindow(display);
@@ -143,7 +146,6 @@ int main (int argc, char* argv[]) {
   XDefineCursor(display, background_window, cursors.normal);  
   XMapWindow(display, background_window);
   XFlush(display);
-  XSynchronize(display, True);  //Turns on synchronized debugging
   
   while(!done) {
     //always look for windows that have been destroyed first
