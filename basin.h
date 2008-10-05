@@ -5,6 +5,7 @@
 #include <cairo/cairo.h>
 #include <cairo/cairo-xlib.h>
 #include <string.h>
+#include <X11/Xcursor/Xcursor.h>
 
 #define M_PI 3.14159265359
 
@@ -29,9 +30,10 @@
 #define EDGE_WIDTH 1
 #define PIXMAP_SIZE 16
 #define SPOT_SIZE 14
+#define CORNER_GRIP_SIZE 32
 
 //this is the number of pixels the frame takes up from the top and bottom together of a window
-#define FRAME_VSPACE (TITLEBAR_HEIGHT + 1 + EDGE_WIDTH*4 + H_SPACING)
+#define FRAME_VSPACE (TITLEBAR_HEIGHT + EDGE_WIDTH*4 + H_SPACING)
 //this is the number of pixels the frame takes up from either side of a window together
 #define FRAME_HSPACE (EDGE_WIDTH*2 + H_SPACING)*2
 
@@ -63,8 +65,10 @@ struct Frame {
   int min_height, max_height;
   int skip_reparent_unmap;
   int skip_resize_configure;
+
   
-  Window frame, body, innerframe, titlebar, close_button, mode_pulldown, selection_indicator;
+  Window frame, body, innerframe, titlebar, close_button, mode_pulldown, selection_indicator; 
+  Window backing;   //backing is the same dimensions as the framed window.  It is used so that the resize grips can cover the innerframe but still be below the framed window.
 
   //because the title menu needs to change size regularly we re-use the same tricks as used in the structure of window frame itself
   struct {
@@ -78,7 +82,7 @@ struct Frame {
     int width; //this is the width of the title
   } title_menu;
   
-  Window tl_grip, t_grip, tr_grip, r_grip, br_grip, b_grip, bl_grip, l_grip;  //InputOnly resize grips  for the bottom left, top right etc.
+  Window l_grip, bl_grip, b_grip, br_grip, r_grip;  //InputOnly resize grips  for the bottom left, top right etc.
 };
 
 struct Framelist {
@@ -88,8 +92,7 @@ struct Framelist {
 
 struct mouse_cursors {
   Cursor normal, hand, grab, pressable,
-  resize_h, resize_v, resize_tr_bl, resize_tl_br,  //for tiling windows use double arrows
-  resize_t, resize_l, resize_r, resize_b, resize_tl, resize_tr, resize_br, resize_bl; //for floating windows use single arrows
+  resize_h, resize_v, resize_tr_bl, resize_tl_br;
 };
 
 struct frame_pixmaps {

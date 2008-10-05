@@ -1,6 +1,5 @@
 #include <errno.h>
 #include <signal.h>
-#include <X11/Xcursor/Xcursor.h>
 #include "basin.h"
 
 /*** basin.c ***/
@@ -15,8 +14,8 @@ extern Pixmap create_title_pixmap(Display* display, const char* title, enum titl
 /*** frame.c ***/
 
 extern void find_adjacent        (struct Framelist* frames, int frame_index);
-extern int create_frame          (Display* display, struct Framelist* frames, Window framed_window, struct frame_pixmaps *pixmaps); 
-extern void create_startup_frames(Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps);
+extern int create_frame          (Display* display, struct Framelist* frames, Window framed_window, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors); 
+extern void create_startup_frames(Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
 extern void remove_frame         (Display* display, struct Framelist* frames, int index);
 extern void remove_window        (Display* display, Window framed_window);
 extern void get_frame_name       (Display* display, struct Frame* frame);
@@ -54,7 +53,7 @@ int main (int argc, char* argv[]) {
   Pixmap background_window_p;   
    
   struct frame_pixmaps pixmaps;
-  struct cursors mouse_cursors;       
+  struct mouse_cursors cursors; 
   struct Framelist frames = {NULL, 16, 0};
 
   int start_move_x, start_move_y;
@@ -87,10 +86,13 @@ int main (int argc, char* argv[]) {
     return -1;
   }
   
-  if(XcursorSetTheme(display, "DMZ-White") == False) {
+  if(XcursorSetTheme(display, "DMZ-White") != True) { 
     printf("Error: could not find the cursor theme\n");
     XCloseDisplay(display);
     return -1;
+  }
+  else {
+    XcursorSetDefaultSize (display, 24);
   }
   
   root = DefaultRootWindow(display);
@@ -120,38 +122,28 @@ int main (int argc, char* argv[]) {
   pixmaps.arrow_pressed_p             = create_pixmap(display, arrow_pressed);
   pixmaps.arrow_deactivated_p         = create_pixmap(display, arrow_deactivated);
   
-  //some of these names are DMZ-White specific
-  cursors.normal = XcursorLibraryLoadCursor(display, "left_ptr");
-  cursors.pressable = XcursorLibraryLoadCursor(display, "hand2");
-  cursors.hand =    XcursorLibraryLoadCursor(display, "hand1");
-  cursors.grab =    XcursorLibraryLoadCursor(display, "grabbing");
+  XFlush(display);
+  
+  cursors.normal = XcursorLibraryLoadCursor(display, "left_ptr"); 
+  cursors.pressable = XcursorLibraryLoadCursor(display, "hand2"); 
+  cursors.hand =    XcursorLibraryLoadCursor(display, "hand1");  //AFAIK  hand1 is the open hand only in DMZ-white/black
+  cursors.grab =    XcursorLibraryLoadCursor(display, "fleur");  //AFAIK  fleur is the grabbed hand only in DMZ-white/black
   cursors.resize_h = XcursorLibraryLoadCursor(display, "h_double_arrow");
   cursors.resize_v = XcursorLibraryLoadCursor(display, "double_arrow");
   cursors.resize_tr_bl =  XcursorLibraryLoadCursor(display, "fd_double_arrow");
   cursors.resize_tl_br =  XcursorLibraryLoadCursor(display, "bd_double_arrow");
-  cursors.resize_t =  XcursorLibraryLoadCursor(display, "top_side");
-  cursors.resize_l =  XcursorLibraryLoadCursor(display, "left_side");
-  cursors.resize_r =  XcursorLibraryLoadCursor(display, "right_side");
-  cursors.resize_b =  XcursorLibraryLoadCursor(display, "bottom_side");
-  cursors.resize_tl = XcursorLibraryLoadCursor(display, "top_left_corner");
-  cursors.resize_tr = XcursorLibraryLoadCursor(display, "top_right_corner");
-  cursors.resize_br = XcursorLibraryLoadCursor(display, "bottom_right_corner");
-  cursors.resize_bl = XcursorLibraryLoadCursor(display, "bottom_left_corner");
-  
-  XDefineCursor(display, background_window, cursors.normal);
 
-  /* detach this cursor from our window. */
-
-  create_startup_frames(display, &frames, &pixmaps);  
+  create_startup_frames(display, &frames, &pixmaps, &cursors);  
   
   /* Create the background window and double buffer it*/
   background_window = XCreateSimpleWindow(display, root, 0, 0, XWidthOfScreen(screen), XHeightOfScreen(screen), 0, BlackPixelOfScreen(screen), BlackPixelOfScreen(screen));
   background_window_p = create_pixmap(display, background);
   XLowerWindow(display, background_window);
   XSetWindowBackgroundPixmap (display, background_window, background_window_p );
+  XDefineCursor(display, background_window, cursors.normal);  
   XMapWindow(display, background_window);
-  
-  //XSynchronize(display, True);  //Turns on synchronized debugging
+  XFlush(display);
+  XSynchronize(display, True);  //Turns on synchronized debugging
   
   while(!done) {
     //always look for windows that have been destroyed first
@@ -210,7 +202,7 @@ int main (int argc, char* argv[]) {
       case MapRequest:
         printf("Mapping window %d\n", event.xmaprequest.window);
         for(i = 0; i < frames.used; i++) if(frames.list[i].window == event.xmaprequest.window) break;
-        if(i == frames.used) create_frame(display, &frames, event.xmaprequest.window, &pixmaps);
+        if(i == frames.used) create_frame(display, &frames, event.xmaprequest.window, &pixmaps, &cursors);
         XMapWindow(display, event.xmaprequest.window);
         XFlush(display);
       break;
