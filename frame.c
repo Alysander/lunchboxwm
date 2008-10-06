@@ -95,9 +95,11 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   }
 
   XAddToSaveSet(display, framed_window); //add this window to the save set as soon as possible so that if an error occurs it is still available
+  XSync(display, False);
   XGetWindowAttributes(display, framed_window, &attributes);
   
   /*** Set up defaults ***/
+  printf("attributes width %d, height %d\n", attributes.width, attributes.height);
   if(attributes.width >= MINWIDTH) frame.w = attributes.width;
   else frame.w = 600;
 
@@ -241,8 +243,6 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XDefineCursor(display, frame.br_grip, cursors->resize_tl_br);
   XDefineCursor(display, frame.r_grip, cursors->resize_h);
 
-  //EMD DEFINES    
-  XMapWindow(display, frame.frame); 
   XMapWindow(display, frame.titlebar);
   XMapWindow(display, frame.body);
   XMapWindow(display, frame.close_button);
@@ -260,6 +260,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XMapWindow(display, frame.b_grip);
   XMapWindow(display, frame.br_grip);
   XMapWindow(display, frame.r_grip);
+  
+  XMapWindow(display, frame.frame);
   
 	XGetTransientForHint(display, framed_window, &transient);
   if(transient != 0) {
