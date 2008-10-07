@@ -11,7 +11,7 @@
 
 //#define SHARP_SYMBOLS //turns off anti-aliasing on symbols
 
-#define MINWIDTH 300 
+#define MINWIDTH 240 
 #define MINHEIGHT 60
 
 #define FLOATING 1
@@ -38,9 +38,9 @@
 #define FRAME_HSPACE (EDGE_WIDTH*2 + H_SPACING)*2
 
 #define TITLEBAR_USED_WIDTH (H_SPACING*5 + PULLDOWN_WIDTH + BUTTON_SIZE + EDGE_WIDTH*2 + BUTTON_SIZE)
+#define TITLE_MAX_HEIGHT (BUTTON_SIZE - EDGE_WIDTH*4)
 //subtract this from the width of the window to find the max title width.
 #define TITLE_MAX_WIDTH_DIFF (TITLEBAR_USED_WIDTH + EDGE_WIDTH*2 + BUTTON_SIZE)
-#define TITLE_MAX_HEIGHT (BUTTON_SIZE - EDGE_WIDTH*4)
 
 /***** Colours for cairo as rgba amounts between 0 and 1 *******/
 #define SPOT            0.235294118, 0.549019608, 0.99, 1

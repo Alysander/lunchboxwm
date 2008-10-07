@@ -101,25 +101,14 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   
   /*** Set up defaults ***/
   printf("attributes width %d, height %d\n", attributes.width, attributes.height);
-  if(attributes.width >= MINWIDTH) frame.w = attributes.width;
-  else frame.w = 600;
 
-  if(attributes.height >= MINHEIGHT) frame.h = attributes.height;
-  else frame.h = 400;
-
-  frame.x = attributes.x;
-  frame.y = attributes.y;
-  frame.min_width = MINWIDTH;
-  frame.min_height = MINHEIGHT;
-  frame.max_width = XWidthOfScreen(screen);
-  frame.max_height = XHeightOfScreen(screen);
   frame.selected = 1;
   frame.window_name = NULL;
   frame.application_name = NULL;
   frame.mode = FLOATING;
   frame.window = framed_window;      
   get_frame_hints(display, &frame);
-  
+    
   frame.frame =         XCreateSimpleWindow(display, root, frame.x, frame.y, 
                                       frame.w, frame.h, 0, black, black); 
   
@@ -179,8 +168,6 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   get_frame_name(display, &frame);
   //TODO: add resize hotspots
   
-  XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles, structureNotify for destroyNotify events
-
   resize_frame(display, &frame); //resize the title menu if it isn't at it's minimum
 
   XMoveWindow(display, frame.window, 0, 0);    
@@ -215,7 +202,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
 
   if(frame.selected != 0) XSetWindowBackgroundPixmap(display, frame.selection_indicator, pixmaps->selection_p);
   else XSetWindowBackgroundPixmap(display, frame.selection_indicator, ParentRelative);
-  
+
+  XSync(display, False);  //this prevents the Reparent unmap being reported.
   XSelectInput(display, frame.frame,   Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.backing, SubstructureRedirectMask);  
   XSelectInput(display, frame.close_button,  ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
@@ -226,6 +214,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XSelectInput(display, frame.b_grip,  ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.br_grip, ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.r_grip,  ButtonPressMask | ButtonReleaseMask);    
+  XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles, structureNotify for destroyNotify events
 
   XDefineCursor(display, frame.frame, cursors->normal);
   XDefineCursor(display, frame.titlebar, cursors->normal);
@@ -333,12 +322,27 @@ void get_frame_name(Display* display, struct Frame* frame) {
   XFlush(display);
 }
 
-/*** Update with specified values if they are available ***/
+/*** Update with specified values if they are available.  
+These values are for the framed_window and do not include the frame ***/
 void get_frame_hints(Display* display, struct Frame* frame) {
+  Screen* screen;
+  Window root;
+  
+  XWindowAttributes attributes;
   XSizeHints specified;
+  long pre_ICCCM; //pre ICCCM recovered values which are ignored.
   
-  long pre_ICCCM; //pre ICCCM recovered values.  This isn't used but still needs to be passed on.
-  
+  root = DefaultRootWindow(display);
+  screen = DefaultScreenOfDisplay(display);
+
+  XGetWindowAttributes(display, frame->window, &attributes);
+  frame->x = attributes.x;
+  frame->y = attributes.y;  
+  frame->min_width = MINWIDTH;
+  frame->min_height = MINHEIGHT;
+  frame->max_width = XWidthOfScreen(screen);
+  frame->max_height = XHeightOfScreen(screen);  
+   
   if(XGetWMNormalHints(display, frame->window, &specified, &pre_ICCCM) != 0) {
     printf("Managed to recover size hints\n");
     
@@ -352,20 +356,34 @@ void get_frame_hints(Display* display, struct Frame* frame) {
       frame->w = specified.width;
       frame->h = specified.height;
     }
-    
     if((specified.flags & PMinSize) && (specified.min_width >= MINWIDTH) && (specified.min_height >= MINHEIGHT)) {
       printf("Minimum size specified\n");
-      frame->min_width = specified.min_width + FRAME_HSPACE;
-      frame->min_height = specified.min_height + FRAME_VSPACE;
+      frame->min_width = specified.min_width;
+      frame->min_height = specified.min_height;
     }
-    
     if(specified.flags & PMaxSize) {
       printf("Maximum size specified\n");
-      frame->max_width = specified.max_width + FRAME_HSPACE;
-      frame->max_height = specified.max_height + FRAME_VSPACE;
+      frame->max_width = specified.max_width;
+      frame->max_height = specified.max_height;
     }
-  }
+    //Make sure the width is between reasonable values
+    if(attributes.width < frame->min_width) frame->w = frame->min_width;
+    else frame->w = attributes.width;
 
-  frame->w += FRAME_HSPACE;
-  frame->h += FRAME_VSPACE;
+    if(attributes.height < frame->min_height) frame->h = frame->min_height;
+    else frame->h = attributes.height;
+    
+    if(frame->w > frame->max_width) frame->w = frame->max_width;
+    if(frame->h > frame->max_height) frame->h = frame->max_height;
+
+  }
+  
+  frame->w += FRAME_HSPACE; //increase the size of the window for the frame to be drawn in
+  frame->h += FRAME_VSPACE; 
+  printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n", 
+        frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height, frame->x, frame->y);
+        
+  //put splash screens where they specify, not off-centre
+/*  if(frame->x - (H_SPACING + EDGE_WIDTH*2)  >  0) frame->x -= H_SPACING + EDGE_WIDTH*2;
+  if(frame->y - (TITLEBAR_HEIGHT + EDGE_WIDTH*2) > 0) frame->y -= TITLEBAR_HEIGHT + EDGE_WIDTH*2;  */
 }

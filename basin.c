@@ -53,9 +53,6 @@ int main (int argc, char* argv[]) {
   Window pulldown;
   Pixmap background_window_p;   
   
-  XWindowChanges premap_config; //used in configurerequest
-  XWindowAttributes attributes; //used in configurerequest 
-  
   struct frame_pixmaps pixmaps;
   struct mouse_cursors cursors; 
   struct Framelist frames = {NULL, 16, 0};
@@ -65,7 +62,6 @@ int main (int argc, char* argv[]) {
   int resize_x_direction = 0; //1 means LHS, -1 means RHS
   int resize_y_direction = 0; //1 means top, -1 means bottom
   int i; //i is the iterator for the window array
-
   
   frames.list = malloc(sizeof(struct Frame) * frames.max);
   if(frames.list == NULL) {
@@ -204,9 +200,6 @@ int main (int argc, char* argv[]) {
           if(event.xbutton.window == frames.list[i].frame  
             ||  event.xbutton.window == frames.list[i].mode_pulldown 
             ||  event.xbutton.window == frames.list[i].title_menu.hotspot){ 
-
-            if(frames.list[i].min_width == frames.list[i].max_width  && 
-               frames.list[i].min_height == frames.list[i].max_height ) break; //no resizing if min == max
             
             if(frames.list[i].mode != SINKING) 
               XSetInputFocus(display, frames.list[i].window, RevertToPointerRoot, CurrentTime);
@@ -465,32 +458,39 @@ int main (int argc, char* argv[]) {
               start_move_y = mouse_root_y;
             }
 
-            if((new_width != 0  &&  new_width < frames.list[pressed_frame].min_width) 
-             ||(new_height != 0  &&  new_height < frames.list[pressed_frame].min_height)) {
+            if((new_width != 0  &&  new_width < frames.list[pressed_frame].min_width + FRAME_HSPACE) 
+             ||(new_height != 0  &&  new_height < frames.list[pressed_frame].min_height + FRAME_VSPACE)) {
               if(new_width != 0) {
                 new_width = 0;
                 //don't move the window off the RHS if it has reached it's minimum size
                 //LHS not considered because x has already been set to 0
-                if(resize_x_direction == -1) new_x = frames.list[pressed_frame].x; 
+                if(resize_x_direction == -1) new_x = XWidthOfScreen(screen) - frames.list[pressed_frame].w;
+                //new_x = frames.list[pressed_frame].x; 
               }
               if(new_height != 0) {
                 new_height = 0;    
                 //don't move the window off the bottom if it has reached it's minimum size
                 //Top not considered because y has already been set to 0
-                if(resize_y_direction == -1) new_y = frames.list[pressed_frame].y;
+                if(resize_y_direction == -1) new_y = XHeightOfScreen(screen) - frames.list[pressed_frame].h;
+                //new_y = frames.list[pressed_frame].y;
               }
-              /*** SHOW SINKING APPEARANCE ***/
+              
+              /*** TODO: Set sinking appearance here ***/
             }
 
             //limit resizes to max width
-            if((new_width != 0  &&  new_width > frames.list[pressed_frame].max_width) 
-             ||(new_height != 0  &&  new_height > frames.list[pressed_frame].max_height)) {
+            if((new_width != 0  &&  new_width > frames.list[pressed_frame].max_width + FRAME_HSPACE) 
+             ||(new_height != 0  &&  new_height > frames.list[pressed_frame].max_height + FRAME_VSPACE)) {
               //investigate if this has similar situations as above where it moves instead of stopping
               //once limit is reached
-              if(new_width > frames.list[pressed_frame].max_width) new_width = 0;
-              if(new_height > frames.list[pressed_frame].max_height) new_height = 0;
+              if(new_width > frames.list[pressed_frame].max_width + FRAME_HSPACE) new_width = 0;
+              if(new_height > frames.list[pressed_frame].max_height + FRAME_VSPACE) new_height = 0;
             } 
-            
+
+            //do not attempt to resize windows that cannot be resized
+            if(frames.list[pressed_frame].min_width == frames.list[pressed_frame].max_width) resize_x_direction = 0;
+            if(frames.list[pressed_frame].min_height == frames.list[pressed_frame].max_height) resize_y_direction = 0;
+                        
             if(new_width != 0  ||  new_height != 0) {   //resize window if required
             
               if(new_width != 0) {
@@ -506,6 +506,7 @@ int main (int argc, char* argv[]) {
               else frames.list[pressed_frame].y = new_y; //allow movement in axis if it hasn't been resized
               
               resize_frame(display, &frames.list[pressed_frame]);
+              
             }
             else {
               //Moves the window to the specified location if there is no resizing going on.
@@ -531,7 +532,7 @@ int main (int argc, char* argv[]) {
             break;
           }
       break;
-      case ConfigureRequest: 
+      case ConfigureRequest:        
         printf("ConfigureRequest window %d, w: %d, h %d, ser %d, send %d\n", 
           event.xconfigurerequest.window,
           event.xconfigurerequest.width,
@@ -542,13 +543,13 @@ int main (int argc, char* argv[]) {
           
         for(i = 0; i < frames.used; i++) { 
           if(event.xconfigurerequest.window == frames.list[i].window) {
-            if(pressed_frame != i) { //gedit struggles against the resize unfortunately.
-	            if( event.xconfigurerequest.width + FRAME_HSPACE >= frames.list[i].min_width
-	             && event.xconfigurerequest.width + FRAME_HSPACE <= frames.list[i].max_width) 
+            if(pressed_frame != i) {
+	            if( event.xconfigurerequest.width >= frames.list[i].min_width + FRAME_HSPACE
+	             && event.xconfigurerequest.width <= frames.list[i].max_width + FRAME_HSPACE) 
 	              frames.list[i].w = event.xconfigurerequest.width + FRAME_HSPACE;
 
-	            if(  event.xconfigurerequest.height + FRAME_VSPACE >= frames.list[i].min_height
-	             && event.xconfigurerequest.height + FRAME_VSPACE <= frames.list[i].max_height)
+	            if(  event.xconfigurerequest.height >= frames.list[i].min_height + FRAME_VSPACE
+	             && event.xconfigurerequest.height  <= frames.list[i].max_height + FRAME_VSPACE)
 	              frames.list[i].h = event.xconfigurerequest.height + FRAME_VSPACE;
 	             
 	            printf("Adjusted width,height: %d %d\n", frames.list[i].w, frames.list[i].h);
@@ -558,26 +559,31 @@ int main (int argc, char* argv[]) {
 	        }
         }
         //this window hasn't been mapped yet, let it increase its size if it wants to
-        if(i == frames.used  &&  event.type == ConfigureRequest) {
+        if(i == frames.used) {
+          XWindowAttributes attributes;
+          XWindowChanges premap_config; 
+          
           XGrabServer(display);
-          XSetErrorHandler(supress_xerror);
-          
+          XSetErrorHandler(supress_xerror);        
           XGetWindowAttributes(display, event.xconfigurerequest.window, &attributes);
-
-          if(event.xcreatewindow.width > attributes.width) premap_config.width = event.xcreatewindow.width;
-          else premap_config.width = attributes.width;
-          
-          if(event.xcreatewindow.height > attributes.height) premap_config.height = event.xcreatewindow.height;
-          else premap_config.height = attributes.height;
+          /** This one has me stumped, firefox and open office seem have these bogus 200x200 config requests after the "real" ones **/
+          if(event.xcreatewindow.width != 200  && event.xcreatewindow.height != 200) {
+            premap_config.width = event.xconfigurerequest.width;
+            premap_config.height = event.xconfigurerequest.height;
+          }
+          else {
+            premap_config.width = attributes.width;
+            premap_config.height = attributes.height;
+          }
           
           premap_config.x = event.xconfigurerequest.x;
           premap_config.y = event.xconfigurerequest.y;
           premap_config.border_width = 0;
 
           XConfigureWindow(display, event.xconfigurerequest.window, CWX | CWY | CWWidth | CWHeight | CWBorderWidth, &premap_config);
-          XSync(display, False);
-          XSetErrorHandler(NULL);    
+          XSetErrorHandler(NULL);
           XUngrabServer(display);
+          XFlush(display);
         }
       break;
 
