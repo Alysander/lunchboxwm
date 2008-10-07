@@ -161,40 +161,22 @@ int main (int argc, char* argv[]) {
     else XNextEvent(display, &event);
 
     if(done) break;
-    
+    //these are from the StructureNotifyMask on the reparented window
     switch(event.type) {   
+      case UnmapNotify:
       case DestroyNotify:
         printf("Destroyed window: %d\n", event.xdestroywindow.window);
-        //sometimes a window gets away with being reparented and somehow not sending an unmap event.
-        //then when the window is destroyed an empty frame is left.  This prevents that.
+        //The OpenOffice splash screen doesn't seem to send an unmap event.
         for(i = 0; i < frames.used; i++) {
-          if(event.xdestroywindow.window == frames.list[i].window) {
+          if(event.xany.window == frames.list[i].window) {
             if(pressed_frame != -1) { 
               printf("Cancelling resize because a window was destroyed\n");
               pressed_frame = -1;
             }
             XUngrabPointer(display, CurrentTime);
-            printf("Removed frame i:%d, frame window %d\n, framed_window %d",
-             i, frames.list[i].frame, event.xdestroywindow.window);
+            printf("Removed frame i:%d, frame window %d\n, framed_window %d\n",
+             i, frames.list[i].frame, event.xany.window);
             remove_frame(display, &frames, i);
-            break;
-          }
-        }
-      break;
-      
-      case UnmapNotify:
-        printf("Unmapping window: %d\n", event.xunmap.window);
-        for(i = 0; i < frames.used; i++) {
-          //printf("Event window: %d, framed window: %d\n", event.xunmap.window, frames.list[i].window);
-          if(event.xunmap.window == frames.list[i].window) {
-            if(pressed_frame != -1) {
-              printf("Cancelling resize because a window was unmapped\n");
-              pressed_frame = -1;
-            }
-            XUngrabPointer(display, CurrentTime);
-            remove_frame(display, &frames, i);
-            printf("Removed frame i:%d, frame window %d\n, framed_window %d",
-             i, frames.list[i].frame, event.xunmap.window);
             break;
           }
         }
@@ -602,11 +584,18 @@ int main (int argc, char* argv[]) {
       case ClientMessage:
         printf("Unhandled client message...\n");
       break;
+      
       case MapNotify:
       case MappingNotify:      
       case ReparentNotify:
-      //ignore these eventss
+      //ignore these events
       break;
+      
+      //From StructureNotifyMask on the reparented window, typically self-generated
+      case ConfigureNotify: 
+      //ignore these events
+      break;
+      
       default:
         printf("Warning: Unhandled event %d\n", event.type);
       break;

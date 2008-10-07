@@ -11,7 +11,7 @@
 
 //#define SHARP_SYMBOLS //turns off anti-aliasing on symbols
 
-#define MINWIDTH 200 
+#define MINWIDTH 300 
 #define MINHEIGHT 60
 
 #define FLOATING 1
@@ -59,13 +59,11 @@
 
 #define SHADOW          0.0, 0.0, 0.0, 1
 
-
-
-
 struct Frame {
   Window window;
   char *window_name;
-  
+  char *application_name;
+
   int x,y,w,h;
   int mode; //FLOATING || TILING || SINKING
   int selected;

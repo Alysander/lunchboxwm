@@ -17,7 +17,8 @@ void remove_frame(Display* display, struct Framelist* frames, int index) {
   XFreePixmap(display, frames->list[index].title_menu.title_deactivated_p);
   
   if(frames->list[index].window_name != NULL) XFree(frames->list[index].window_name);
-   
+  if(frames->list[index].application_name != NULL) XFree(frames->list[index].application_name);
+  
   if((frames->used != 1) && (index != frames->used - 1)) { //the frame is not the first or the last
     frames->list[index] = frames->list[frames->used - 1]; //swap the deleted frame with the last frame
   }
@@ -114,9 +115,9 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.max_height = XHeightOfScreen(screen);
   frame.selected = 1;
   frame.window_name = NULL;
+  frame.application_name = NULL;
   frame.mode = FLOATING;
-  frame.window = framed_window;    
-    
+  frame.window = framed_window;      
   get_frame_hints(display, &frame);
   
   frame.frame =         XCreateSimpleWindow(display, root, frame.x, frame.y, 
@@ -178,7 +179,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   get_frame_name(display, &frame);
   //TODO: add resize hotspots
   
-  XSelectInput(display, frame.window, PropertyChangeMask);  //Property notify is used to update titles  
+  XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles, structureNotify for destroyNotify events
 
   resize_frame(display, &frame); //resize the title menu if it isn't at it's minimum
 
