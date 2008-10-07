@@ -93,7 +93,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
     else return -1;
     frames->max *= 2;
   }
-
+  printf("Creating new frame at %d with window %d\n", frames->used, framed_window);
   XAddToSaveSet(display, framed_window); //add this window to the save set as soon as possible so that if an error occurs it is still available
   XSync(display, False);
   XGetWindowAttributes(display, framed_window, &attributes);
@@ -178,17 +178,16 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   get_frame_name(display, &frame);
   //TODO: add resize hotspots
   
-  XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles  
+  XSelectInput(display, frame.window, PropertyChangeMask);  //Property notify is used to update titles  
 
   resize_frame(display, &frame); //resize the title menu if it isn't at it's minimum
-    
+
+  XMoveWindow(display, frame.window, 0, 0);    
   XReparentWindow(display, frame.window, frame.backing, 0, 0);
   XFlush(display);
-  frame.skip_reparent_unmap = 1;
       
   XSetWindowBorderWidth(display, frame.window, 0);  
   XResizeWindow(display, frame.window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
-  frame.skip_resize_configure = 1;
   
   XSetWindowBackgroundPixmap(display, frame.frame, pixmaps->border_p );
   XSetWindowBackgroundPixmap(display, frame.title_menu.frame, pixmaps->border_p );
@@ -217,6 +216,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   else XSetWindowBackgroundPixmap(display, frame.selection_indicator, ParentRelative);
   
   XSelectInput(display, frame.frame,   Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
+  XSelectInput(display, frame.backing, SubstructureRedirectMask);  
   XSelectInput(display, frame.close_button,  ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
   XSelectInput(display, frame.mode_pulldown, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
   XSelectInput(display, frame.title_menu.hotspot, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
@@ -296,20 +296,22 @@ void resize_frame(Display* display, struct Frame* frame) {
     XResizeWindow(display, frame->title_menu.title, frame->w - TITLE_MAX_WIDTH_DIFF, TITLE_MAX_HEIGHT);
     XMoveWindow(display, frame->title_menu.arrow, frame->w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH);
   }
+  
   XResizeWindow(display, frame->body, frame->w - EDGE_WIDTH*2, frame->h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1));
   XResizeWindow(display, frame->innerframe, 
                          frame->w - (EDGE_WIDTH + H_SPACING)*2,
                          frame->h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1 + H_SPACING));
   XResizeWindow(display, frame->backing, frame->w - FRAME_HSPACE, frame->h - FRAME_VSPACE);
   XResizeWindow(display, frame->window, frame->w - FRAME_HSPACE, frame->h - FRAME_VSPACE);
-  frame->skip_resize_configure++;
 
   XResizeWindow(display, frame->l_grip, CORNER_GRIP_SIZE, frame->h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1);
   XMoveResizeWindow(display, frame->bl_grip, 0, frame->h - CORNER_GRIP_SIZE, CORNER_GRIP_SIZE, CORNER_GRIP_SIZE);
   XMoveResizeWindow(display, frame->b_grip, CORNER_GRIP_SIZE, frame->h - CORNER_GRIP_SIZE, frame->w - CORNER_GRIP_SIZE*2, CORNER_GRIP_SIZE);
   XMoveResizeWindow(display, frame->br_grip, frame->w - CORNER_GRIP_SIZE, frame->h - CORNER_GRIP_SIZE, CORNER_GRIP_SIZE, CORNER_GRIP_SIZE);
   XMoveResizeWindow(display, frame->r_grip, frame->w - CORNER_GRIP_SIZE, TITLEBAR_HEIGHT + EDGE_WIDTH*2 + 1, CORNER_GRIP_SIZE, frame->h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1);
-  XFlush(display);
+  XMoveWindow(display, frame->window, 0,0);
+  XSync(display, False);
+//  XFlush(display);
 }
 
 /*** Update with the specified name if it is available ***/

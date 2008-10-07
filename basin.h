@@ -46,12 +46,20 @@
 #define SPOT            0.235294118, 0.549019608, 0.99, 1
 #define SPOT_EDGE       0.235294118, 0.549019608, 0.99, 0.35
 #define BACKGROUND      0.4, 0.4, 0.4, 1
-#define BORDER          0.13, 0.13, 0.13, 1
-#define LIGHT_EDGE      0.34, 0.34, 0.34, 1
-#define BODY            0.27, 0.27, 0.27, 1
-#define SHADOW          0.0, 0.0, 0.0, 1
 #define TEXT            1.00, 1.00, 1.00, 1
 #define TEXT_DEACTIVATED   0.6, 0.6, 0.6, 1
+//#define BORDER          0.13, 0.13, 0.13, 1
+//#define LIGHT_EDGE      0.34, 0.34, 0.34, 1
+//#define BODY            0.27, 0.27, 0.27, 1
+
+/*** Green ***/
+#define BORDER          0.01, 0.35, 0.0, 1
+#define LIGHT_EDGE      0.01, 0.78, 0.0, 1
+#define BODY            0.01, 0.6, 0.0, 1
+
+#define SHADOW          0.0, 0.0, 0.0, 1
+
+
 
 
 struct Frame {
@@ -63,8 +71,6 @@ struct Frame {
   int selected;
   int min_width, max_width;
   int min_height, max_height;
-  int skip_reparent_unmap;
-  int skip_resize_configure;
   
   Window frame, body, innerframe, titlebar, close_button, mode_pulldown, selection_indicator; 
   Window backing;   //backing is the same dimensions as the framed window.  It is used so that the resize grips can cover the innerframe but still be below the framed window.
