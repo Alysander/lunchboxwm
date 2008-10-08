@@ -300,8 +300,8 @@ void resize_frame(Display* display, struct Frame* frame) {
   XMoveResizeWindow(display, frame->br_grip, frame->w - CORNER_GRIP_SIZE, frame->h - CORNER_GRIP_SIZE, CORNER_GRIP_SIZE, CORNER_GRIP_SIZE);
   XMoveResizeWindow(display, frame->r_grip, frame->w - CORNER_GRIP_SIZE, TITLEBAR_HEIGHT + EDGE_WIDTH*2 + 1, CORNER_GRIP_SIZE, frame->h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1);
   XMoveWindow(display, frame->window, 0,0);
-  XSync(display, False);
-//  XFlush(display);
+  //had an XSynch here in a vain attempt to stop getting bogus configure requests
+  XFlush(display);
 }
 
 /*** Update with the specified name if it is available ***/

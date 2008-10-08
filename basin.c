@@ -259,34 +259,39 @@ int main (int argc, char* argv[]) {
           else if (event.xbutton.window == frames.list[i].l_grip
                   ||  event.xbutton.window == frames.list[i].r_grip
                   ||  event.xbutton.window == frames.list[i].bl_grip
-                  ||  event.xbutton.window == frames.list[i].br_grip) {
+                  ||  event.xbutton.window == frames.list[i].br_grip
+                  ||  event.xbutton.window == frames.list[i].b_grip) {
             start_move_x = event.xbutton.x;
             start_move_y = event.xbutton.y;
             pressed_frame = i;
             resize_x_direction = 0;
             resize_y_direction = 0;
             XGrabPointer(display,  root, True, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, None, CurrentTime);
-            if(frames.list[i].mode == FLOATING) { //plain resize
-              XRaiseWindow(display, frames.list[i].frame);
-              if(event.xbutton.window == frames.list[i].l_grip) {
-                printf("pressed l_grip on window %d\n", frames.list[i].frame);
-                pressed_widget = frames.list[i].l_grip;
-              }
-              else if(event.xbutton.window == frames.list[i].r_grip) {
-                printf("pressed r_grip on window %d\n", frames.list[i].frame);
-                pressed_widget = frames.list[i].r_grip;
-              }
-              else if(event.xbutton.window == frames.list[i].bl_grip) {
-                printf("pressed bl_grip on window %d\n", frames.list[i].frame);
-                pressed_widget = frames.list[i].bl_grip;
-              }
-              else if(event.xbutton.window == frames.list[i].br_grip) {
-                printf("pressed bl_grip on window %d\n", frames.list[i].frame);
-                pressed_widget = frames.list[i].br_grip;
-              }
+            XRaiseWindow(display, frames.list[i].frame);
+            if(event.xbutton.window == frames.list[i].l_grip) {
+              printf("pressed l_grip on window %d\n", frames.list[i].frame);
+              pressed_widget = frames.list[i].l_grip;
+              start_move_y += TITLEBAR_HEIGHT + 1 + EDGE_WIDTH*2;
             }
-            XFlush(display);
+            else if(event.xbutton.window == frames.list[i].r_grip) {
+              printf("pressed r_grip on window %d\n", frames.list[i].frame);
+              pressed_widget = frames.list[i].r_grip;
+            }
+            else if(event.xbutton.window == frames.list[i].bl_grip) {
+              printf("pressed bl_grip on window %d\n", frames.list[i].frame);
+              pressed_widget = frames.list[i].bl_grip;
+              start_move_y += frames.list[i].h - CORNER_GRIP_SIZE;
+            }
+            else if(event.xbutton.window == frames.list[i].br_grip) {
+              printf("pressed bl_grip on window %d\n", frames.list[i].frame);
+              pressed_widget = frames.list[i].br_grip;
+            }
+            else if(event.xbutton.window == frames.list[i].b_grip) {
+              printf("pressed bl_grip on window %d\n", frames.list[i].frame);
+              pressed_widget = frames.list[i].b_grip;
+            }          
           }
+          XFlush(display);
         }
       break;
       
@@ -431,10 +436,11 @@ int main (int argc, char* argv[]) {
           }
           XQueryPointer(display, root, &mouse_root, &mouse_child, &mouse_root_x, &mouse_root_y, &mouse_child_x, &mouse_child_y, &mask);    
           
+          new_x = mouse_root_x - start_move_x;
+          new_y = mouse_root_y - start_move_y;
+          
           /*** Move/Squish ***/
           if(pressed_widget == root) { //no widget is active
-            new_x = mouse_root_x - start_move_x;
-            new_y = mouse_root_y - start_move_y;
             if((new_x + frames.list[pressed_frame].w > XWidthOfScreen(screen)) //window moving off RHS
              ||(resize_x_direction == -1)) {  
               resize_x_direction = -1;
@@ -470,17 +476,15 @@ int main (int argc, char* argv[]) {
                 //don't move the window off the RHS if it has reached it's minimum size
                 //LHS not considered because x has already been set to 0
                 if(resize_x_direction == -1) new_x = XWidthOfScreen(screen) - frames.list[pressed_frame].w;
-                //new_x = frames.list[pressed_frame].x; 
+                /*** TODO: Set sinking appearance here ***/
               }
               if(new_height != 0) {
                 new_height = 0;    
                 //don't move the window off the bottom if it has reached it's minimum size
                 //Top not considered because y has already been set to 0
                 if(resize_y_direction == -1) new_y = XHeightOfScreen(screen) - frames.list[pressed_frame].h;
-                //new_y = frames.list[pressed_frame].y;
               }
               
-              /*** TODO: Set sinking appearance here ***/
             }
 
             //limit resizes to max width
@@ -520,12 +524,44 @@ int main (int argc, char* argv[]) {
               XMoveWindow(display, frames.list[pressed_frame].frame, frames.list[pressed_frame].x, frames.list[pressed_frame].y);
             }
           }
-          /* Resize grips come into effect here */
+          /*** Resize grips come into effect here ***/
           else {
+           //if mode == FLOATING
+            if(pressed_widget == frames.list[pressed_frame].l_grip) {
+              new_width = frames.list[pressed_frame].w + (frames.list[pressed_frame].x - new_x);
+            }
+            else if(pressed_widget == frames.list[pressed_frame].r_grip) {
+              new_width = mouse_root_x - frames.list[pressed_frame].x;
+              new_x = frames.list[pressed_frame].x;
+            }
+            else if(pressed_widget == frames.list[pressed_frame].bl_grip) {
+              new_width = frames.list[pressed_frame].w + (frames.list[pressed_frame].x - new_x);
+              new_height = mouse_root_y - frames.list[pressed_frame].y;
+            }
+            else if(pressed_widget == frames.list[pressed_frame].br_grip) {
+              new_width = mouse_root_x - frames.list[pressed_frame].x;
+              new_height = mouse_root_y - frames.list[pressed_frame].y;
+              new_x = frames.list[pressed_frame].x;
+            }
+            else if(pressed_widget == frames.list[pressed_frame].b_grip) {
+              new_height = mouse_root_y - frames.list[pressed_frame].y;
+              new_x = frames.list[pressed_frame].x;
+            }
             
+            if(new_height >= frames.list[pressed_frame].min_height + FRAME_VSPACE
+               && new_height <= frames.list[pressed_frame].max_height + FRAME_VSPACE) {
+              frames.list[pressed_frame].h = new_height; 
+            }
+              
+            if(new_width >= frames.list[pressed_frame].min_width + FRAME_HSPACE
+               && new_width <= frames.list[pressed_frame].max_width) {
+              frames.list[pressed_frame].x = new_x;  //for l_grip and bl_grip
+              frames.list[pressed_frame].w = new_width;
+            }
+            resize_frame(display, &frames.list[pressed_frame]);
           }
+          XFlush(display);
         }
-
       break; 
 
       case PropertyNotify:
