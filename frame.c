@@ -17,7 +17,7 @@ void remove_frame(Display* display, struct Framelist* frames, int index) {
   XFreePixmap(display, frames->list[index].title_menu.title_deactivated_p);
   
   if(frames->list[index].window_name != NULL) XFree(frames->list[index].window_name);
-  if(frames->list[index].application_name != NULL) XFree(frames->list[index].application_name);
+  if(frames->list[index].program_name != NULL) XFree(frames->list[index].program_name);
   
   if((frames->used != 1) && (index != frames->used - 1)) { //the frame is not the first or the last
     frames->list[index] = frames->list[frames->used - 1]; //swap the deleted frame with the last frame
@@ -104,7 +104,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
 
   frame.selected = 1;
   frame.window_name = NULL;
-  frame.application_name = NULL;
+  frame.program_name = NULL;
   frame.mode = FLOATING;
   frame.window = framed_window;      
   get_frame_hints(display, &frame);
@@ -306,7 +306,15 @@ void resize_frame(Display* display, struct Frame* frame) {
 
 /*** Update with the specified name if it is available ***/
 void get_frame_name(Display* display, struct Frame* frame) {
+  XClassHint program_hint;
+  
   XFetchName(display, frame->window, &frame->window_name);
+  if(XGetClassHint(display, frame->window, &program_hint)) {
+    printf("res_name %s, res_class %s\n", program_hint.res_name, program_hint.res_class);
+    if(program_hint.res_name != NULL) XFree(program_hint.res_name);
+    frame->program_name = program_hint.res_class;
+  } 
+  
   XUnmapWindow(display, frame->title_menu.title);
   XFlush(display);
 

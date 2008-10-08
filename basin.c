@@ -158,11 +158,12 @@ int main (int argc, char* argv[]) {
 
     if(done) break;
     //these are from the StructureNotifyMask on the reparented window
-    switch(event.type) {   
+    switch(event.type) { 
+      case DestroyNotify:  
+        printf("Destroyed window, ");
       case UnmapNotify:
-      case DestroyNotify:
-        printf("Destroyed window: %d\n", event.xdestroywindow.window);
-        //The OpenOffice splash screen doesn't seem to send an unmap event.
+        printf("Unmapping: %d\n", event.xdestroywindow.window);
+        //The OpenOffice splash screen doesn't send an unmap event.
         for(i = 0; i < frames.used; i++) {
           if(event.xany.window == frames.list[i].window) {
             if(pressed_frame != -1) { 
@@ -259,9 +260,12 @@ int main (int argc, char* argv[]) {
                   ||  event.xbutton.window == frames.list[i].r_grip
                   ||  event.xbutton.window == frames.list[i].bl_grip
                   ||  event.xbutton.window == frames.list[i].br_grip) {
+            start_move_x = event.xbutton.x;
+            start_move_y = event.xbutton.y;
             pressed_frame = i;
+            resize_x_direction = 0;
+            resize_y_direction = 0;
             XGrabPointer(display,  root, True, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, None, CurrentTime);
-            XFlush(display);
             if(frames.list[i].mode == FLOATING) { //plain resize
               XRaiseWindow(display, frames.list[i].frame);
               if(event.xbutton.window == frames.list[i].l_grip) {
@@ -281,6 +285,7 @@ int main (int argc, char* argv[]) {
                 pressed_widget = frames.list[i].br_grip;
               }
             }
+            XFlush(display);
           }
         }
       break;
@@ -425,11 +430,11 @@ int main (int argc, char* argv[]) {
             }
           }
           XQueryPointer(display, root, &mouse_root, &mouse_child, &mouse_root_x, &mouse_root_y, &mouse_child_x, &mouse_child_y, &mask);    
-          new_x = mouse_root_x - start_move_x;
-          new_y = mouse_root_y - start_move_y;
           
           /*** Move/Squish ***/
-          if(pressed_widget == root) { //no button has been pressed or has been cancelled
+          if(pressed_widget == root) { //no widget is active
+            new_x = mouse_root_x - start_move_x;
+            new_y = mouse_root_y - start_move_y;
             if((new_x + frames.list[pressed_frame].w > XWidthOfScreen(screen)) //window moving off RHS
              ||(resize_x_direction == -1)) {  
               resize_x_direction = -1;
@@ -514,6 +519,10 @@ int main (int argc, char* argv[]) {
               frames.list[pressed_frame].y = new_y;
               XMoveWindow(display, frames.list[pressed_frame].frame, frames.list[pressed_frame].x, frames.list[pressed_frame].y);
             }
+          }
+          /* Resize grips come into effect here */
+          else {
+            
           }
         }
 
