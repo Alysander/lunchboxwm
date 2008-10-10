@@ -49,15 +49,17 @@
 #define TEXT            1.00, 1.00, 1.00, 1
 #define TEXT_DEACTIVATED   0.6, 0.6, 0.6, 1
 #define SHADOW          0.0, 0.0, 0.0, 1
-//#define BORDER          0.13, 0.13, 0.13, 1
-//#define LIGHT_EDGE      0.34, 0.34, 0.34, 1
-//#define BODY            0.27, 0.27, 0.27, 1
+
+#define BORDER          0.13, 0.13, 0.13, 1
+#define LIGHT_EDGE      0.34, 0.34, 0.34, 1
+#define BODY            0.27, 0.27, 0.27, 1
 
 /*** Green ***/
+/*
 #define BORDER          0.01, 0.35, 0.0, 1
 #define LIGHT_EDGE      0.01, 0.78, 0.0, 1
 #define BODY            0.01, 0.6, 0.0, 1
-
+*/
 struct Frame {
   Window window;
   char *window_name;
@@ -81,6 +83,7 @@ struct Frame {
            hotspot; //hotspot is an input_only window to make the events easier to handle (rather than lots of logical ORs)
 
     Pixmap title_normal_p, title_pressed_p, title_deactivated_p; //this draws the background "bevel" and the text.
+    Pixmap title_menuitem_normal_p, title_menuitem_hover_p;
     int width; //this is the width of the title
   } title_menu;
   
@@ -137,5 +140,7 @@ enum main_pixmap {
 enum title_pixmap {
   title_normal, 
   title_pressed,
-  title_deactivated
+  title_deactivated,
+  title_menuitem_normal,
+  title_menuitem_hover
 };

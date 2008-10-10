@@ -5,13 +5,13 @@ void remove_frame(Display* display, struct Framelist* frames, int index) {
   
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);
-  XReparentWindow(display, frames->list[index].window, DefaultRootWindow(display), 0, 0);
+  XReparentWindow(display, frames->list[index].window, DefaultRootWindow(display), frames->list[index].x, frames->list[index].y);
   XRemoveFromSaveSet (display, frames->list[index].window); //this will not destroy the window because it has been reparented to root
   XDestroyWindow(display, frames->list[index].frame);
   XSync(display, False);
   XSetErrorHandler(NULL);    
   XUngrabServer(display);
-  
+
   XFreePixmap(display, frames->list[index].title_menu.title_normal_p);
   XFreePixmap(display, frames->list[index].title_menu.title_pressed_p);
   XFreePixmap(display, frames->list[index].title_menu.title_deactivated_p);
@@ -164,9 +164,9 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   
   frame.backing = XCreateSimpleWindow(display, frame.frame, EDGE_WIDTH*2 + H_SPACING, TITLEBAR_HEIGHT + 1 + EDGE_WIDTH, //same y as body, with a constant width as the sides (so H_SPACING)
                                        frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE, 0, black, black); 
-  
+
   get_frame_name(display, &frame);
-  //TODO: add resize hotspots
+  get_frame_program_name(display, &frame);
   
   resize_frame(display, &frame); //resize the title menu if it isn't at it's minimum
 
@@ -214,8 +214,9 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XSelectInput(display, frame.b_grip,  ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.br_grip, ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.r_grip,  ButtonPressMask | ButtonReleaseMask);    
-  XSelectInput(display, frame.window, StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles, structureNotify for destroyNotify events
-
+  XSelectInput(display, frame.window,  StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles, structureNotify for destroyNotify events
+  XSelectInput(display, frame.backing, ButtonPressMask | EnterWindowMask | LeaveWindowMask);
+  
   XDefineCursor(display, frame.frame, cursors->normal);
   XDefineCursor(display, frame.titlebar, cursors->normal);
   XDefineCursor(display, frame.body, cursors->normal);
@@ -243,7 +244,6 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XMapWindow(display, frame.title_menu.arrow);
   XMapWindow(display, frame.title_menu.hotspot);
   XMapWindow(display, frame.innerframe);
-  XMapWindow(display, frame.backing );
   XMapWindow(display, frame.window);
   XMapWindow(display, frame.l_grip);
   XMapWindow(display, frame.bl_grip); 
@@ -251,8 +251,12 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XMapWindow(display, frame.br_grip);
   XMapWindow(display, frame.r_grip);
   
+  XMapWindow(display, frame.backing );  
   XMapWindow(display, frame.frame);
-  
+
+  //this is for the click anywhere in the frame to give focus policy
+  XGrabButton(display, Button1, 0, frame.backing, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
+     
 	XGetTransientForHint(display, framed_window, &transient);
   if(transient != 0) {
     printf("Transient window detected\n");
@@ -301,19 +305,24 @@ void resize_frame(Display* display, struct Frame* frame) {
   XMoveResizeWindow(display, frame->r_grip, frame->w - CORNER_GRIP_SIZE, TITLEBAR_HEIGHT + EDGE_WIDTH*2 + 1, CORNER_GRIP_SIZE, frame->h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1);
   XMoveWindow(display, frame->window, 0,0);
   //had an XSynch here in a vain attempt to stop getting bogus configure requests
+  XSync(display, False);
+//  XFlush(display);
+}
+
+void get_frame_program_name(Display* display, struct Frame* frame) {
+  XClassHint program_hint;
+  if(XGetClassHint(display, frame->window, &program_hint)) {
+    printf("res_name %s, res_class %s\n", program_hint.res_name, program_hint.res_class);
+    if(program_hint.res_name != NULL) XFree(program_hint.res_name);
+    frame->program_name = program_hint.res_class;
+  }
   XFlush(display);
 }
 
 /*** Update with the specified name if it is available ***/
 void get_frame_name(Display* display, struct Frame* frame) {
-  XClassHint program_hint;
   
   XFetchName(display, frame->window, &frame->window_name);
-  if(XGetClassHint(display, frame->window, &program_hint)) {
-    printf("res_name %s, res_class %s\n", program_hint.res_name, program_hint.res_class);
-    if(program_hint.res_name != NULL) XFree(program_hint.res_name);
-    frame->program_name = program_hint.res_class;
-  } 
   
   XUnmapWindow(display, frame->title_menu.title);
   XFlush(display);
@@ -321,7 +330,9 @@ void get_frame_name(Display* display, struct Frame* frame) {
   frame->title_menu.title_normal_p = create_title_pixmap(display, frame->window_name, title_normal);
   frame->title_menu.title_pressed_p = create_title_pixmap(display, frame->window_name, title_pressed);
   frame->title_menu.title_deactivated_p = create_title_pixmap(display, frame->window_name, title_deactivated);
-      
+  frame->title_menu.title_menuitem_normal_p = create_title_pixmap(display, frame->window_name, title_menuitem_normal);
+  frame->title_menu.title_menuitem_hover_p = create_title_pixmap(display, frame->window_name, title_menuitem_hover);
+
   if(frame->mode == SINKING) XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_deactivated_p);  
   else XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_normal_p);  
 
@@ -392,6 +403,6 @@ void get_frame_hints(Display* display, struct Frame* frame) {
         frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height, frame->x, frame->y);
         
   //put splash screens where they specify, not off-centre
-/*  if(frame->x - (H_SPACING + EDGE_WIDTH*2)  >  0) frame->x -= H_SPACING + EDGE_WIDTH*2;
-  if(frame->y - (TITLEBAR_HEIGHT + EDGE_WIDTH*2) > 0) frame->y -= TITLEBAR_HEIGHT + EDGE_WIDTH*2;  */
+  if(frame->x - (H_SPACING + EDGE_WIDTH*2)  >  0) frame->x -= H_SPACING + EDGE_WIDTH*2;
+  if(frame->y - (TITLEBAR_HEIGHT + EDGE_WIDTH*2) > 0) frame->y -= TITLEBAR_HEIGHT + EDGE_WIDTH*2; 
 }

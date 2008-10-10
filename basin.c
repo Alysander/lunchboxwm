@@ -9,15 +9,16 @@ int supress_xerror (Display *display, XErrorEvent *event);
 
 /*** draw.c ***/
 extern Pixmap create_pixmap(Display* display, enum main_pixmap type);
-extern Pixmap create_title_pixmap(Display* display, const char* title, enum title_pixmap type); //separate function for the title as it needs the string to draw, returns width with the pointer
+//separate function for the title as it needs the string to draw
+ extern Pixmap create_title_pixmap(Display* display, const char* title, enum title_pixmap type); 
 
 /*** frame.c ***/
-
 extern void find_adjacent        (struct Framelist* frames, int frame_index);
 extern int create_frame          (Display* display, struct Framelist* frames, Window framed_window, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors); 
 extern void create_startup_frames(Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
 extern void remove_frame         (Display* display, struct Framelist* frames, int index);
 extern void remove_window        (Display* display, Window framed_window);
+extern void get_frame_program_name(Display* display, struct Frame* frame);
 extern void get_frame_name       (Display* display, struct Frame* frame);
 extern void get_frame_hints      (Display* display, struct Frame* frame);
 extern void resize_frame         (Display* display, struct Frame* frame);
@@ -57,6 +58,8 @@ int main (int argc, char* argv[]) {
   struct mouse_cursors cursors; 
   struct Framelist frames = {NULL, 16, 0};
 
+  int do_click_to_focus = 0;
+  int grab_move = 0;
   int start_move_x, start_move_y;
   int pressed_frame = -1; //identifies the window being moved/resized
   int resize_x_direction = 0; //1 means LHS, -1 means RHS
@@ -104,7 +107,10 @@ int main (int argc, char* argv[]) {
   screen = DefaultScreenOfDisplay(display);
   screen_number = DefaultScreen (display);
   
-  XSelectInput(display, root, SubstructureRedirectMask | ButtonMotionMask | ButtonPressMask | ButtonReleaseMask);
+  XSelectInput(display, root, SubstructureRedirectMask |
+   ButtonMotionMask | ButtonPressMask | ButtonReleaseMask |
+    EnterWindowMask | LeaveWindowMask); 
+  //Enter and leave are used to activate/unactivate move window
   //ResizeRedirectMask is overidden by substructureredirectmask which turns resize requests to configurenotify
 
   pixmaps.border_p                    = create_pixmap(display, border);  
@@ -147,6 +153,9 @@ int main (int argc, char* argv[]) {
   XSetWindowBackgroundPixmap (display, background_window, background_window_p );
   XDefineCursor(display, background_window, cursors.normal);  
   XMapWindow(display, background_window);
+
+  XGrabButton(display, Button1, Mod1Mask, root, False, ButtonPressMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, cursors.grab);
+
   XFlush(display);
   
   while(!done) {
@@ -189,26 +198,42 @@ int main (int argc, char* argv[]) {
       
       case ButtonPress:
         printf("ButtonPress %d, subwindow %d\n", event.xbutton.window, event.xbutton.subwindow);
-        //TODO: Change the cursor
         pressed_widget = root;
+        
         if(pulldown != root) {
           XDestroyWindow(display, pulldown);
           pulldown = root;
         }
-        
+
+        if(do_click_to_focus)  {
+          for(i = 0; i < frames.used; i++) {
+            if(frames.list[i].backing == event.xbutton.window) {
+              pressed_frame = i;
+              break;
+            }
+          }
+        }
+
+        if(grab_move) {
+          for(i = 0; i < frames.used; i++) {
+            if(frames.list[i].frame == event.xbutton.subwindow) {
+              pressed_frame = i;
+              break;
+            }
+          }
+          start_move_x = event.xbutton.x - frames.list[pressed_frame].x;
+          start_move_y = event.xbutton.y - frames.list[pressed_frame].y;      
+          resize_x_direction = 0;
+          resize_y_direction = 0;
+          break;
+        }
+                
         for(i = 0; i < frames.used; i++) {
           
           if(event.xbutton.window == frames.list[i].frame  
             ||  event.xbutton.window == frames.list[i].mode_pulldown 
             ||  event.xbutton.window == frames.list[i].title_menu.hotspot){ 
-            
-            if(frames.list[i].mode != SINKING) 
-              XSetInputFocus(display, frames.list[i].window, RevertToPointerRoot, CurrentTime);
-              //If a sinking window is clicked on and is raised then it can get focus
-              //Probably the focus history should be in a stack
-              
-            if(frames.list[i].mode == FLOATING) XRaiseWindow(display, frames.list[i].frame);
-            
+            do_click_to_focus = 1; //this will raise the window, see code below
             start_move_x = event.xbutton.x;
             start_move_y = event.xbutton.y;
             pressed_frame = i;
@@ -248,6 +273,7 @@ int main (int argc, char* argv[]) {
           /* These windows are already selected for leavenotify and enternotify events.  The grab generates a leave event, the map generates an enternotify event*/
           /* So we don't explicitly have to redraw :) */
           else if(event.xbutton.window == frames.list[i].close_button) {
+            do_click_to_focus = 1;
             printf("pressed closebutton %d on window %d\n", frames.list[i].close_button, frames.list[i].frame);
             pressed_widget = frames.list[i].close_button;
             XGrabPointer(display,  root, True, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, None, CurrentTime);
@@ -261,42 +287,78 @@ int main (int argc, char* argv[]) {
                   ||  event.xbutton.window == frames.list[i].bl_grip
                   ||  event.xbutton.window == frames.list[i].br_grip
                   ||  event.xbutton.window == frames.list[i].b_grip) {
+            do_click_to_focus = 1;      
             start_move_x = event.xbutton.x;
             start_move_y = event.xbutton.y;
             pressed_frame = i;
             resize_x_direction = 0;
             resize_y_direction = 0;
-            XGrabPointer(display,  root, True, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, None, CurrentTime);
-            XRaiseWindow(display, frames.list[i].frame);
+
             if(event.xbutton.window == frames.list[i].l_grip) {
               printf("pressed l_grip on window %d\n", frames.list[i].frame);
               pressed_widget = frames.list[i].l_grip;
               start_move_y += TITLEBAR_HEIGHT + 1 + EDGE_WIDTH*2;
+              XGrabPointer(display, frames.list[i].l_grip, False, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, cursors.resize_h, CurrentTime);
             }
             else if(event.xbutton.window == frames.list[i].r_grip) {
               printf("pressed r_grip on window %d\n", frames.list[i].frame);
               pressed_widget = frames.list[i].r_grip;
+              XGrabPointer(display, frames.list[i].l_grip, False, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, cursors.resize_h, CurrentTime);
             }
             else if(event.xbutton.window == frames.list[i].bl_grip) {
               printf("pressed bl_grip on window %d\n", frames.list[i].frame);
               pressed_widget = frames.list[i].bl_grip;
               start_move_y += frames.list[i].h - CORNER_GRIP_SIZE;
+              XGrabPointer(display, frames.list[i].l_grip, False, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, cursors.resize_tr_bl, CurrentTime);
             }
             else if(event.xbutton.window == frames.list[i].br_grip) {
               printf("pressed bl_grip on window %d\n", frames.list[i].frame);
               pressed_widget = frames.list[i].br_grip;
+              XGrabPointer(display, frames.list[i].l_grip, False, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, cursors.resize_tl_br, CurrentTime);
             }
             else if(event.xbutton.window == frames.list[i].b_grip) {
               printf("pressed bl_grip on window %d\n", frames.list[i].frame);
               pressed_widget = frames.list[i].b_grip;
+              XGrabPointer(display, frames.list[i].l_grip, False, PointerMotionMask|ButtonReleaseMask, GrabModeAsync,  GrabModeAsync, None, cursors.resize_v, CurrentTime);
             }          
           }
           XFlush(display);
         }
+        
+        /** Focus and raising policy **/
+        //Probably the focus history should be in a stack
+        if(do_click_to_focus) {
+          printf("focussing frame %d\n", pressed_frame);
+					
+          if(frames.list[pressed_frame].mode == FLOATING) 
+            XRaiseWindow(display, frames.list[pressed_frame].frame);
+
+          XSetInputFocus(display, frames.list[pressed_frame].window, RevertToPointerRoot, CurrentTime);
+
+          XAllowEvents(display, ReplayPointer, event.xbutton.time);
+          break;
+        }
       break;
       
-      case EnterNotify:     
+      case EnterNotify:
+        if(event.xcrossing.mode == NotifyGrab) {
+          if(event.xcrossing.state & Mod1Mask) {
+            printf("set grab_move\n");
+            grab_move = 1;
+          }
+          else {
+            printf("set do_click_to_focus through enternotify\n");
+            do_click_to_focus = 1;
+          }
+          break;
+        }
+
       case LeaveNotify:
+        if(event.type == LeaveNotify  &&  event.xcrossing.mode == NotifyUngrab) {
+          grab_move = 0;
+          pressed_frame = -1;
+        }
+          
         if((pressed_widget != root)  && (event.xcrossing.window == pressed_widget))  {
           //need to loop again to determine the type
           printf("Enter or exit.  Window %d, Subwindow %d\n", event.xcrossing.window, event.xcrossing.subwindow);
@@ -355,7 +417,6 @@ int main (int argc, char* argv[]) {
         printf("release %d, subwindow %d, root %d\n", event.xbutton.window, event.xbutton.subwindow, event.xbutton.root);
         
         if(pressed_frame != -1) pressed_frame = -1;
-        
         if((pressed_widget != root) && (pressed_widget == event.xbutton.window)) {
           for(i = 0; i < frames.used; i++) {
             if(pressed_widget == frames.list[i].close_button) {
@@ -398,7 +459,8 @@ int main (int argc, char* argv[]) {
         XUngrabPointer(display, CurrentTime);
       break;
       
-      case MotionNotify:        
+      case MotionNotify:
+
         if(pressed_frame != -1) { 
           //skip on to the latest move event
           while(XCheckTypedEvent(display, MotionNotify, &event));
@@ -440,7 +502,8 @@ int main (int argc, char* argv[]) {
           new_y = mouse_root_y - start_move_y;
           
           /*** Move/Squish ***/
-          if(pressed_widget == root) { //no widget is active
+          if(pressed_widget == root) { //no widget is active, only the frame or grips
+            
             if((new_x + frames.list[pressed_frame].w > XWidthOfScreen(screen)) //window moving off RHS
              ||(resize_x_direction == -1)) {  
               resize_x_direction = -1;
@@ -531,7 +594,7 @@ int main (int argc, char* argv[]) {
               new_width = frames.list[pressed_frame].w + (frames.list[pressed_frame].x - new_x);
             }
             else if(pressed_widget == frames.list[pressed_frame].r_grip) {
-              new_width = mouse_root_x - frames.list[pressed_frame].x;
+              new_width = mouse_root_x - frames.list[pressed_frame].x ;
               new_x = frames.list[pressed_frame].x;
             }
             else if(pressed_widget == frames.list[pressed_frame].bl_grip) {
@@ -601,9 +664,11 @@ int main (int argc, char* argv[]) {
 	            resize_frame(display, &frames.list[i]);
 	            break;
 	          }
+	          else printf("skipped resize request");
 	        }
         }
-        //this window hasn't been mapped yet, let it increase its size if it wants to
+
+        //this window hasn't been mapped yet, let it update it's size
         if(i == frames.used) {
           XWindowAttributes attributes;
           XWindowChanges premap_config; 
@@ -620,24 +685,29 @@ int main (int argc, char* argv[]) {
             premap_config.width = attributes.width;
             premap_config.height = attributes.height;
           }
-          
+
           premap_config.x = event.xconfigurerequest.x;
           premap_config.y = event.xconfigurerequest.y;
           premap_config.border_width = 0;
+          printf("premap config (%d, %d) width %d, height %d\n", 
+            premap_config.x, premap_config.y, premap_config.width, premap_config.height);
 
-          XConfigureWindow(display, event.xconfigurerequest.window, CWX | CWY | CWWidth | CWHeight | CWBorderWidth, &premap_config);
+          XConfigureWindow(display, event.xconfigurerequest.window, 
+            CWX | CWY | CWWidth | CWHeight | CWBorderWidth, &premap_config);
+            
           XSetErrorHandler(NULL);
           XUngrabServer(display);
           XFlush(display);
         }
       break;
-
+      case MappingNotify:      
+        printf("MappingNotify\n");
+      break;
       case ClientMessage:
         printf("Unhandled client message...\n");
       break;
       
       case MapNotify:
-      case MappingNotify:      
       case ReparentNotify:
       //ignore these events
       break;
@@ -653,7 +723,6 @@ int main (int argc, char* argv[]) {
     }
   }
 
-  XUngrabPointer(display, CurrentTime);  //doesn't hurt to do an extra one
   XDestroyWindow(display, background_window);  
   XFreePixmap(display, background_window_p);
   XFreePixmap(display, pixmaps.border_p);
