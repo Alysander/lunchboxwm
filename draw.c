@@ -272,44 +272,54 @@ Pixmap create_title_pixmap(Display* display, const char* title, enum title_pixma
     case title_normal:
     case title_pressed:
     case title_deactivated: 
-		  //draw_light and dark background
-		  cairo_set_source_rgba(cr, LIGHT_EDGE);  
-		  cairo_rectangle(cr, 0, 0, XWidthOfScreen(screen), TITLE_MAX_HEIGHT);
-		  cairo_fill(cr);
-		  
-		  if(type == title_pressed)   cairo_set_source_rgba(cr, LIGHT_EDGE);
-		  else cairo_set_source_rgba(cr, BODY);
-		  
-		  cairo_rectangle(cr, 0, LIGHT_EDGE_HEIGHT, XWidthOfScreen(screen), TITLE_MAX_HEIGHT - LIGHT_EDGE_HEIGHT);
-		  cairo_fill(cr);  
+      //draw_light and dark background
+      cairo_set_source_rgba(cr, LIGHT_EDGE);  
+      cairo_rectangle(cr, 0, 0, XWidthOfScreen(screen), TITLE_MAX_HEIGHT);
+      cairo_fill(cr);
+      
+      if(type == title_pressed)  cairo_set_source_rgba(cr, LIGHT_EDGE);
+      else cairo_set_source_rgba(cr, BODY);
+      
+      cairo_rectangle(cr, 0, LIGHT_EDGE_HEIGHT, XWidthOfScreen(screen), TITLE_MAX_HEIGHT - LIGHT_EDGE_HEIGHT);
+      cairo_fill(cr);  
 
-		  //draw text    
-		  if(type == title_deactivated) {
-		    cairo_set_source_rgba(cr, TEXT_DEACTIVATED);
-		    cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-		  
-		  }
-		  else  {
-		    cairo_set_source_rgba(cr, TEXT);  
-		    cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-		  }
-		  cairo_set_font_size(cr, 13.5); 
-		  cairo_move_to(cr, 3, 13);
-		  if(title != NULL)  cairo_show_text(cr, title);
-		  cairo_fill(cr);  
-		break;
-		case title_menuitem_normal:
-		case title_menuitem_hover:
-		  if(type == title_menuitem_hover) cairo_set_source_rgba(cr, LIGHT_EDGE);
-		  else if(type == title_menuitem_normal) cairo_set_source_rgba(cr, BODY);
-		  
-		  cairo_fill(cr);
-		  cairo_set_source_rgba(cr, TEXT);  
-		  cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-		  cairo_set_font_size(cr, 13.5);
-		  cairo_move_to(cr, 3, 13);
-		  if(title != NULL)  cairo_show_text(cr, title);
-		break;
+      //draw text    
+      if(type == title_deactivated) {
+        cairo_set_source_rgba(cr, TEXT_DEACTIVATED);
+        cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+      }
+      else  {
+        cairo_set_source_rgba(cr, TEXT);  
+        cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+      }
+      cairo_set_font_size(cr, 13.5); 
+      cairo_move_to(cr, 3, 13);
+      if(title != NULL)  cairo_show_text(cr, title);
+      cairo_fill(cr);  
+    break;
+    case item_title_inactive:
+    case item_title_active:
+    case item_title_inactive_hover:
+    case item_title_active_hover:
+    
+      if(type == item_title_inactive_hover
+         ||  type == item_title_active_hover) cairo_set_source_rgba(cr, LIGHT_EDGE);
+      else cairo_set_source_rgba(cr, BODY);
+      
+      cairo_fill(cr);
+      cairo_set_source_rgba(cr, TEXT);  
+      
+      if(type == item_title_active 
+         ||  type == item_title_active_hover) 
+        cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+        
+      else 
+        cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+      
+      cairo_set_font_size(cr, 13.5);
+      cairo_move_to(cr, 3, 13);
+      if(title != NULL)  cairo_show_text(cr, title);
+    break;
   }
   cairo_destroy (cr);  
   cairo_surface_destroy(surface);

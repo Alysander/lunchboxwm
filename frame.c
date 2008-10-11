@@ -31,22 +31,22 @@ void remove_window(Display* display, Window framed_window) {
   Atom *protocols;
   
   if (XGetWMProtocols(display, framed_window, &protocols, &n)) {
-  	for (int i = 0; i < n; i++)
-  		if (protocols[i] == XInternAtom(display, "WM_DELETE_WINDOW", False)) {
-  			found++;
-  			break;
-  	  }
-  	XFree(protocols);
+    for (int i = 0; i < n; i++)
+      if (protocols[i] == XInternAtom(display, "WM_DELETE_WINDOW", False)) {
+        found++;
+        break;
+      }
+    XFree(protocols);
   }
   
   if(found)  {
-  	XClientMessageEvent event;
-  	event.type = ClientMessage;
-  	event.window = framed_window;
-  	event.format = 32;
-  	event.message_type = XInternAtom(display, "WM_PROTOCOLS", False);
-  	event.data.l[0] = (long)XInternAtom(display, "WM_DELETE_WINDOW", False);
-	  event.data.l[1] = CurrentTime;
+    XClientMessageEvent event;
+    event.type = ClientMessage;
+    event.window = framed_window;
+    event.format = 32;
+    event.message_type = XInternAtom(display, "WM_PROTOCOLS", False);
+    event.data.l[0] = (long)XInternAtom(display, "WM_DELETE_WINDOW", False);
+    event.data.l[1] = CurrentTime;
     XSendEvent(display, framed_window, False, NoEventMask, (XEvent *)&event);
   }
   else {
@@ -58,20 +58,20 @@ void remove_window(Display* display, Window framed_window) {
 
 /*This function is used to add frames to windows that are already open when the WM is starting*/
 void create_startup_frames (Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) {
-	unsigned int windows_length;
-	Window root, parent, children, *windows;
-	XWindowAttributes attributes;
-	int index;
+  unsigned int windows_length;
+  Window root, parent, children, *windows;
+  XWindowAttributes attributes;
+  int index;
   root = DefaultRootWindow(display);
   
-	XQueryTree(display, root, &parent, &children, &windows, &windows_length);
+  XQueryTree(display, root, &parent, &children, &windows, &windows_length);
   if(windows != NULL) for (int i = 0; i < windows_length; i++)  {
     XGetWindowAttributes(display, windows[i], &attributes);
-	  if (attributes.map_state == IsViewable && !attributes.override_redirect) {
-	    create_frame(display, frames, windows[i], pixmaps, cursors);
-		}
-	}
-	XFree(windows);
+    if (attributes.map_state == IsViewable && !attributes.override_redirect) {
+      create_frame(display, frames, windows[i], pixmaps, cursors);
+    }
+  }
+  XFree(windows);
 }
 
 
@@ -82,11 +82,11 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   Visual* colours = XDefaultVisual(display, DefaultScreen(display));
   int black = BlackPixelOfScreen(screen);
   
- 	XWindowAttributes attributes; //fallback if the specified size hints don't work
+   XWindowAttributes attributes; //fallback if the specified size hints don't work
   struct Frame frame;
    
   Window transient; //this window is actually used to store a return value
-	
+  
   if(frames->used == frames->max) {
     struct Frame* temp = NULL;
     temp = realloc(frames->list, sizeof(struct Frame) * frames->max * 2);
@@ -107,6 +107,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.program_name = NULL;
   frame.mode = FLOATING;
   frame.window = framed_window;      
+  frame.title_menuitem.entry = root;
   get_frame_hints(display, &frame);
     
   frame.frame =         XCreateSimpleWindow(display, root, frame.x, frame.y, 
@@ -207,14 +208,15 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XSelectInput(display, frame.frame,   Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.backing, SubstructureRedirectMask);  
   XSelectInput(display, frame.close_button,  ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-  XSelectInput(display, frame.mode_pulldown, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-  XSelectInput(display, frame.title_menu.hotspot, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  XSelectInput(display, frame.mode_pulldown, ButtonPressMask | ButtonReleaseMask);
+  XSelectInput(display, frame.title_menu.hotspot, ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.l_grip,  ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.bl_grip, ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.b_grip,  ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.br_grip, ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.r_grip,  ButtonPressMask | ButtonReleaseMask);    
-  XSelectInput(display, frame.window,  StructureNotifyMask | PropertyChangeMask);  //Property notify is used to update titles, structureNotify for destroyNotify events
+  XSelectInput(display, frame.window,   StructureNotifyMask |PropertyChangeMask);  
+  //Property notify is used to update titles, structureNotify for destroyNotify events
   XSelectInput(display, frame.backing, ButtonPressMask | EnterWindowMask | LeaveWindowMask);
   
   XDefineCursor(display, frame.frame, cursors->normal);
@@ -254,15 +256,15 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XMapWindow(display, frame.backing );  
   XMapWindow(display, frame.frame);
 
-  //this is for the click anywhere in the frame to give focus policy
+  //Intercept clicks so we can set the focus and possibly raise floating windows
   XGrabButton(display, Button1, 0, frame.backing, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
      
-	XGetTransientForHint(display, framed_window, &transient);
+  XGetTransientForHint(display, framed_window, &transient);
   if(transient != 0) {
     printf("Transient window detected\n");
     //set pop-windows to have focus
     XSetInputFocus(display, frame.window, RevertToPointerRoot, CurrentTime);
-	}
+  }
   
   frames->list[frames->used] = frame;
   frames->used++;
@@ -330,8 +332,11 @@ void get_frame_name(Display* display, struct Frame* frame) {
   frame->title_menu.title_normal_p = create_title_pixmap(display, frame->window_name, title_normal);
   frame->title_menu.title_pressed_p = create_title_pixmap(display, frame->window_name, title_pressed);
   frame->title_menu.title_deactivated_p = create_title_pixmap(display, frame->window_name, title_deactivated);
-  frame->title_menu.title_menuitem_normal_p = create_title_pixmap(display, frame->window_name, title_menuitem_normal);
-  frame->title_menu.title_menuitem_hover_p = create_title_pixmap(display, frame->window_name, title_menuitem_hover);
+
+  frame->title_menuitem.item_title_inactive_p = create_title_pixmap(display, frame->window_name, item_title_inactive);
+  frame->title_menuitem.item_title_active_p = create_title_pixmap(display, frame->window_name, item_title_active);
+  frame->title_menuitem.item_title_inactive_hover_p = create_title_pixmap(display, frame->window_name, item_title_inactive_hover);
+  frame->title_menuitem.item_title_active_hover_p = create_title_pixmap(display, frame->window_name, item_title_active_hover);
 
   if(frame->mode == SINKING) XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_deactivated_p);  
   else XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_normal_p);  

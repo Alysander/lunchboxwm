@@ -17,7 +17,6 @@
 #define FLOATING 1
 #define TILING 2
 #define SINKING 3
-#define TRANSIENT 4
 
 /****THEME DERIVED CONSTANTS******/
 #define LIGHT_EDGE_HEIGHT 7
@@ -60,6 +59,7 @@
 #define LIGHT_EDGE      0.01, 0.78, 0.0, 1
 #define BODY            0.01, 0.6, 0.0, 1
 */
+
 struct Frame {
   Window window;
   char *window_name;
@@ -82,10 +82,22 @@ struct Frame {
            arrow,
            hotspot; //hotspot is an input_only window to make the events easier to handle (rather than lots of logical ORs)
 
-    Pixmap title_normal_p, title_pressed_p, title_deactivated_p; //this draws the background "bevel" and the text.
-    Pixmap title_menuitem_normal_p, title_menuitem_hover_p;
+    Pixmap title_normal_p,
+           title_pressed_p,
+           title_deactivated_p; //this draws the background "bevel" and the text.
+            
     int width; //this is the width of the title
   } title_menu;
+  
+  struct {
+    
+    Pixmap item_title_inactive_p,
+           item_title_active_p,
+           item_title_inactive_hover_p,
+           item_title_active_hover_p;
+           
+    Window entry;
+  } title_menuitem;
   
   Window l_grip, bl_grip, b_grip, br_grip, r_grip;  //InputOnly resize grips  for the bottom left, top right etc.
 };
@@ -95,17 +107,33 @@ struct Framelist {
   unsigned int max, used;
 };
 
+struct mode_pulldown_list {
+  Window frame, floating, tiling, sinking;
+  Pixmap item_floating_inactive_p, item_floating_inactive_hover_p, item_floating_active_p, item_floating_active_hover_p,
+         item_sinking_inactive_p, item_sinking_inactive_hover_p, item_sinking_active_p, item_sinking_active_hover_p,
+         item_tiling_inactive_p, item_tiling_inactive_hover_p, item_tiling_active_p, item_tiling_active_hover_p;
+};
+
 struct mouse_cursors {
   Cursor normal, hand, grab, pressable,
-  resize_h, resize_v, resize_tr_bl, resize_tl_br;
+         resize_h, resize_v, resize_tr_bl, resize_tl_br;
 };
 
 struct frame_pixmaps {
   Pixmap border_p, light_border_p, body_p, titlebar_background_p,
          close_button_normal_p, close_button_pressed_p, close_button_deactivated_p,
+
+         //these are have a textured background
          pulldown_floating_normal_p, pulldown_floating_pressed_p,
          pulldown_tiling_normal_p, pulldown_tiling_pressed_p,
+  
          pulldown_deactivated_p,
+
+         //these don't have a textured background
+         item_floating_inactive_p, item_floating_inactive_hover_p, item_floating_active_p, item_floating_active_hover_p,
+         item_sinking_inactive_p, item_sinking_inactive_hover_p, item_sinking_active_p, item_sinking_active_hover_p,
+         item_tiling_inactive_p, item_tiling_inactive_hover_p, item_tiling_active_p, item_tiling_active_hover_p,
+         
          selection_p, 
          arrow_normal_p, arrow_pressed_p, arrow_deactivated_p,
          arrow_clipping_normal_p, arrow_clipping_pressed_p, arrow_clipping_deactivated_p;
@@ -119,16 +147,16 @@ enum main_pixmap {
   light_border,
   titlebar,
   selection,
-  close_button_normal,
-  close_button_pressed,
-  close_button_deactivated,
-  pulldown_floating_normal,
-  pulldown_floating_pressed,
-  pulldown_deactivated, //normal is shown when the window is deactivated
+  close_button_normal,  close_button_pressed,  close_button_deactivated,
+  pulldown_floating_normal,  pulldown_floating_pressed,  
+  pulldown_tiling_normal, pulldown_tiling_pressed,
+  pulldown_deactivated, 
+  
   //the pulldowns deactivated mode is when the sinking mode is pressed
-
-  pulldown_tiling_normal,
-  pulldown_tiling_pressed,
+  item_floating_inactive, item_floating_inactive_hover, item_floating_active, item_floating_active_hover,
+  item_sinking_inactive, item_sinking_inactive_hover, item_sinking_active, item_sinking_active_hover,
+  item_tiling_inactive, item_tiling_inactive_hover, item_tiling_active, item_tiling_active_hover,
+  
   arrow_normal,
   arrow_clipping_normal,
   arrow_pressed,
@@ -141,6 +169,10 @@ enum title_pixmap {
   title_normal, 
   title_pressed,
   title_deactivated,
-  title_menuitem_normal,
-  title_menuitem_hover
+
+  item_title_inactive,
+  item_title_active,
+  item_title_inactive_hover,
+  item_title_active_hover,
+  //no inactive as all available choices in the menu are valid
 };
