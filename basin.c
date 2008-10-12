@@ -10,8 +10,10 @@ void load_cursors (Display *display, struct mouse_cursors *cursors);
 void free_pixmaps (Display *display, struct frame_pixmaps *pixmaps);
 void free_cursors (Display *display, struct mouse_cursors *cursors);
 
-void create_mode_pulldown_list(Display *display, struct mode_pulldown_list *mode_pulldown);
-void remove_mode_pulldown_list(Display *display, struct mode_pulldown_list *mode_pulldown);
+void create_mode_pulldown_list(Display *display, struct mode_pulldown_list *mode_pulldown, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
+void create_title_menu        (Display *display, struct Framelist *frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
+void show_title_menu          (Display *display, struct Framelist* frames, int x, int y);
+void show_mode_pulldown_list  (Display *display, struct mode_pulldown_list *mode_pulldown, struct frame_pixmaps *pixmaps, int x, int y);
 
 /*** draw.c ***/
 extern Pixmap create_pixmap(Display* display, enum main_pixmap type);
@@ -27,6 +29,7 @@ extern void remove_window        (Display* display, Window framed_window);
 extern void get_frame_program_name(Display* display, struct Frame* frame);
 extern void get_frame_name       (Display* display, struct Frame* frame);
 extern void get_frame_hints      (Display* display, struct Frame* frame);
+extern void show_frame_state(Display *display, struct Frame *frame,  struct frame_pixmaps *pixmaps);
 extern void resize_frame         (Display* display, struct Frame* frame);
 
 #include "draw.c"
@@ -62,7 +65,7 @@ int main (int argc, char* argv[]) {
   
   struct frame_pixmaps pixmaps;
   struct mouse_cursors cursors; 
-  struct Framelist frames = {NULL, 16, 0};
+  struct Framelist frames = {NULL, 16, 0, 0};
 
   struct mode_pulldown_list mode_pulldown; //this window is created and reused.
   
@@ -124,7 +127,11 @@ int main (int argc, char* argv[]) {
   load_pixmaps (display, &pixmaps);
   load_cursors (display, &cursors);
   XFlush(display);
+
+    
+  create_title_menu(display, &frames, &pixmaps, &cursors);
   create_startup_frames(display, &frames, &pixmaps, &cursors);  
+  create_mode_pulldown_list(display, &mode_pulldown, &pixmaps, &cursors);
   
   /* Create the background window and double buffer it*/
   background_window = XCreateSimpleWindow(display, root, 0, 0, XWidthOfScreen(screen), XHeightOfScreen(screen), 0, BlackPixelOfScreen(screen), BlackPixelOfScreen(screen));
@@ -149,16 +156,23 @@ int main (int argc, char* argv[]) {
     //these are from the StructureNotifyMask on the reparented window
     switch(event.type) { 
       case DestroyNotify:  
+        //The OpenOffice and abiword splash screens don't send an unmap event.
         printf("Destroyed window, ");
       case UnmapNotify:
         printf("Unmapping: %d\n", event.xdestroywindow.window);
-        //The OpenOffice splash screen doesn't send an unmap event.
         for(i = 0; i < frames.used; i++) {
           if(event.xany.window == frames.list[i].window) {
             if(clicked_frame != -1) { 
               printf("Cancelling resize because a window was destroyed\n");
               clicked_frame = -1;
             }
+            if(pulldown != root) {
+              printf("Closing popup and cancelling grab\n");
+              XUngrabPointer(display, CurrentTime);
+              XUnmapWindow(display, pulldown);
+              pulldown = root;
+            }
+            if(clicked_widget != root) clicked_widget = root;
             XUngrabPointer(display, CurrentTime);
             printf("Removed frame i:%d, frame window %d\n, framed_window %d\n",
              i, frames.list[i].frame, event.xany.window);
@@ -247,7 +261,7 @@ int main (int argc, char* argv[]) {
               clicked_widget =  frames.list[i].title_menu.hotspot;                             
               start_move_x += H_SPACING*2 + BUTTON_SIZE;
               start_move_y += V_SPACING;
-              XUnmapWindow(display, frames.list[i].title_menu.frame);      
+              XUnmapWindow(display, frames.list[i].title_menu.frame);
               XFlush(display);
               XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.arrow, pixmaps.arrow_pressed_p);
               XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.title, frames.list[i].title_menu.title_pressed_p);
@@ -355,8 +369,7 @@ int main (int argc, char* argv[]) {
           clicked_frame = -1;
         }
           
-        if((clicked_widget != root)  && (event.xcrossing.window == clicked_widget))  {
-          //need to loop again to determine the type
+        if(clicked_widget != root  &&  event.xcrossing.window == clicked_widget)  {
           printf("Enter or exit.  Window %d, Subwindow %d\n", event.xcrossing.window, event.xcrossing.subwindow);
           for (i = 0; i < frames.used; i++) {
             if(clicked_widget == frames.list[i].close_button) {
@@ -371,6 +384,60 @@ int main (int argc, char* argv[]) {
             }
           }
         }
+        
+        if(clicked_widget != root  &&  pulldown != root) {
+          if(event.xcrossing.window == mode_pulldown.floating) {
+            XSelectInput(display, mode_pulldown.floating, 0);  
+            XFlush(display);
+            XUnmapWindow(display, mode_pulldown.floating);
+            if(event.type == EnterNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.floating, pixmaps.item_floating_hover_p);
+            else if (event.type == LeaveNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.floating, pixmaps.item_floating_p);
+            XMapWindow(display, mode_pulldown.floating);
+            XSelectInput(display, mode_pulldown.floating,  
+                  ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+            XFlush(display);
+          }
+          else if(event.xcrossing.window == mode_pulldown.tiling) {
+            XSelectInput(display, mode_pulldown.tiling, 0);  
+            XFlush(display);
+            XUnmapWindow(display, mode_pulldown.tiling);
+            if(event.type == EnterNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.tiling, pixmaps.item_tiling_hover_p);
+            else if (event.type == LeaveNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.tiling, pixmaps.item_tiling_p);
+            XMapWindow(display, mode_pulldown.tiling);
+            XSelectInput(display, mode_pulldown.tiling,  
+                  ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+            XFlush(display);
+          }
+          else if(event.xcrossing.window == mode_pulldown.sinking) {
+            XSelectInput(display, mode_pulldown.sinking, 0);  
+            XFlush(display);
+            XUnmapWindow(display, mode_pulldown.sinking);            
+            if(event.type == EnterNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.sinking, pixmaps.item_sinking_hover_p);
+            else if (event.type == LeaveNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.sinking, pixmaps.item_sinking_p);
+            XMapWindow(display, mode_pulldown.sinking);
+            XSelectInput(display, mode_pulldown.sinking,  
+                    ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+            XFlush(display);
+          }
+          else {
+            for(i = 0; i < frames.used; i++) {
+              if(event.xcrossing.window == frames.list[i].title_menu.entry) {
+                XSelectInput(display, frames.list[i].title_menu.entry, 0);
+                XFlush(display);
+                XUnmapWindow(display, frames.list[i].title_menu.entry);
+                if(event.type == EnterNotify) 
+                  XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.entry, frames.list[i].title_menu.item_title_hover_p);
+                else if (event.type == LeaveNotify) 
+                  XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.entry, frames.list[i].title_menu.item_title_p);
+
+                XMapWindow(display, frames.list[i].title_menu.entry);
+                XSelectInput(display, frames.list[i].title_menu.entry,  
+                        ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+                XFlush(display);                
+              }
+            }
+          }
+        }
       break;
       
       case ButtonRelease:
@@ -379,27 +446,30 @@ int main (int argc, char* argv[]) {
         /* Close pop-up menu and maybe activate a menu item */
         if(pulldown != root) { //
           printf("closed pulldown\n");
-          XDestroyWindow(display, pulldown);
+          XUnmapWindow(display, pulldown);
           printf("clicked_widget %d\n", clicked_widget);
           for(i = 0; i < frames.used; i++) {
             if(clicked_widget == frames.list[i].mode_pulldown) {
+              if(event.xbutton.window == mode_pulldown.floating) {
+                frames.list[i].mode = FLOATING;
+              }
+              else if(event.xbutton.window == mode_pulldown.tiling) {
+                frames.list[i].mode = TILING;
+              }
+              else if(event.xbutton.window == mode_pulldown.sinking) {
+                frames.list[i].mode = SINKING;
+              }
+
               printf("Redrawing mode pulldown\n");
-              XUnmapWindow(display, frames.list[i].mode_pulldown);
-              XFlush(display);
-              if(frames.list[i].mode == FLOATING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_floating_normal_p );
-              else if(frames.list[i].mode == TILING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_tiling_normal_p );
-              else if(frames.list[i].mode == SINKING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_deactivated_p );
-              XMapWindow(display, frames.list[i].mode_pulldown);
+
+              show_frame_state(display, &frames.list[i], &pixmaps);
+
               /*Do some menu item identifying here */
               break;                
             }
             else if(clicked_widget == frames.list[i].title_menu.hotspot) {
               printf("Redrawing title pulldown\n");
-              XUnmapWindow(display, frames.list[i].title_menu.frame);
-              XFlush(display);
-              XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.arrow, pixmaps.arrow_normal_p);
-              XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.title, frames.list[i].title_menu.title_normal_p);
-              XMapWindow(display, frames.list[i].title_menu.frame);          
+              show_frame_state(display, &frames.list[i], &pixmaps);
               /*Do some menu item identifying here */
               break;
             }
@@ -417,6 +487,11 @@ int main (int argc, char* argv[]) {
               XSelectInput(display, frames.list[i].window, 0);
               XUnmapWindow(display, frames.list[i].window);            
               remove_window(display, frames.list[i].window);
+              if(pulldown != root) {
+                XUnmapWindow(display, pulldown);
+                pulldown = root;
+                
+              }
               remove_frame(display, &frames, i);
               clicked_widget = root;
               break;
@@ -426,11 +501,9 @@ int main (int argc, char* argv[]) {
               XChangeActivePointerGrab(display, 
                                        PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
                                        cursors.normal, CurrentTime);
-              pulldown = XCreateSimpleWindow(display, root, event.xbutton.x_root, event.xbutton.y_root, 
-                                      100, 200, 1, WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
-              XMapWindow(display, pulldown);
+              pulldown = mode_pulldown.frame;
+              show_mode_pulldown_list(display, &mode_pulldown, &pixmaps, event.xbutton.x_root, event.xbutton.y_root);
               
-              XFlush(display);
               clicked_frame = -1; //cancel move ability at this stage/don't ungrab
               break;
             }
@@ -439,8 +512,8 @@ int main (int argc, char* argv[]) {
               XChangeActivePointerGrab(display, 
                                        PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
                                        cursors.normal, CurrentTime);              
-              pulldown = XCreateSimpleWindow(display, root, event.xbutton.x_root, event.xbutton.y_root, 
-                                      100, 200, 1, WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
+              pulldown = frames.title_menu;
+              show_title_menu(display, &frames, event.xbutton.x_root, event.xbutton.y_root);
               XMapWindow(display, pulldown);
               
               XFlush(display);
@@ -462,6 +535,11 @@ int main (int argc, char* argv[]) {
             break;
           }
         }
+        if(clicked_widget == frames.list[i].close_button) {
+          //the mouse button was released but somewhere else,
+          //so cancel rather than activating
+          clicked_widget == root;
+        }
         
         if(clicked_widget == root)  XUngrabPointer(display, CurrentTime);
         if(clicked_frame != -1) {
@@ -475,38 +553,43 @@ int main (int argc, char* argv[]) {
       case MotionNotify:
 
         if(clicked_frame != -1) { 
-          //skip on to the latest move event
-          while(XCheckTypedEvent(display, MotionNotify, &event));
+          int new_width = 0;
+          int new_height = 0;
+          int over_x = 0;
+          int over_y = 0;
+          
           Window mouse_root, mouse_child;
           int mouse_root_x, mouse_root_y;
           int mouse_child_x, mouse_child_y;
           unsigned int mask;
           
-          int new_width = 0;
-          int new_height = 0;
           int new_x, new_y;
-          
+
+          //skip on to the latest move event
+          while(XCheckTypedEvent(display, MotionNotify, &event));
+                    
+          if(frames.list[clicked_frame].max_width > XWidthOfScreen(screen))  {
+            printf("over_x %d\n", over_x);
+            over_x = frames.list[clicked_frame].max_width - XWidthOfScreen(screen);
+          }
+          if(frames.list[clicked_frame].max_height > XHeightOfScreen(screen)) {
+            printf("over_y %d\n", over_y);
+            over_y = frames.list[clicked_frame].max_height - XHeightOfScreen(screen);
+          }
           if(clicked_widget != root) { //just the frame was pressed, start the squish
-            for(i = 0; i < frames.used; i++) {
-              if(clicked_widget == frames.list[i].mode_pulldown) {
-                XUnmapWindow(display, frames.list[i].mode_pulldown);
-                if(frames.list[i].mode == FLOATING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_floating_normal_p );
-                else if(frames.list[i].mode == TILING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_tiling_normal_p );
-                else if(frames.list[i].mode == SINKING) XSetWindowBackgroundPixmap(display, frames.list[i].mode_pulldown, pixmaps.pulldown_deactivated_p );
-                XMapWindow(display, frames.list[i].mode_pulldown);
-                XFlush(display);
-                clicked_widget = root; //cancel the pulldown lists opening
-                break;
-              }
-              else if(clicked_widget == frames.list[i].title_menu.hotspot) {
-                XUnmapWindow(display, frames.list[i].title_menu.frame);
-                XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.arrow, pixmaps.arrow_normal_p);
-                XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.title, frames.list[i].title_menu.title_normal_p);
-                XMapWindow(display, frames.list[i].title_menu.frame);          
-                XFlush(display);
-                clicked_widget = root; //cancel the pulldown lists opening                
-                break;
-              }
+            if(clicked_widget == frames.list[clicked_frame].mode_pulldown) {
+              show_frame_state(display, &frames.list[clicked_frame], &pixmaps);
+              clicked_widget = root; //cancel the pulldown lists opening
+              break;
+            }
+            else if(clicked_widget == frames.list[clicked_frame].title_menu.hotspot) {
+              XUnmapWindow(display, frames.list[clicked_frame].title_menu.frame);
+              XSetWindowBackgroundPixmap(display, frames.list[clicked_frame].title_menu.arrow, pixmaps.arrow_normal_p);
+              XSetWindowBackgroundPixmap(display, frames.list[clicked_frame].title_menu.title, frames.list[clicked_frame].title_menu.title_normal_p);
+              XMapWindow(display, frames.list[clicked_frame].title_menu.frame);          
+              XFlush(display);
+              clicked_widget = root; //cancel the pulldown lists opening                
+              break;
             }
           }
           XQueryPointer(display, root, &mouse_root, &mouse_child, &mouse_root_x, &mouse_root_y, &mouse_child_x, &mouse_child_y, &mask);    
@@ -517,31 +600,31 @@ int main (int argc, char* argv[]) {
           /*** Move/Squish ***/
           if(clicked_widget == root) { //no widget is active, only the frame or grips
             
-            if((new_x + frames.list[clicked_frame].w > XWidthOfScreen(screen)) //window moving off RHS
+            if((new_x + frames.list[clicked_frame].w > XWidthOfScreen(screen) + over_x) //window moving off RHS
              ||(resize_x_direction == -1)) {  
               resize_x_direction = -1;
               new_width = XWidthOfScreen(screen) - new_x;
             }
             
-            if((new_x < 0) //window moving off LHS
+            if((new_x < 0-over_x) //window moving off LHS
              ||(resize_x_direction == 1)) { 
               resize_x_direction = 1;
               new_width = frames.list[clicked_frame].w + new_x;
-              new_x = 0;
+              new_x = 0-over_x;
               start_move_x = mouse_root_x;
             }
 
-            if((new_y + frames.list[clicked_frame].h > XHeightOfScreen(screen)) //window moving off the bottom
+            if((new_y + frames.list[clicked_frame].h > XHeightOfScreen(screen) + over_y) //window moving off the bottom
              ||(resize_y_direction == -1)) { 
               resize_y_direction = -1;
-              new_height = XHeightOfScreen(screen) - new_y;
+              new_height = XHeightOfScreen(screen) + over_y - new_y;
             }
             
-            if((new_y < 0) //window moving off the top of the screen
+            if((new_y < 0 - over_y) //window moving off the top of the screen
               ||(resize_y_direction == 1)) { 
               resize_y_direction = 1;
               new_height = frames.list[clicked_frame].h + new_y;
-              new_y = 0;
+              new_y = 0 - over_y;
               start_move_y = mouse_root_y;
             }
 
@@ -552,7 +635,9 @@ int main (int argc, char* argv[]) {
                 //don't move the window off the RHS if it has reached it's minimum size
                 //LHS not considered because x has already been set to 0
                 if(resize_x_direction == -1) new_x = XWidthOfScreen(screen) - frames.list[clicked_frame].w;
-                /*** TODO: Set sinking appearance here ***/
+                frames.list[clicked_frame].mode = SINKING;
+                show_frame_state(display, &frames.list[clicked_frame], &pixmaps);
+                
               }
               if(new_height != 0) {
                 new_height = 0;    
@@ -560,7 +645,6 @@ int main (int argc, char* argv[]) {
                 //Top not considered because y has already been set to 0
                 if(resize_y_direction == -1) new_y = XHeightOfScreen(screen) - frames.list[clicked_frame].h;
               }
-              
             }
 
             //limit resizes to max width
@@ -733,14 +817,17 @@ int main (int argc, char* argv[]) {
     }
   }
 
+  if(pulldown != root) XUnmapWindow(display, pulldown);
   XDestroyWindow(display, background_window);  
+  XDestroyWindow(display, mode_pulldown.frame);
+  XDestroyWindow(display, frames.title_menu);
+  
   XFreePixmap(display, background_window_p);
   free_pixmaps(display, &pixmaps);
   free_cursors(display, &cursors);
   
-  for(int i = 0; i < frames.used; i++) {
-    remove_frame(display, &frames, i);
-  }
+  for(int i = 0; i < frames.used; i++) remove_frame(display, &frames, i);
+
   XCloseDisplay(display);
   free(frames.list);
   printf(".......... \n");  
@@ -774,6 +861,14 @@ void load_pixmaps (Display *display, struct frame_pixmaps *pixmaps) {
   pixmaps->arrow_normal_p              = create_pixmap(display, arrow_normal);
   pixmaps->arrow_pressed_p             = create_pixmap(display, arrow_pressed);
   pixmaps->arrow_deactivated_p         = create_pixmap(display, arrow_deactivated);
+  
+  pixmaps->item_floating_p       = create_pixmap(display, item_floating);
+  pixmaps->item_floating_hover_p = create_pixmap(display, item_floating_hover);
+  pixmaps->item_sinking_p        = create_pixmap(display, item_sinking);
+  pixmaps->item_sinking_hover_p  = create_pixmap(display, item_sinking_hover);
+  pixmaps->item_tiling_p         = create_pixmap(display, item_tiling);
+  pixmaps->item_tiling_hover_p   = create_pixmap(display, item_tiling_hover);
+  
 }
 void free_pixmaps (Display *display, struct frame_pixmaps *pixmaps) {
   XFreePixmap(display, pixmaps->border_p);
@@ -795,7 +890,14 @@ void free_pixmaps (Display *display, struct frame_pixmaps *pixmaps) {
   XFreePixmap(display, pixmaps->arrow_normal_p);
   XFreePixmap(display, pixmaps->arrow_pressed_p);  
   XFreePixmap(display, pixmaps->arrow_deactivated_p);
-   
+
+  XFreePixmap(display, pixmaps->item_floating_p);
+  XFreePixmap(display, pixmaps->item_floating_hover_p);
+  XFreePixmap(display, pixmaps->item_sinking_p);
+  XFreePixmap(display, pixmaps->item_sinking_hover_p);
+  XFreePixmap(display, pixmaps->item_tiling_p);
+  XFreePixmap(display, pixmaps->item_tiling_hover_p);
+
 }
 void load_cursors (Display *display, struct mouse_cursors *cursors) {
   cursors->normal = XcursorLibraryLoadCursor(display, "left_ptr"); 
@@ -818,4 +920,87 @@ void free_cursors (Display *display, struct mouse_cursors *cursors) {
   XFreeCursor(display, cursors->resize_tr_bl);
   XFreeCursor(display, cursors->resize_tl_br);
 
+}
+
+void show_mode_pulldown_list(Display *display, struct mode_pulldown_list *mode_pulldown, struct frame_pixmaps *pixmaps, int x, int y) {
+  printf("showing mode pulldown\n");
+  //when we map again the background of the last clicked item might be highlighted
+  XSetWindowBackgroundPixmap(display, mode_pulldown->floating, pixmaps->item_floating_p);
+  XSetWindowBackgroundPixmap(display, mode_pulldown->tiling, pixmaps->item_tiling_p);
+  XSetWindowBackgroundPixmap(display, mode_pulldown->sinking, pixmaps->item_sinking_p);
+
+  XFlush(display);
+
+  //do some maths to figure out where to put it so it isn't off the screen
+  XMoveWindow(display, mode_pulldown->frame, x, y);
+  XRaiseWindow(display, mode_pulldown->frame);
+  XMapWindow(display, mode_pulldown->frame);
+  XFlush(display);
+}
+
+void create_mode_pulldown_list(Display *display, struct mode_pulldown_list *mode_pulldown, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) {
+  Window root = DefaultRootWindow(display);
+  Screen* screen =  DefaultScreenOfDisplay(display);  
+  int black = BlackPixelOfScreen(screen);
+
+  mode_pulldown->frame = XCreateSimpleWindow(display, root, 0, 0, 
+         PULLDOWN_WIDTH + EDGE_WIDTH*2, MENU_ITEM_HEIGHT * 3 + EDGE_WIDTH*2, 0, black, black);
+         
+  mode_pulldown->floating = XCreateSimpleWindow(display, mode_pulldown->frame, EDGE_WIDTH, EDGE_WIDTH, 
+         PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
+         
+  mode_pulldown->tiling = XCreateSimpleWindow(display, mode_pulldown->frame, EDGE_WIDTH, MENU_ITEM_HEIGHT + EDGE_WIDTH,
+         PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
+
+  mode_pulldown->sinking = XCreateSimpleWindow(display, mode_pulldown->frame, EDGE_WIDTH, MENU_ITEM_HEIGHT*2 + EDGE_WIDTH,
+         PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
+
+  XSetWindowBackgroundPixmap(display, mode_pulldown->frame, pixmaps->border_p );
+  XSetWindowBackgroundPixmap(display, mode_pulldown->floating, pixmaps->item_floating_p );
+  XSetWindowBackgroundPixmap(display, mode_pulldown->tiling, pixmaps->item_tiling_p );
+  XSetWindowBackgroundPixmap(display, mode_pulldown->sinking, pixmaps->item_sinking_p );
+    
+  XDefineCursor(display, mode_pulldown->frame, cursors->normal);
+  XDefineCursor(display, mode_pulldown->floating, cursors->normal);
+  XDefineCursor(display, mode_pulldown->tiling, cursors->normal);
+  XDefineCursor(display, mode_pulldown->sinking, cursors->normal); 
+  
+  XSelectInput(display, mode_pulldown->floating,  
+        ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  XSelectInput(display, mode_pulldown->tiling,  
+        ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  XSelectInput(display, mode_pulldown->sinking,  
+        ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+
+  XMapWindow(display, mode_pulldown->floating);
+  XMapWindow(display, mode_pulldown->tiling);
+  XMapWindow(display, mode_pulldown->sinking);
+}
+
+void create_title_menu(Display *display, struct Framelist *frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) {
+  Window root = DefaultRootWindow(display);
+  Screen* screen =  DefaultScreenOfDisplay(display);  
+  int black = BlackPixelOfScreen(screen);
+  
+  frames->title_menu = XCreateSimpleWindow(display, root, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
+  XSetWindowBackgroundPixmap (display, frames->title_menu, pixmaps->border_p );
+  XDefineCursor(display, frames->title_menu, cursors->normal);
+}
+
+void show_title_menu(Display *display, struct Framelist* frames, int x, int y) {
+  int max_length = 100;
+  XMoveResizeWindow(display, frames->title_menu, x, y, max_length, MENU_ITEM_HEIGHT*frames->used);
+
+  for(int i = 0; i < frames->used; i++) {
+    if(frames->list[i].title_menu.width > max_length) max_length = frames->list[i].title_menu.width;
+    XMoveWindow(display, frames->list[i].title_menu.entry, EDGE_WIDTH, EDGE_WIDTH + MENU_ITEM_HEIGHT * i);
+  }
+  
+  for(int i = 0; i < frames->used; i++) {
+    XResizeWindow(display, frames->list[i].title_menu.entry, max_length, MENU_ITEM_HEIGHT);
+  }
+  
+  XResizeWindow(display, frames->title_menu, max_length + EDGE_WIDTH*2, MENU_ITEM_HEIGHT*frames->used + EDGE_WIDTH*2);
+  XRaiseWindow(display, frames->title_menu);
+  XMapWindow(display, frames->title_menu);
 }

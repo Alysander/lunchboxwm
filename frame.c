@@ -2,6 +2,8 @@
 /* This function reparents a framed window to root and then destroys the frame as well as cleaning up the frames drawing surfaces */
 /* It is used when the framed window has been unmapped or destroyed, or is about to be*/
 void remove_frame(Display* display, struct Framelist* frames, int index) {
+  //always unmap the title pulldown before removing the frame or else it will crash
+  XDestroyWindow(display, frames->list[index].title_menu.entry);
   
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);
@@ -15,6 +17,9 @@ void remove_frame(Display* display, struct Framelist* frames, int index) {
   XFreePixmap(display, frames->list[index].title_menu.title_normal_p);
   XFreePixmap(display, frames->list[index].title_menu.title_pressed_p);
   XFreePixmap(display, frames->list[index].title_menu.title_deactivated_p);
+  
+  XFreePixmap(display, frames->list[index].title_menu.item_title_p);
+  XFreePixmap(display, frames->list[index].title_menu.item_title_hover_p);
   
   if(frames->list[index].window_name != NULL) XFree(frames->list[index].window_name);
   if(frames->list[index].program_name != NULL) XFree(frames->list[index].program_name);
@@ -88,6 +93,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   Window transient; //this window is actually used to store a return value
   
   if(frames->used == frames->max) {
+    printf("reallocating, used %d, max%d\n", frames->used, frames->max);
     struct Frame* temp = NULL;
     temp = realloc(frames->list, sizeof(struct Frame) * frames->max * 2);
     if(temp != NULL) frames->list = temp;
@@ -107,7 +113,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.program_name = NULL;
   frame.mode = FLOATING;
   frame.window = framed_window;      
-  frame.title_menuitem.entry = root;
+  frame.title_menu.entry = root;
   get_frame_hints(display, &frame);
     
   frame.frame =         XCreateSimpleWindow(display, root, frame.x, frame.y, 
@@ -165,12 +171,17 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   
   frame.backing = XCreateSimpleWindow(display, frame.frame, EDGE_WIDTH*2 + H_SPACING, TITLEBAR_HEIGHT + 1 + EDGE_WIDTH, //same y as body, with a constant width as the sides (so H_SPACING)
                                        frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE, 0, black, black); 
-
+  
+  //same y as body, with a constant width as the sides so H_SPACING
+  frame.title_menu.entry = XCreateSimpleWindow(display, frames->title_menu, 10, 10, 
+                                         XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black); 
+                                       
   get_frame_name(display, &frame);
   get_frame_program_name(display, &frame);
   
   resize_frame(display, &frame); //resize the title menu if it isn't at it's minimum
-
+  show_frame_state(display, &frame, pixmaps);
+  
   XMoveWindow(display, frame.window, 0, 0);    
   XReparentWindow(display, frame.window, frame.backing, 0, 0);
   XFlush(display);
@@ -183,27 +194,9 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XSetWindowBackgroundPixmap(display, frame.innerframe, pixmaps->border_p );
   XSetWindowBackgroundPixmap(display, frame.body, pixmaps->body_p );
   XSetWindowBackgroundPixmap(display, frame.title_menu.body, pixmaps->light_border_p );
-  
   XSetWindowBackgroundPixmap(display, frame.titlebar,  pixmaps->titlebar_background_p );
-  if(frame.mode == FLOATING) {
-    XSetWindowBackgroundPixmap(display, frame.close_button, pixmaps->close_button_normal_p );
-    XSetWindowBackgroundPixmap(display, frame.mode_pulldown, pixmaps->pulldown_floating_normal_p );
-    XSetWindowBackgroundPixmap(display, frame.title_menu.arrow, pixmaps->arrow_normal_p);    
-  }
-  else if (frame.mode == TILING) {
-    XSetWindowBackgroundPixmap(display, frame.close_button, pixmaps->close_button_normal_p );
-    XSetWindowBackgroundPixmap(display, frame.mode_pulldown, pixmaps->pulldown_tiling_normal_p );
-    XSetWindowBackgroundPixmap(display, frame.title_menu.arrow, pixmaps->arrow_normal_p);      
-  }
-  else if (frame.mode == SINKING) {
-    XSetWindowBackgroundPixmap(display, frame.close_button, pixmaps->close_button_deactivated_p );
-    XSetWindowBackgroundPixmap(display, frame.mode_pulldown, pixmaps->pulldown_deactivated_p );
-    XSetWindowBackgroundPixmap(display, frame.title_menu.arrow, pixmaps->arrow_deactivated_p);        
-  }
 
-  if(frame.selected != 0) XSetWindowBackgroundPixmap(display, frame.selection_indicator, pixmaps->selection_p);
-  else XSetWindowBackgroundPixmap(display, frame.selection_indicator, ParentRelative);
-
+  
   XSync(display, False);  //this prevents the Reparent unmap being reported.
   XSelectInput(display, frame.frame,   Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.backing, SubstructureRedirectMask);  
@@ -218,6 +211,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XSelectInput(display, frame.window,   StructureNotifyMask |PropertyChangeMask);  
   //Property notify is used to update titles, structureNotify for destroyNotify events
   XSelectInput(display, frame.backing, ButtonPressMask | EnterWindowMask | LeaveWindowMask);
+  XSelectInput(display, frame.title_menu.entry, ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);  
   
   XDefineCursor(display, frame.frame, cursors->normal);
   XDefineCursor(display, frame.titlebar, cursors->normal);
@@ -235,7 +229,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XDefineCursor(display, frame.b_grip, cursors->resize_v);
   XDefineCursor(display, frame.br_grip, cursors->resize_tl_br);
   XDefineCursor(display, frame.r_grip, cursors->resize_h);
-
+  XDefineCursor(display, frame.title_menu.entry, cursors->normal);
+  
   XMapWindow(display, frame.titlebar);
   XMapWindow(display, frame.body);
   XMapWindow(display, frame.close_button);
@@ -252,6 +247,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XMapWindow(display, frame.b_grip);
   XMapWindow(display, frame.br_grip);
   XMapWindow(display, frame.r_grip);
+  XMapWindow(display, frame.title_menu.entry);
   
   XMapWindow(display, frame.backing );  
   XMapWindow(display, frame.frame);
@@ -270,6 +266,41 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frames->used++;
   return (frames->used - 1);
 } 
+
+void show_frame_state(Display *display, struct Frame *frame,  struct frame_pixmaps *pixmaps) {
+  XUnmapWindow(display, frame->title_menu.frame);
+  XUnmapWindow(display, frame->mode_pulldown);
+  XUnmapWindow(display, frame->close_button);
+  XUnmapWindow(display, frame->selection_indicator);
+
+  XFlush(display);
+  if(frame->mode == FLOATING) {
+    XSetWindowBackgroundPixmap(display, frame->close_button, pixmaps->close_button_normal_p );
+    XSetWindowBackgroundPixmap(display, frame->mode_pulldown, pixmaps->pulldown_floating_normal_p );
+    XSetWindowBackgroundPixmap(display, frame->title_menu.arrow, pixmaps->arrow_normal_p);    
+    XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_normal_p);
+  }
+  else if (frame->mode == TILING) {
+    XSetWindowBackgroundPixmap(display, frame->close_button, pixmaps->close_button_normal_p );
+    XSetWindowBackgroundPixmap(display, frame->mode_pulldown, pixmaps->pulldown_tiling_normal_p );
+    XSetWindowBackgroundPixmap(display, frame->title_menu.arrow, pixmaps->arrow_normal_p);      
+    XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_normal_p);
+  }
+  else if (frame->mode == SINKING) {
+    XSetWindowBackgroundPixmap(display, frame->close_button, pixmaps->close_button_deactivated_p );
+    XSetWindowBackgroundPixmap(display, frame->mode_pulldown, pixmaps->pulldown_deactivated_p );
+    XSetWindowBackgroundPixmap(display, frame->title_menu.arrow, pixmaps->arrow_deactivated_p);
+    XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_deactivated_p);
+  }
+
+  if(frame->selected != 0) XSetWindowBackgroundPixmap(display, frame->selection_indicator, pixmaps->selection_p);
+  else XSetWindowBackgroundPixmap(display, frame->selection_indicator, ParentRelative);  
+  XMapWindow(display, frame->title_menu.frame);
+  XMapWindow(display, frame->mode_pulldown);
+  XMapWindow(display, frame->close_button);
+  XMapWindow(display, frame->selection_indicator);
+  XFlush(display);
+}
 
 /*** Moves and resizes the subwindows of the frame ***/
 void resize_frame(Display* display, struct Frame* frame) {
@@ -333,14 +364,17 @@ void get_frame_name(Display* display, struct Frame* frame) {
   frame->title_menu.title_pressed_p = create_title_pixmap(display, frame->window_name, title_pressed);
   frame->title_menu.title_deactivated_p = create_title_pixmap(display, frame->window_name, title_deactivated);
 
-  frame->title_menuitem.item_title_inactive_p = create_title_pixmap(display, frame->window_name, item_title_inactive);
-  frame->title_menuitem.item_title_active_p = create_title_pixmap(display, frame->window_name, item_title_active);
-  frame->title_menuitem.item_title_inactive_hover_p = create_title_pixmap(display, frame->window_name, item_title_inactive_hover);
-  frame->title_menuitem.item_title_active_hover_p = create_title_pixmap(display, frame->window_name, item_title_active_hover);
+  frame->title_menu.item_title_p = create_title_pixmap(display, frame->window_name, item_title);
+  frame->title_menu.item_title_hover_p = create_title_pixmap(display, frame->window_name, item_title_hover);
 
-  if(frame->mode == SINKING) XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_deactivated_p);  
+  if(frame->mode == SINKING) XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_deactivated_p);
   else XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_normal_p);  
-
+  
+  XUnmapWindow(display, frame->title_menu.entry);
+  XFlush(display);
+  XSetWindowBackgroundPixmap(display, frame->title_menu.entry, frame->title_menu.item_title_p);
+  XMapWindow(display, frame->title_menu.entry);  
+  
   frame->title_menu.width = get_title_width(display, frame->window_name);
   XMapWindow(display, frame->title_menu.title);
   XFlush(display);
@@ -390,17 +424,19 @@ void get_frame_hints(Display* display, struct Frame* frame) {
       frame->max_width = specified.max_width;
       frame->max_height = specified.max_height;
     }
-    //Make sure the width is between reasonable values
-    if(attributes.width < frame->min_width) frame->w = frame->min_width;
-    else frame->w = attributes.width;
-
-    if(attributes.height < frame->min_height) frame->h = frame->min_height;
-    else frame->h = attributes.height;
-    
-    if(frame->w > frame->max_width) frame->w = frame->max_width;
-    if(frame->h > frame->max_height) frame->h = frame->max_height;
-
   }
+  
+  if(attributes.width < frame->min_width) frame->w = frame->min_width;
+  else frame->w = attributes.width;
+
+  if(attributes.height < frame->min_height) frame->h = frame->min_height;
+  else frame->h = attributes.height;
+  
+  //if(frame->w > frame->max_width) frame->w = frame->max_width;
+  //if(frame->h > frame->max_height) frame->h = frame->max_height;
+  
+  if(frame->w > frame->max_width) frame->max_width = frame->w;
+  if(frame->h > frame->max_height) frame->max_height = frame->h;
   
   frame->w += FRAME_HSPACE; //increase the size of the window for the frame to be drawn in
   frame->h += FRAME_VSPACE; 
@@ -411,3 +447,4 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   if(frame->x - (H_SPACING + EDGE_WIDTH*2)  >  0) frame->x -= H_SPACING + EDGE_WIDTH*2;
   if(frame->y - (TITLEBAR_HEIGHT + EDGE_WIDTH*2) > 0) frame->y -= TITLEBAR_HEIGHT + EDGE_WIDTH*2; 
 }
+

@@ -30,6 +30,8 @@
 #define PIXMAP_SIZE 16
 #define SPOT_SIZE 14
 #define CORNER_GRIP_SIZE 32
+#define MENU_ITEM_HEIGHT 24
+#define MENU_ITEM_VS_BUTTON_Y_DIFF 2
 
 //this is the number of pixels the frame takes up from the top and bottom together of a window
 #define FRAME_VSPACE (TITLEBAR_HEIGHT + EDGE_WIDTH*4 + H_SPACING)
@@ -82,22 +84,17 @@ struct Frame {
            arrow,
            hotspot; //hotspot is an input_only window to make the events easier to handle (rather than lots of logical ORs)
 
+    //these pixmaps include the bevel, background and  text
     Pixmap title_normal_p,
            title_pressed_p,
-           title_deactivated_p; //this draws the background "bevel" and the text.
-            
+           title_deactivated_p;
+
+    Pixmap item_title_p,
+           item_title_hover_p;
+
+    Window entry;                       
     int width; //this is the width of the title
   } title_menu;
-  
-  struct {
-    
-    Pixmap item_title_inactive_p,
-           item_title_active_p,
-           item_title_inactive_hover_p,
-           item_title_active_hover_p;
-           
-    Window entry;
-  } title_menuitem;
   
   Window l_grip, bl_grip, b_grip, br_grip, r_grip;  //InputOnly resize grips  for the bottom left, top right etc.
 };
@@ -105,13 +102,11 @@ struct Frame {
 struct Framelist {
   struct Frame* list;
   unsigned int max, used;
+  Window title_menu;
 };
 
 struct mode_pulldown_list {
   Window frame, floating, tiling, sinking;
-  Pixmap item_floating_inactive_p, item_floating_inactive_hover_p, item_floating_active_p, item_floating_active_hover_p,
-         item_sinking_inactive_p, item_sinking_inactive_hover_p, item_sinking_active_p, item_sinking_active_hover_p,
-         item_tiling_inactive_p, item_tiling_inactive_hover_p, item_tiling_active_p, item_tiling_active_hover_p;
 };
 
 struct mouse_cursors {
@@ -130,9 +125,9 @@ struct frame_pixmaps {
          pulldown_deactivated_p,
 
          //these don't have a textured background
-         item_floating_inactive_p, item_floating_inactive_hover_p, item_floating_active_p, item_floating_active_hover_p,
-         item_sinking_inactive_p, item_sinking_inactive_hover_p, item_sinking_active_p, item_sinking_active_hover_p,
-         item_tiling_inactive_p, item_tiling_inactive_hover_p, item_tiling_active_p, item_tiling_active_hover_p,
+         item_floating_p, item_floating_hover_p, 
+         item_sinking_p, item_sinking_hover_p, 
+         item_tiling_p, item_tiling_hover_p, 
          
          selection_p, 
          arrow_normal_p, arrow_pressed_p, arrow_deactivated_p,
@@ -150,12 +145,13 @@ enum main_pixmap {
   close_button_normal,  close_button_pressed,  close_button_deactivated,
   pulldown_floating_normal,  pulldown_floating_pressed,  
   pulldown_tiling_normal, pulldown_tiling_pressed,
+  //the pulldowns deactivated mode is when the sinking mode is pressed
   pulldown_deactivated, 
   
-  //the pulldowns deactivated mode is when the sinking mode is pressed
-  item_floating_inactive, item_floating_inactive_hover, item_floating_active, item_floating_active_hover,
-  item_sinking_inactive, item_sinking_inactive_hover, item_sinking_active, item_sinking_active_hover,
-  item_tiling_inactive, item_tiling_inactive_hover, item_tiling_active, item_tiling_active_hover,
+  //remove active modes 
+  item_floating, item_floating_hover, 
+  item_sinking, item_sinking_hover, 
+  item_tiling, item_tiling_hover, 
   
   arrow_normal,
   arrow_clipping_normal,
@@ -170,9 +166,7 @@ enum title_pixmap {
   title_pressed,
   title_deactivated,
 
-  item_title_inactive,
-  item_title_active,
-  item_title_inactive_hover,
-  item_title_active_hover,
+  item_title,
+  item_title_hover,
   //no inactive as all available choices in the menu are valid
 };
