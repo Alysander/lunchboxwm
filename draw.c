@@ -153,6 +153,7 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
   case pulldown_tiling_pressed:
   case pulldown_deactivated:
     pixmap = XCreatePixmap(display, root, PULLDOWN_WIDTH, BUTTON_SIZE, XDefaultDepth(display, screen_number));    
+    surface = cairo_xlib_surface_create(display, pixmap, colours, PULLDOWN_WIDTH, BUTTON_SIZE);
   //same as above but plain colour backgrounds. 
   //inactive versions have normal weight font
   //hover have light background    
@@ -167,10 +168,13 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
       || type == item_sinking
       || type == item_floating_hover
       || type == item_tiling_hover
-      || type == item_sinking_hover)
+      || type == item_sinking_hover) {
+      
       pixmap = XCreatePixmap(display, root, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, XDefaultDepth(display, screen_number));    
+      surface = cairo_xlib_surface_create(display, pixmap, colours, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT);      
+    }
 
-    surface = cairo_xlib_surface_create(display, pixmap, colours, PULLDOWN_WIDTH, BUTTON_SIZE);
+    
     cr = cairo_create(surface);
     
     
@@ -340,11 +344,16 @@ Pixmap create_title_pixmap(Display* display, const char* title, enum title_pixma
   Pixmap pixmap;
   cairo_surface_t *surface;
   cairo_t *cr;  
-  if(type == title_normal  ||  type == title_pressed  ||  type == title_deactivated)
+  
+  if(type == title_normal  ||  type == title_pressed  ||  type == title_deactivated) {
     pixmap = XCreatePixmap(display, root, XWidthOfScreen(screen), TITLE_MAX_HEIGHT, XDefaultDepth(display, screen_number));
-  else pixmap = XCreatePixmap(display, root, XWidthOfScreen(screen), MENU_ITEM_HEIGHT, XDefaultDepth(display, screen_number));
-
   surface = cairo_xlib_surface_create(display, pixmap, colours,  XWidthOfScreen(screen), TITLE_MAX_HEIGHT);
+  }
+  else {
+    pixmap = XCreatePixmap(display, root, XWidthOfScreen(screen), MENU_ITEM_HEIGHT, XDefaultDepth(display, screen_number));
+    surface = cairo_xlib_surface_create(display, pixmap, colours,  XWidthOfScreen(screen), MENU_ITEM_HEIGHT);
+  }
+
   cr = cairo_create(surface);
   switch(type) {
     case title_normal:

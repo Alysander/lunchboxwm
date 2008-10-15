@@ -43,6 +43,8 @@
 //subtract this from the width of the window to find the max title width.
 #define TITLE_MAX_WIDTH_DIFF (TITLEBAR_USED_WIDTH + EDGE_WIDTH*2 + BUTTON_SIZE)
 
+#define SHRINK_GRIP_MARGIN 1
+
 /***** Colours for cairo as rgba amounts between 0 and 1 *******/
 #define SPOT            0.235294118, 0.549019608, 0.99, 1
 #define SPOT_EDGE       0.235294118, 0.549019608, 0.99, 0.35

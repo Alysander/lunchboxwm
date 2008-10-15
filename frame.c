@@ -87,7 +87,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   Visual* colours = XDefaultVisual(display, DefaultScreen(display));
   int black = BlackPixelOfScreen(screen);
   
-   XWindowAttributes attributes; //fallback if the specified size hints don't work
+  XWindowAttributes attributes; //fallback if the specified size hints don't work
   struct Frame frame;
    
   Window transient; //this window is actually used to store a return value
@@ -207,8 +207,9 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XSelectInput(display, frame.b_grip,  ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.br_grip, ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.r_grip,  ButtonPressMask | ButtonReleaseMask);    
-  XSelectInput(display, frame.window,   StructureNotifyMask |PropertyChangeMask);  
+  XSelectInput(display, frame.window,  StructureNotifyMask |PropertyChangeMask);  
   //Property notify is used to update titles, structureNotify for destroyNotify events
+  //why not use substructure redirect all the time????
   XSelectInput(display, frame.backing, ButtonPressMask | EnterWindowMask | LeaveWindowMask);
   XSelectInput(display, frame.title_menu.entry, ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);  
   
@@ -252,7 +253,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XMapWindow(display, frame.frame);
 
   //Intercept clicks so we can set the focus and possibly raise floating windows
-  XGrabButton(display, Button1, 0, frame.backing, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
+   printf("Passive click grab reported: %d\n", XGrabButton(display, Button1, 0, frame.backing, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None));
      
   XGetTransientForHint(display, framed_window, &transient);
   if(transient != 0) {
@@ -489,7 +490,7 @@ int replace_frame(Display *display, struct Frame *target, struct Frame *replacem
   return 1;
 }
 
-
+//maybe remove overlap variable and instead simply set the indirect resize parameters and just reset them is something goes wrong?
 void enlarge_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size) {  
   /******
   Purpose:  
@@ -547,12 +548,14 @@ void enlarge_frame(Display *display, struct Framelist *frames, int index, char a
           frames->list[i].indirect_resize.new_width = frames->list[i].w - overlap;
         }
         else {
-          if(frames->list[i].w - frames->list[i].min_width > 0) {
-            printf("RECURSEing: old width %d new width %d, \n", overlap, frames->list[i].w - frames->list[i].min_width);
-            overlap = frames->list[i].w - frames->list[i].min_width;
-            enlarge_frame(display, frames, index, 'y', overlap, position);
+          int new_overlap = frames->list[i].w - (frames->list[i].min_width + FRAME_HSPACE);
+          printf("trying to find a happy medium in x\n");
+          if((new_overlap > 0)  &&  (new_overlap != overlap)) {
+            //need to adjust position in some cases.
+            if(position < frames->list[index].x) position += overlap - new_overlap;
+            enlarge_frame(display, frames, index, 'x', position, size - (overlap - new_overlap));
           }
-          else printf("ERROR: Adjacent windows minimum width reached\n");
+          else printf("Nope: Adjacent windows minimum width reached\n");
           return;
         }
       }
@@ -583,14 +586,14 @@ void enlarge_frame(Display *display, struct Framelist *frames, int index, char a
         if(frames->list[i].h - overlap > frames->list[i].min_height) {
           frames->list[i].indirect_resize.new_height = frames->list[i].h - overlap;
         }
-        else {
-          if(frames->list[i].h - frames->list[i].min_height > 0) {
-            printf("RECURSEing: old width %d new width %d, \n", overlap, frames->list[i].h - frames->list[i].min_height);
-            overlap = frames->list[i].h - frames->list[i].min_height;
-            enlarge_frame(display, frames, index, 'y', overlap, position);
+        else { 
+          int new_overlap = frames->list[i].h - (frames->list[i].min_height + FRAME_VSPACE);
+          if((new_overlap > 0)  && ( new_overlap != overlap)) {
+            printf("trying to find a happy medium in y\n");
+            if(position < frames->list[index].y) position += overlap - new_overlap;
+            enlarge_frame(display, frames, index, 'y', position, size - (overlap - new_overlap));
           }
-          else printf("ERROR: Adjacent windows minimum height reached\n");
-          //maybe try the difference between them and recurse?
+          else printf("Nope: Adjacent windows minimum height reached\n");
           return;
         }
       }
@@ -623,4 +626,128 @@ void enlarge_frame(Display *display, struct Framelist *frames, int index, char a
   
   return;
 }
+
+
+void shrink_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size) {
+  /******
+  Purpose:  
+    Shrinks an window and enlarges any adjacent tiled windows in either axis
+     up to a maximum size for the adjacent windows or to a minimum size for the shrinking window.
+  Preconditions:  
+    axis is 'x' or 'y',
+    frames is a valid Framelist,
+    index is a valid index to frames,
+    display is valid x11 connection,
+    size is the new width or height 
+    position is the new x or y co-ordinate and is within a valid range.
+  *****/
+  
+  int increase; //convenience variable notes how much to increase adjacent windows by.
+  if(axis == 'x') {
+    if(size < frames->list[index].min_width + FRAME_HSPACE || size > frames->list[index].max_width) return;
+    increase = frames->list[index].w - size;
+    if(increase <= 0) return;
+  }
+  if(axis == 'y') {
+    if(size < frames->list[index].min_height + FRAME_VSPACE || size > frames->list[index].max_height) return;
+    increase = frames->list[index].h - size;
+    if(increase <= 0) return;
+  }
+  
+  printf("Shrink: %c, position %d, size %d\n", axis, position, size);
+  for(int i = 0; i < frames->used; i++) {
+    if(i == index) {
+      frames->list[index].indirect_resize.new_width = 0;
+      frames->list[index].indirect_resize.new_height = 0;
+      continue;
+    }
+    
+
+    if(frames->list[i].mode == TILING) {
+      if(axis == 'x') {
+        if((frames->list[index].y + frames->list[index].h > frames->list[i].y  &&  frames->list[index].y < frames->list[i].y)
+            || (frames->list[index].y < frames->list[i].y + frames->list[i].h  &&  frames->list[index].y > frames->list[i].y)) {
+          
+          if(frames->list[index].x + frames->list[index].w + SHRINK_GRIP_MARGIN > frames->list[i].x  &&  frames->list[index].x < frames->list[i].x) {
+            //window is adjacent to this windows RHS
+            frames->list[i].indirect_resize.new_x = frames->list[i].x - increase;
+            frames->list[i].indirect_resize.new_width = frames->list[i].w + increase;
+          }
+          else if(frames->list[index].x < frames->list[i].x + frames->list[i].w + SHRINK_GRIP_MARGIN  &&  frames->list[index].x > frames->list[i].x) {
+            //window is adjacent to this windows LHS
+            frames->list[i].indirect_resize.new_width = frames->list[i].w + increase;           
+            frames->list[i].indirect_resize.new_x = frames->list[i].x;
+          }
+          else {
+            frames->list[i].indirect_resize.new_width = 0; //horizontally out of the way
+            continue;
+          }
+        }
+        else {
+          frames->list[i].indirect_resize.new_width = 0; //vertically out of the way
+          continue;
+        }
+        
+        if(frames->list[i].indirect_resize.new_width > frames->list[i].max_width) { //too big
+          frames->list[i].indirect_resize.new_width = frames->list[i].max_width; //make it the maximum
+        }
+      }
+      else if(axis == 'y') {
+        if((frames->list[index].x + frames->list[index].w > frames->list[i].x  &&  frames->list[index].x < frames->list[i].x)
+            || (frames->list[index].x < frames->list[i].x + frames->list[i].w  &&  frames->list[index].x > frames->list[i].x)) {
+
+          if(frames->list[index].x + frames->list[index].w + SHRINK_GRIP_MARGIN > frames->list[i].y  &&  frames->list[index].x < frames->list[i].y) {
+            //window is adjacent this windows bottom
+            frames->list[i].indirect_resize.new_y = frames->list[i].h - increase;
+            frames->list[i].indirect_resize.new_height = frames->list[i].h + increase;
+          }
+          else if(frames->list[index].x < frames->list[i].y + frames->list[i].h + SHRINK_GRIP_MARGIN  &&  frames->list[index].x > frames->list[i].y) {
+            //window is adjacent to this windows top
+            frames->list[i].indirect_resize.new_y = frames->list[i].y;
+            frames->list[i].indirect_resize.new_height = frames->list[i].h + increase;
+          }
+          else { //vertically out of the way
+            frames->list[i].indirect_resize.new_height = 0;
+            continue;
+          }
+        }
+        else { //horizontally out of the way
+          frames->list[i].indirect_resize.new_height = 0;
+          continue;
+        }
+        
+        if(frames->list[i].indirect_resize.new_height > frames->list[i].max_height) { //too big
+          frames->list[i].indirect_resize.new_height = frames->list[i].max_height; //make it the maximum
+        }
+      }
+    }
+  }
+
+  if(axis == 'x') {
+    frames->list[index].x = position;
+    frames->list[index].w = size;
+    for(int i = 0; i < frames->used; i++) {
+      if(frames->list[i].mode == TILING  &&  frames->list[i].indirect_resize.new_width) {
+        frames->list[i].x = frames->list[i].indirect_resize.new_x;
+        frames->list[i].w = frames->list[i].indirect_resize.new_width;        
+        resize_frame(display, &frames->list[i]);
+      }
+    }
+  }
+  else if(axis == 'y') {
+    frames->list[index].y = position;
+    frames->list[index].h = size;
+    for(int i = 0; i < frames->used; i++) {
+      if(frames->list[i].mode == TILING  &&  frames->list[i].indirect_resize.new_height) {
+        frames->list[i].y = frames->list[i].indirect_resize.new_y; 
+        frames->list[i].h = frames->list[i].indirect_resize.new_height;
+        resize_frame(display, &frames->list[i]);
+      }
+    }
+  }
+  resize_frame(display, &frames->list[index]);
+  
+  return;
+}
+
 

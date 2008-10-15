@@ -33,11 +33,11 @@ extern void resize_frame          (Display *display, struct Frame *frame);
 extern int replace_frame          (Display *display, struct Frame *target, struct Frame *replacement, struct frame_pixmaps *pixmaps);
 extern int test_resize_frame      (Display *display, struct Frame *frame, int w_incr, int h_incr);
 
-//returns -1 on failure to resize adjacent windows
+
 extern void enlarge_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size);
 
-//separate function because this one is simpler and can't fail.
-extern void shrink_frame(Display *display, struct Framelist *frames, int index, char axis, int size, int position);
+
+extern void shrink_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size);
   
 
 #include "draw.c"
@@ -150,7 +150,7 @@ int main (int argc, char* argv[]) {
   XDefineCursor(display, background_window, cursors.normal);  
   XMapWindow(display, background_window);
 
-  XGrabButton(display, Button1, Mod1Mask, root, False, ButtonPressMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, cursors.grab);
+  printf("Passive alt+click grab reported: %d\n", XGrabButton(display, Button1, Mod1Mask, root, False, ButtonPressMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, cursors.grab));
 
   XFlush(display);
   
@@ -742,8 +742,8 @@ int main (int argc, char* argv[]) {
             
             //commit height changes
             if(frames.list[clicked_frame].mode == TILING) {
-              if(new_height >= frames.list[clicked_frame].h) enlarge_frame(display, &frames, clicked_frame, 'y', new_height, frames.list[clicked_frame].y);
-              //else enlarge_frame(display, &frames, clicked_frame, 'y', new_height, frames.list[clicked_frame].y);
+              if(new_height >= frames.list[clicked_frame].h) enlarge_frame(display, &frames, clicked_frame, 'y', frames.list[clicked_frame].y, new_height);
+              else shrink_frame(display, &frames, clicked_frame, 'y', frames.list[clicked_frame].y, new_height);
             }
             else if(new_height >= frames.list[clicked_frame].min_height + FRAME_VSPACE
               && new_height <= frames.list[clicked_frame].max_height + FRAME_VSPACE) {
@@ -752,8 +752,8 @@ int main (int argc, char* argv[]) {
 
             //commit width and x position changes                             
             if(frames.list[clicked_frame].mode == TILING) {
-              if(new_width >= frames.list[clicked_frame].w) enlarge_frame(display, &frames, clicked_frame, 'x', new_width, new_x);
-              //else enlarge_frame(display, &frames, clicked_frame, 'x', new_width, new_x);
+              if(new_width >= frames.list[clicked_frame].w) enlarge_frame(display, &frames, clicked_frame, 'x', new_x, new_width);
+              else shrink_frame(display, &frames, clicked_frame, 'x', new_x, new_width);
             }
             else if(new_width >= frames.list[clicked_frame].min_width + FRAME_HSPACE
               && new_width <= frames.list[clicked_frame].max_width) {
@@ -792,7 +792,7 @@ int main (int argc, char* argv[]) {
           
         for(i = 0; i < frames.used; i++) { 
           if(event.xconfigurerequest.window == frames.list[i].window) {
-//            if(clicked_frame != i) {
+            if(clicked_frame != i) {
               if( event.xconfigurerequest.width >= frames.list[i].min_width + FRAME_HSPACE
                && event.xconfigurerequest.width <= frames.list[i].max_width + FRAME_HSPACE) 
                 frames.list[i].w = event.xconfigurerequest.width + FRAME_HSPACE;
@@ -804,8 +804,8 @@ int main (int argc, char* argv[]) {
               printf("Adjusted width,height: %d %d\n", frames.list[i].w, frames.list[i].h);
               resize_frame(display, &frames.list[i]);
               break;
-//            }
-//            else printf("skipped resize request");
+            }
+            else printf("skipped resize request");
           }
         }
 
