@@ -696,12 +696,12 @@ void shrink_frame(Display *display, struct Framelist *frames, int index, char ax
         if((frames->list[index].x + frames->list[index].w > frames->list[i].x  &&  frames->list[index].x < frames->list[i].x)
             || (frames->list[index].x < frames->list[i].x + frames->list[i].w  &&  frames->list[index].x > frames->list[i].x)) {
 
-          if(frames->list[index].x + frames->list[index].w + SHRINK_GRIP_MARGIN > frames->list[i].y  &&  frames->list[index].x < frames->list[i].y) {
+          if(frames->list[index].y + frames->list[index].h + SHRINK_GRIP_MARGIN > frames->list[i].y  &&  frames->list[index].y < frames->list[i].y) {
             //window is adjacent this windows bottom
-            frames->list[i].indirect_resize.new_y = frames->list[i].h - increase;
+            frames->list[i].indirect_resize.new_y = frames->list[i].y - increase;
             frames->list[i].indirect_resize.new_height = frames->list[i].h + increase;
           }
-          else if(frames->list[index].x < frames->list[i].y + frames->list[i].h + SHRINK_GRIP_MARGIN  &&  frames->list[index].x > frames->list[i].y) {
+          else if(frames->list[index].y < frames->list[i].y + frames->list[i].h + SHRINK_GRIP_MARGIN  &&  frames->list[index].y > frames->list[i].y) {
             //window is adjacent to this windows top
             frames->list[i].indirect_resize.new_y = frames->list[i].y;
             frames->list[i].indirect_resize.new_height = frames->list[i].h + increase;
