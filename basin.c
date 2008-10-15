@@ -12,7 +12,7 @@ void free_cursors (Display *display, struct mouse_cursors *cursors);
 
 void create_mode_pulldown_list(Display *display, struct mode_pulldown_list *mode_pulldown, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
 void create_title_menu        (Display *display, struct Framelist *frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
-void show_title_menu          (Display *display, struct Framelist* frames, int x, int y);
+void show_title_menu          (Display *display, struct Framelist *frames, int x, int y);
 void show_mode_pulldown_list  (Display *display, struct mode_pulldown_list *mode_pulldown, struct frame_pixmaps *pixmaps, int x, int y);
 
 /*** draw.c ***/
@@ -21,16 +21,24 @@ extern Pixmap create_pixmap(Display* display, enum main_pixmap type);
 extern Pixmap create_title_pixmap(Display* display, const char* title, enum title_pixmap type); 
 
 /*** frame.c ***/
-extern void find_adjacent        (struct Framelist* frames, int frame_index);
-extern int create_frame          (Display* display, struct Framelist* frames, Window framed_window, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors); 
-extern void create_startup_frames(Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
-extern void remove_frame         (Display* display, struct Framelist* frames, int index);
-extern void remove_window        (Display* display, Window framed_window);
-extern void get_frame_program_name(Display* display, struct Frame* frame);
-extern void get_frame_name       (Display* display, struct Frame* frame);
-extern void get_frame_hints      (Display* display, struct Frame* frame);
-extern void show_frame_state(Display *display, struct Frame *frame,  struct frame_pixmaps *pixmaps);
-extern void resize_frame         (Display* display, struct Frame* frame);
+extern int create_frame           (Display *display, struct Framelist* frames, Window framed_window, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors); 
+extern void create_startup_frames (Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
+extern void remove_frame          (Display *display, struct Framelist* frames, int index);
+extern void remove_window         (Display *display, Window framed_window);
+extern void get_frame_program_name(Display *display, struct Frame *frame);
+extern void get_frame_name        (Display *display, struct Frame *frame);
+extern void get_frame_hints       (Display *display, struct Frame *frame);
+extern void show_frame_state      (Display *display, struct Frame *frame,  struct frame_pixmaps *pixmaps);
+extern void resize_frame          (Display *display, struct Frame *frame);
+extern int replace_frame          (Display *display, struct Frame *target, struct Frame *replacement, struct frame_pixmaps *pixmaps);
+extern int test_resize_frame      (Display *display, struct Frame *frame, int w_incr, int h_incr);
+
+//returns -1 on failure to resize adjacent windows
+extern void enlarge_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size);
+
+//separate function because this one is simpler and can't fail.
+extern void shrink_frame(Display *display, struct Framelist *frames, int index, char axis, int size, int position);
+  
 
 #include "draw.c"
 #include "frame.c"
@@ -72,6 +80,7 @@ int main (int argc, char* argv[]) {
   int do_click_to_focus = 0;
   int grab_move = 0;
   int start_move_x, start_move_y;
+  int was_sunk = 0; //for showing and cancelling sinking state on extreme squish
   
   int clicked_frame = -1; //identifies the window being moved/resized by frame index
   int clicked_menu_item = -1;  //this can be a frame index or FLOATING/TILING/SINKING
@@ -175,7 +184,7 @@ int main (int argc, char* argv[]) {
             if(clicked_widget != root) clicked_widget = root;
             XUngrabPointer(display, CurrentTime);
             printf("Removed frame i:%d, frame window %d\n, framed_window %d\n",
-             i, frames.list[i].frame, event.xany.window);
+               i, frames.list[i].frame, event.xany.window);
             remove_frame(display, &frames, i);
             break;
           }
@@ -230,8 +239,6 @@ int main (int argc, char* argv[]) {
             start_move_x = event.xbutton.x;
             start_move_y = event.xbutton.y;
             clicked_frame = i;
-            resize_x_direction = 0;
-            resize_y_direction = 0;
             
             XGrabPointer(display,  root, True, 
                          PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
@@ -295,8 +302,6 @@ int main (int argc, char* argv[]) {
             start_move_x = event.xbutton.x;
             start_move_y = event.xbutton.y;
             clicked_frame = i;
-            resize_x_direction = 0;
-            resize_y_direction = 0;
 
             if(event.xbutton.window == frames.list[i].l_grip) {
               printf("pressed l_grip on window %d\n", frames.list[i].frame);
@@ -458,19 +463,26 @@ int main (int argc, char* argv[]) {
               }
               else if(event.xbutton.window == mode_pulldown.sinking) {
                 frames.list[i].mode = SINKING;
+                XLowerWindow(display, frames.list[i].frame);
+                XLowerWindow(display, background_window);
               }
 
               printf("Redrawing mode pulldown\n");
 
               show_frame_state(display, &frames.list[i], &pixmaps);
-
-              /*Do some menu item identifying here */
               break;                
             }
             else if(clicked_widget == frames.list[i].title_menu.hotspot) {
               printf("Redrawing title pulldown\n");
               show_frame_state(display, &frames.list[i], &pixmaps);
-              /*Do some menu item identifying here */
+              //the first loop find the frame that was clicked.  
+              //Now we need to identify which window to put here.
+              for(int j = 0; j < frames.used; j++) {               
+                if(event.xbutton.window == frames.list[j].title_menu.entry) {
+                  replace_frame(display, &frames.list[i], &frames.list[j], &pixmaps);
+                  break;
+                }
+              }
               break;
             }
           }
@@ -531,7 +543,6 @@ int main (int argc, char* argv[]) {
              ||  clicked_widget == frames.list[i].r_grip) {
             printf("cancelled resize\n");
             clicked_widget = root;
-            clicked_frame = -1;
             break;
           }
         }
@@ -545,7 +556,16 @@ int main (int argc, char* argv[]) {
         if(clicked_frame != -1) {
           printf("cancelling frame click\n");
           XUngrabPointer(display, CurrentTime);
+          if(was_sunk) {
+            XLowerWindow(display, frames.list[clicked_frame].frame);
+            XLowerWindow(display, background_window);
+          }
+          XFlush(display);
           clicked_frame = -1;
+          was_sunk = 0;
+          resize_x_direction = 0;
+          resize_y_direction = 0;
+          
           break;
         }
       break;
@@ -555,8 +575,6 @@ int main (int argc, char* argv[]) {
         if(clicked_frame != -1) { 
           int new_width = 0;
           int new_height = 0;
-          int over_x = 0;
-          int over_y = 0;
           
           Window mouse_root, mouse_child;
           int mouse_root_x, mouse_root_y;
@@ -568,14 +586,6 @@ int main (int argc, char* argv[]) {
           //skip on to the latest move event
           while(XCheckTypedEvent(display, MotionNotify, &event));
                     
-          if(frames.list[clicked_frame].max_width > XWidthOfScreen(screen))  {
-            printf("over_x %d\n", over_x);
-            over_x = frames.list[clicked_frame].max_width - XWidthOfScreen(screen);
-          }
-          if(frames.list[clicked_frame].max_height > XHeightOfScreen(screen)) {
-            printf("over_y %d\n", over_y);
-            over_y = frames.list[clicked_frame].max_height - XHeightOfScreen(screen);
-          }
           if(clicked_widget != root) { //just the frame was pressed, start the squish
             if(clicked_widget == frames.list[clicked_frame].mode_pulldown) {
               show_frame_state(display, &frames.list[clicked_frame], &pixmaps);
@@ -600,31 +610,31 @@ int main (int argc, char* argv[]) {
           /*** Move/Squish ***/
           if(clicked_widget == root) { //no widget is active, only the frame or grips
             
-            if((new_x + frames.list[clicked_frame].w > XWidthOfScreen(screen) + over_x) //window moving off RHS
+            if((new_x + frames.list[clicked_frame].w > XWidthOfScreen(screen)) //window moving off RHS
              ||(resize_x_direction == -1)) {  
               resize_x_direction = -1;
               new_width = XWidthOfScreen(screen) - new_x;
             }
             
-            if((new_x < 0-over_x) //window moving off LHS
+            if((new_x < 0) //window moving off LHS
              ||(resize_x_direction == 1)) { 
               resize_x_direction = 1;
               new_width = frames.list[clicked_frame].w + new_x;
-              new_x = 0-over_x;
+              new_x = 0;
               start_move_x = mouse_root_x;
             }
 
-            if((new_y + frames.list[clicked_frame].h > XHeightOfScreen(screen) + over_y) //window moving off the bottom
+            if((new_y + frames.list[clicked_frame].h > XHeightOfScreen(screen)) //window moving off the bottom
              ||(resize_y_direction == -1)) { 
               resize_y_direction = -1;
-              new_height = XHeightOfScreen(screen) + over_y - new_y;
+              new_height = XHeightOfScreen(screen) - new_y;
             }
             
-            if((new_y < 0 - over_y) //window moving off the top of the screen
+            if((new_y < 0) //window moving off the top of the screen
               ||(resize_y_direction == 1)) { 
               resize_y_direction = 1;
               new_height = frames.list[clicked_frame].h + new_y;
-              new_y = 0 - over_y;
+              new_y = 0;
               start_move_y = mouse_root_y;
             }
 
@@ -632,12 +642,17 @@ int main (int argc, char* argv[]) {
              ||(new_height != 0  &&  new_height < frames.list[clicked_frame].min_height + FRAME_VSPACE)) {
               if(new_width != 0) {
                 new_width = 0;
+                if(resize_x_direction == -1) new_x = XWidthOfScreen(screen) - frames.list[clicked_frame].w;
                 //don't move the window off the RHS if it has reached it's minimum size
                 //LHS not considered because x has already been set to 0
-                if(resize_x_direction == -1) new_x = XWidthOfScreen(screen) - frames.list[clicked_frame].w;
-                frames.list[clicked_frame].mode = SINKING;
-                show_frame_state(display, &frames.list[clicked_frame], &pixmaps);
                 
+                /** Show Sinking state**/
+                if(!was_sunk) {
+                  was_sunk = frames.list[clicked_frame].mode;
+                  printf("setting sinking mode from %d\n", was_sunk);
+                  frames.list[clicked_frame].mode = SINKING;
+                  show_frame_state(display, &frames.list[clicked_frame], &pixmaps);
+                }
               }
               if(new_height != 0) {
                 new_height = 0;    
@@ -665,8 +680,19 @@ int main (int argc, char* argv[]) {
               if(new_width != 0) {
                 frames.list[clicked_frame].w = new_width;              
                 frames.list[clicked_frame].x = new_x;
+                //Cancel sinking look
+                if(was_sunk) {
+                  printf("Cancel edge slam by width, new mode %d\n", was_sunk);
+                  frames.list[clicked_frame].mode = was_sunk;
+                  show_frame_state(display, &frames.list[clicked_frame], &pixmaps);
+                  XSync(display, False);
+                  was_sunk = 0;
+                }
               }
-              else frames.list[clicked_frame].x = new_x; //allow movement in axis if it hasn't been resized
+              else {
+                frames.list[clicked_frame].x = new_x; 
+                //allow movement in axis if it hasn't been resized
+              }
                 
               if(new_height != 0) {
                 frames.list[clicked_frame].h = new_height;
@@ -679,6 +705,13 @@ int main (int argc, char* argv[]) {
             }
             else {
               //Moves the window to the specified location if there is no resizing going on.
+              if(frames.list[clicked_frame].x != new_x  &&  was_sunk) {
+                printf("Cancel edge slam by movement in x, new mode is %d\n", was_sunk);
+                frames.list[clicked_frame].mode = was_sunk;
+                show_frame_state(display, &frames.list[clicked_frame], &pixmaps);
+                XSync(display, False);
+                was_sunk = 0;
+              }
               frames.list[clicked_frame].x = new_x;
               frames.list[clicked_frame].y = new_y;
               XMoveWindow(display, frames.list[clicked_frame].frame, frames.list[clicked_frame].x, frames.list[clicked_frame].y);
@@ -686,7 +719,6 @@ int main (int argc, char* argv[]) {
           }
           /*** Resize grips come into effect here ***/
           else {
-           //if mode == FLOATING
             if(clicked_widget == frames.list[clicked_frame].l_grip) {
               new_width = frames.list[clicked_frame].w + (frames.list[clicked_frame].x - new_x);
             }
@@ -708,17 +740,29 @@ int main (int argc, char* argv[]) {
               new_x = frames.list[clicked_frame].x;
             }
             
-            if(new_height >= frames.list[clicked_frame].min_height + FRAME_VSPACE
-               && new_height <= frames.list[clicked_frame].max_height + FRAME_VSPACE) {
-              frames.list[clicked_frame].h = new_height; 
+            //commit height changes
+            if(frames.list[clicked_frame].mode == TILING) {
+              if(new_height >= frames.list[clicked_frame].h) enlarge_frame(display, &frames, clicked_frame, 'y', new_height, frames.list[clicked_frame].y);
+              //else enlarge_frame(display, &frames, clicked_frame, 'y', new_height, frames.list[clicked_frame].y);
             }
-              
-            if(new_width >= frames.list[clicked_frame].min_width + FRAME_HSPACE
-               && new_width <= frames.list[clicked_frame].max_width) {
+            else if(new_height >= frames.list[clicked_frame].min_height + FRAME_VSPACE
+              && new_height <= frames.list[clicked_frame].max_height + FRAME_VSPACE) {
+              frames.list[clicked_frame].h = new_height;              
+            }
+
+            //commit width and x position changes                             
+            if(frames.list[clicked_frame].mode == TILING) {
+              if(new_width >= frames.list[clicked_frame].w) enlarge_frame(display, &frames, clicked_frame, 'x', new_width, new_x);
+              //else enlarge_frame(display, &frames, clicked_frame, 'x', new_width, new_x);
+            }
+            else if(new_width >= frames.list[clicked_frame].min_width + FRAME_HSPACE
+              && new_width <= frames.list[clicked_frame].max_width) {
               frames.list[clicked_frame].x = new_x;  //for l_grip and bl_grip
               frames.list[clicked_frame].w = new_width;
-            }
-            resize_frame(display, &frames.list[clicked_frame]);
+            }            
+            
+            if(frames.list[clicked_frame].mode != TILING) 
+              resize_frame(display, &frames.list[clicked_frame]);
           }
           XFlush(display);
         }
@@ -748,7 +792,7 @@ int main (int argc, char* argv[]) {
           
         for(i = 0; i < frames.used; i++) { 
           if(event.xconfigurerequest.window == frames.list[i].window) {
-            if(clicked_frame != i) {
+//            if(clicked_frame != i) {
               if( event.xconfigurerequest.width >= frames.list[i].min_width + FRAME_HSPACE
                && event.xconfigurerequest.width <= frames.list[i].max_width + FRAME_HSPACE) 
                 frames.list[i].w = event.xconfigurerequest.width + FRAME_HSPACE;
@@ -760,8 +804,8 @@ int main (int argc, char* argv[]) {
               printf("Adjusted width,height: %d %d\n", frames.list[i].w, frames.list[i].h);
               resize_frame(display, &frames.list[i]);
               break;
-            }
-            else printf("skipped resize request");
+//            }
+//            else printf("skipped resize request");
           }
         }
 
@@ -994,8 +1038,9 @@ void show_title_menu(Display *display, struct Framelist* frames, int x, int y) {
   for(int i = 0; i < frames->used; i++) {
     if(frames->list[i].title_menu.width > max_length) max_length = frames->list[i].title_menu.width;
     XMoveWindow(display, frames->list[i].title_menu.entry, EDGE_WIDTH, EDGE_WIDTH + MENU_ITEM_HEIGHT * i);
+    XSetWindowBackgroundPixmap (display, frames->list[i].title_menu.entry, frames->list[i].title_menu.item_title_p );    
   }
-  
+  //make them all the same size.
   for(int i = 0; i < frames->used; i++) {
     XResizeWindow(display, frames->list[i].title_menu.entry, max_length, MENU_ITEM_HEIGHT);
   }

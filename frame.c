@@ -150,8 +150,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.title_menu.arrow =  XCreateSimpleWindow(display, frame.title_menu.body, frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH, 
                                       BUTTON_SIZE - EDGE_WIDTH , BUTTON_SIZE - EDGE_WIDTH*4, 0, black,  black);
   
-  frame.title_menu.hotspot =   XCreateWindow(display, frame.titlebar, H_SPACING*2 + BUTTON_SIZE, V_SPACING,
-                                      frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+  frame.title_menu.hotspot =   XCreateWindow(display, frame.frame, H_SPACING*2 + BUTTON_SIZE + EDGE_WIDTH, 0,
+                                      frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE + V_SPACING + EDGE_WIDTH, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
   
   //doesn't matter if the width of the grips is a bit bigger as it will be under the frame_window anyway
   frame.l_grip = XCreateWindow(display, frame.frame, 0, TITLEBAR_HEIGHT + 1 + EDGE_WIDTH*2,
@@ -196,7 +196,6 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XSetWindowBackgroundPixmap(display, frame.title_menu.body, pixmaps->light_border_p );
   XSetWindowBackgroundPixmap(display, frame.titlebar,  pixmaps->titlebar_background_p );
 
-  
   XSync(display, False);  //this prevents the Reparent unmap being reported.
   XSelectInput(display, frame.frame,   Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.backing, SubstructureRedirectMask);  
@@ -314,11 +313,11 @@ void resize_frame(Display* display, struct Frame* frame) {
     XMoveWindow(display, frame->title_menu.arrow,   frame->title_menu.width + EDGE_WIDTH*2, EDGE_WIDTH);        
     XResizeWindow(display, frame->title_menu.body,  frame->title_menu.width + EDGE_WIDTH*2 + BUTTON_SIZE, BUTTON_SIZE - EDGE_WIDTH*2);
     XResizeWindow(display, frame->title_menu.title, frame->title_menu.width + EDGE_WIDTH, TITLE_MAX_HEIGHT);
-    XResizeWindow(display, frame->title_menu.hotspot, frame->title_menu.width + EDGE_WIDTH*4 + BUTTON_SIZE, BUTTON_SIZE);    
+    XResizeWindow(display, frame->title_menu.hotspot, frame->title_menu.width + EDGE_WIDTH*4 + BUTTON_SIZE, BUTTON_SIZE + V_SPACING + EDGE_WIDTH);
   }
   else {
     XResizeWindow(display, frame->title_menu.frame, frame->w - TITLEBAR_USED_WIDTH, BUTTON_SIZE);
-    XResizeWindow(display, frame->title_menu.hotspot, frame->w - TITLEBAR_USED_WIDTH, BUTTON_SIZE);
+    XResizeWindow(display, frame->title_menu.hotspot, frame->w - TITLEBAR_USED_WIDTH, BUTTON_SIZE + V_SPACING + EDGE_WIDTH);
     XResizeWindow(display, frame->title_menu.body,  frame->w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2, BUTTON_SIZE - EDGE_WIDTH*2);
     XResizeWindow(display, frame->title_menu.title, frame->w - TITLE_MAX_WIDTH_DIFF, TITLE_MAX_HEIGHT);
     XMoveWindow(display, frame->title_menu.arrow, frame->w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH);
@@ -338,8 +337,8 @@ void resize_frame(Display* display, struct Frame* frame) {
   XMoveResizeWindow(display, frame->r_grip, frame->w - CORNER_GRIP_SIZE, TITLEBAR_HEIGHT + EDGE_WIDTH*2 + 1, CORNER_GRIP_SIZE, frame->h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1);
   XMoveWindow(display, frame->window, 0,0);
   //had an XSynch here in a vain attempt to stop getting bogus configure requests
-  XSync(display, False);
-//  XFlush(display);
+  //XSync(display, False);
+  XFlush(display);
 }
 
 void get_frame_program_name(Display* display, struct Frame* frame) {
@@ -396,10 +395,11 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   XGetWindowAttributes(display, frame->window, &attributes);
   frame->x = attributes.x;
   frame->y = attributes.y;  
+  printf("existing x,y: %d, %d\n", frame->x, frame->y);
   frame->min_width = MINWIDTH;
   frame->min_height = MINHEIGHT;
-  frame->max_width = XWidthOfScreen(screen);
-  frame->max_height = XHeightOfScreen(screen);  
+  frame->max_width = XWidthOfScreen(screen) -  FRAME_HSPACE;
+  frame->max_height = XHeightOfScreen(screen) -  FRAME_VSPACE;  
    
   if(XGetWMNormalHints(display, frame->window, &specified, &pre_ICCCM) != 0) {
     printf("Managed to recover size hints\n");
@@ -432,12 +432,9 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   if(attributes.height < frame->min_height) frame->h = frame->min_height;
   else frame->h = attributes.height;
   
-  //if(frame->w > frame->max_width) frame->w = frame->max_width;
-  //if(frame->h > frame->max_height) frame->h = frame->max_height;
-  
-  if(frame->w > frame->max_width) frame->max_width = frame->w;
-  if(frame->h > frame->max_height) frame->max_height = frame->h;
-  
+  if(frame->w > frame->max_width) frame->w = frame->max_width;
+  if(frame->h > frame->max_height) frame->h = frame->max_height;
+    
   frame->w += FRAME_HSPACE; //increase the size of the window for the frame to be drawn in
   frame->h += FRAME_VSPACE; 
   printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n", 
@@ -446,5 +443,184 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   //put splash screens where they specify, not off-centre
   if(frame->x - (H_SPACING + EDGE_WIDTH*2)  >  0) frame->x -= H_SPACING + EDGE_WIDTH*2;
   if(frame->y - (TITLEBAR_HEIGHT + EDGE_WIDTH*2) > 0) frame->y -= TITLEBAR_HEIGHT + EDGE_WIDTH*2; 
+}
+
+int replace_frame(Display *display, struct Frame *target, struct Frame *replacement, struct frame_pixmaps *pixmaps) {
+  XWindowChanges changes;
+  unsigned int mask = CWX | CWY | CWSibling | CWStackMode;
+
+  if(replacement->window == target->window) return 0;
+  changes.x = target->x;
+  changes.y = target->y;
+  changes.sibling = target->frame;
+  changes.stack_mode = Above;
+ 
+  if(target->w < replacement->max_width) {
+    if(target->w < replacement->min_width) {
+      printf("The requested window is too wide to fit on target window\n");
+      return 0;
+    }
+    changes.width = target->w;
+    replacement->w = target->w;
+    mask |= CWWidth;
+  }
+  
+  if(target->h < replacement->max_height) {
+    if(target->h < replacement->min_height) {
+      printf("The requested window is too tall to fit on target window\n");
+      return 0;
+    }  
+    changes.height = target->h; 
+    replacement->h = target->h;
+    mask |= CWHeight;
+  }
+  
+  replacement->mode = target->mode;
+  replacement->x = changes.x;
+  replacement->y = changes.y;
+  target->mode = SINKING;
+  
+  XConfigureWindow(display, replacement->frame, mask, &changes);
+  XSetInputFocus(display, replacement->window, RevertToPointerRoot, CurrentTime);
+  resize_frame(display, replacement);
+  show_frame_state(display, target, pixmaps);
+  show_frame_state(display, replacement, pixmaps);
+      
+  return 1;
+}
+
+
+void enlarge_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size) {  
+  /******
+  Purpose:  
+    Enlargens a window and any adjacent tiled windows in either axis or does nothing
+    if the adjacent windows reach a minimum size.
+  Preconditions:  
+    axis is 'x' or 'y',
+    frames is a valid Framelist,
+    index is a valid index to frames,
+    display is valid x11 connection,
+    size is the new width or height and is within a valid range
+    position is the new x or y co-ordinate and is within a valid range.
+  *****/
+  if((axis == 'x') && (size < frames->list[index].min_width + FRAME_HSPACE
+    || size > frames->list[index].max_width)) return;
+  if((axis == 'y') && (size < frames->list[index].min_height + FRAME_VSPACE
+    || size > frames->list[index].max_height)) return;
+  
+  printf("En: %c, position %d, size %d\n", axis, position, size);
+  for(int i = 0; i < frames->used; i++) {
+    if(i == index) {
+      frames->list[index].indirect_resize.new_width = 0;
+      frames->list[index].indirect_resize.new_height = 0;
+      continue;
+    }
+    
+    if(frames->list[i].mode == TILING) {
+      int overlap;
+      if(axis == 'x') {
+        if((frames->list[index].y + frames->list[index].h > frames->list[i].y  &&  frames->list[index].y < frames->list[i].y)
+            || (frames->list[index].y < frames->list[i].y + frames->list[i].h  &&  frames->list[index].y > frames->list[i].y)) {
+          if(position + size > frames->list[i].x  &&  position < frames->list[i].x) {
+            //RHS now overlaps other windows LHS
+            overlap = position + size - frames->list[i].x;
+            printf("RHS overlaps other window LHS by %d\n", overlap);
+            frames->list[i].indirect_resize.new_x = frames->list[i].x + overlap;
+          }
+          else if(position < frames->list[i].x + frames->list[i].w  &&  position > frames->list[i].x) {
+            //LHS now overlaps other windows RHS
+            overlap =  frames->list[i].x + frames->list[i].w - position;
+            printf("LHS overlaps other window RHS by %d\n", overlap);
+            frames->list[i].indirect_resize.new_x = frames->list[i].x;
+          }
+          else {
+            frames->list[i].indirect_resize.new_width = 0; //horizontally out of the way
+            continue;
+          }
+        }
+        else {
+          frames->list[i].indirect_resize.new_width = 0; //vertically out of the way
+          continue;
+        }
+        
+        if(frames->list[i].w - overlap >= frames->list[i].min_width) {
+          frames->list[i].indirect_resize.new_width = frames->list[i].w - overlap;
+        }
+        else {
+          if(frames->list[i].w - frames->list[i].min_width > 0) {
+            printf("RECURSEing: old width %d new width %d, \n", overlap, frames->list[i].w - frames->list[i].min_width);
+            overlap = frames->list[i].w - frames->list[i].min_width;
+            enlarge_frame(display, frames, index, 'y', overlap, position);
+          }
+          else printf("ERROR: Adjacent windows minimum width reached\n");
+          return;
+        }
+      }
+      else if(axis == 'y') {
+        if((frames->list[index].x + frames->list[index].w > frames->list[i].x  &&  frames->list[index].x < frames->list[i].x)
+            || (frames->list[index].x < frames->list[i].x + frames->list[i].w  &&  frames->list[index].x > frames->list[i].x)) {
+
+          if(position + size > frames->list[i].y  &&  position < frames->list[i].y) {
+            //bottom now overlaps other windows top
+            overlap = position + size - frames->list[i].y; 
+            frames->list[i].indirect_resize.new_y = frames->list[i].y + overlap;
+          }
+          else if(position < frames->list[i].y + frames->list[i].h  &&  position > frames->list[i].y) {
+            //top now overlaps other windows bottom
+            overlap =  frames->list[i].y + frames->list[i].h - position;
+            frames->list[i].indirect_resize.new_y = frames->list[i].y;
+          }
+          else { //vertically out of the way
+            frames->list[i].indirect_resize.new_height = 0;
+            continue;
+          }
+        }
+        else { //horizontally out of the way
+          frames->list[i].indirect_resize.new_height = 0;
+          continue;
+        }
+        
+        if(frames->list[i].h - overlap > frames->list[i].min_height) {
+          frames->list[i].indirect_resize.new_height = frames->list[i].h - overlap;
+        }
+        else {
+          if(frames->list[i].h - frames->list[i].min_height > 0) {
+            printf("RECURSEing: old width %d new width %d, \n", overlap, frames->list[i].h - frames->list[i].min_height);
+            overlap = frames->list[i].h - frames->list[i].min_height;
+            enlarge_frame(display, frames, index, 'y', overlap, position);
+          }
+          else printf("ERROR: Adjacent windows minimum height reached\n");
+          //maybe try the difference between them and recurse?
+          return;
+        }
+      }
+    }
+  }
+
+  if(axis == 'x') {
+    frames->list[index].x = position;
+    frames->list[index].w = size;
+    for(int i = 0; i < frames->used; i++) {
+      if(frames->list[i].mode == TILING  &&  frames->list[i].indirect_resize.new_width) {
+        frames->list[i].x = frames->list[i].indirect_resize.new_x;
+        frames->list[i].w = frames->list[i].indirect_resize.new_width;        
+        resize_frame(display, &frames->list[i]);
+      }
+    }
+  }
+  else if(axis == 'y') {
+    frames->list[index].y = position;
+    frames->list[index].h = size;
+    for(int i = 0; i < frames->used; i++) {
+      if(frames->list[i].mode == TILING  &&  frames->list[i].indirect_resize.new_height) {
+        frames->list[i].y = frames->list[i].indirect_resize.new_y; 
+        frames->list[i].h = frames->list[i].indirect_resize.new_height;
+        resize_frame(display, &frames->list[i]);
+      }
+    }
+  }
+  resize_frame(display, &frames->list[index]);
+  
+  return;
 }
 

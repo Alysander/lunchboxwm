@@ -51,11 +51,12 @@
 #define TEXT_DEACTIVATED   0.6, 0.6, 0.6, 1
 #define SHADOW          0.0, 0.0, 0.0, 1
 
+
 #define BORDER          0.13, 0.13, 0.13, 1
 #define LIGHT_EDGE      0.34, 0.34, 0.34, 1
 #define BODY            0.27, 0.27, 0.27, 1
 
-/*** Green ***/
+/*** Green theme at Fraser's suggestion ***/
 /*
 #define BORDER          0.01, 0.35, 0.0, 1
 #define LIGHT_EDGE      0.01, 0.78, 0.0, 1
@@ -74,29 +75,37 @@ struct Frame {
   int min_height, max_height;
   
   Window frame, body, innerframe, titlebar, close_button, mode_pulldown, selection_indicator; 
-  Window backing;   //backing is the same dimensions as the framed window.  It is used so that the resize grips can cover the innerframe but still be below the framed window.
-
-  //because the title menu needs to change size regularly we re-use the same tricks as used in the structure of window frame itself
+  Window backing;   //backing is the same dimensions as the framed window.  
+                    //It is used so that the resize grips can cover the innerframe but still be below the framed window.
   struct {
-    Window frame, //frame is the outline, body is the inner border, title has the background pixmap and arrow is the pulldownarrow, 
-           body,
-           title,
-           arrow,
-           hotspot; //hotspot is an input_only window to make the events easier to handle (rather than lots of logical ORs)
+    Window frame,   //frame is the outline, 
+           body,    //body is the inner border, 
+           title,   //title has the background pixmap and 
+           arrow,   //arrow is the pulldownarrow on the title menu
+           hotspot; //hotspot is an input_only window to make the events easier to identify
 
     //these pixmaps include the bevel, background and  text
     Pixmap title_normal_p,
            title_pressed_p,
-           title_deactivated_p;
+           title_deactivated_p,
 
-    Pixmap item_title_p,
+           item_title_p,
            item_title_hover_p;
-
-    Window entry;                       
-    int width; //this is the width of the title
+    
+    Window entry;
+    int width; //this is the width of the individual title
   } title_menu;
+ 
+  struct {
+     int new_width;  //make this zero to skip width/x for this window
+     int new_x;
+     
+     int new_height; //make this zero to skip height/y for this window
+     int new_y;
+  } indirect_resize;
   
-  Window l_grip, bl_grip, b_grip, br_grip, r_grip;  //InputOnly resize grips  for the bottom left, top right etc.
+  //InputOnly resize grips  for the bottom left, top right etc.  
+  Window l_grip, bl_grip, b_grip, br_grip, r_grip;
 };
 
 struct Framelist {
