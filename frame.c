@@ -628,7 +628,7 @@ void enlarge_frame(Display *display, struct Framelist *frames, int index, char a
 }
 
 
-void shrink_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size) {
+void shrink_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size, int adjacency_position, int adjacency_size) {
   /******
   Purpose:  
     Shrinks an window and enlarges any adjacent tiled windows in either axis
@@ -665,22 +665,40 @@ void shrink_frame(Display *display, struct Framelist *frames, int index, char ax
 
     if(frames->list[i].mode == TILING) {
       if(axis == 'x') {
-        if((frames->list[index].y + frames->list[index].h > frames->list[i].y  &&  frames->list[index].y < frames->list[i].y)
-            || (frames->list[index].y < frames->list[i].y + frames->list[i].h  &&  frames->list[index].y > frames->list[i].y)) {
+        if((adjacency_position + adjacency_size > frames->list[i].y  &&  adjacency_position <= frames->list[i].y)
+            || (adjacency_position < frames->list[i].y + frames->list[i].h  &&  adjacency_position >= frames->list[i].y)) {
           
           if(frames->list[index].x + frames->list[index].w + SHRINK_GRIP_MARGIN > frames->list[i].x  &&  frames->list[index].x < frames->list[i].x) {
             //window is adjacent to this windows RHS
+            printf("found window adjacent on RHS\n");
             frames->list[i].indirect_resize.new_x = frames->list[i].x - increase;
             frames->list[i].indirect_resize.new_width = frames->list[i].w + increase;
           }
           else if(frames->list[index].x < frames->list[i].x + frames->list[i].w + SHRINK_GRIP_MARGIN  &&  frames->list[index].x > frames->list[i].x) {
             //window is adjacent to this windows LHS
+            printf("found window adjacent on LHS\n");
             frames->list[i].indirect_resize.new_width = frames->list[i].w + increase;           
             frames->list[i].indirect_resize.new_x = frames->list[i].x;
           }
           else {
             frames->list[i].indirect_resize.new_width = 0; //horizontally out of the way
             continue;
+          }
+          
+          if(frames->list[i].y < adjacency_position  &&  frames->list[i].h > adjacency_size) {
+            //completely encloses the adjacency area
+            shrink_frame(display, frames, index, axis, position, size, frames->list[i].y, frames->list[i].h);
+            return;
+          }
+          else if(frames->list[i].h > adjacency_size) {
+            //extends below the adjacency area
+            shrink_frame(display, frames, index, axis, position, size, adjacency_position, frames->list[i].h);
+            return;
+          }
+          else if(frames->list[i].y < adjacency_position) {
+            //extends above the adjacency area
+            shrink_frame(display, frames, index, axis, position, size, frames->list[i].y, adjacency_size);
+            return;
           }
         }
         else {
@@ -693,22 +711,39 @@ void shrink_frame(Display *display, struct Framelist *frames, int index, char ax
         }
       }
       else if(axis == 'y') {
-        if((frames->list[index].x + frames->list[index].w > frames->list[i].x  &&  frames->list[index].x < frames->list[i].x)
-            || (frames->list[index].x < frames->list[i].x + frames->list[i].w  &&  frames->list[index].x > frames->list[i].x)) {
+        if((adjacency_position + adjacency_size > frames->list[i].x  &&  adjacency_position <= frames->list[i].x)
+            || (adjacency_position < frames->list[i].x + frames->list[i].w  &&  adjacency_position >= frames->list[i].x)) {
 
           if(frames->list[index].y + frames->list[index].h + SHRINK_GRIP_MARGIN > frames->list[i].y  &&  frames->list[index].y < frames->list[i].y) {
             //window is adjacent this windows bottom
+            printf("found window on bottom\n");
             frames->list[i].indirect_resize.new_y = frames->list[i].y - increase;
             frames->list[i].indirect_resize.new_height = frames->list[i].h + increase;
           }
           else if(frames->list[index].y < frames->list[i].y + frames->list[i].h + SHRINK_GRIP_MARGIN  &&  frames->list[index].y > frames->list[i].y) {
             //window is adjacent to this windows top
+            printf("found window above titlebar\n");
             frames->list[i].indirect_resize.new_y = frames->list[i].y;
             frames->list[i].indirect_resize.new_height = frames->list[i].h + increase;
           }
           else { //vertically out of the way
             frames->list[i].indirect_resize.new_height = 0;
             continue;
+          }
+          if(frames->list[i].x < adjacency_position  &&  frames->list[i].w > adjacency_size) {
+            //completely encloses the adjacency area
+            shrink_frame(display, frames, index, axis, position, size, frames->list[i].x, frames->list[i].w);
+            return;
+          }
+          else if(frames->list[i].w > adjacency_size) {
+            //extends below the adjacency area
+            shrink_frame(display, frames, index, axis, position, size, adjacency_position, frames->list[i].w);
+            return;
+          }
+          else if(frames->list[i].x < adjacency_position) {
+            //extends above the adjacency area
+            shrink_frame(display, frames, index, axis, position, size, frames->list[i].x, adjacency_size);
+            return;
           }
         }
         else { //horizontally out of the way

@@ -35,9 +35,7 @@ extern int test_resize_frame      (Display *display, struct Frame *frame, int w_
 
 
 extern void enlarge_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size);
-
-
-extern void shrink_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size);
+extern void shrink_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size, int adjacent_start, int adjacent_size);
   
 
 #include "draw.c"
@@ -743,7 +741,7 @@ int main (int argc, char* argv[]) {
             //commit height changes
             if(frames.list[clicked_frame].mode == TILING) {
               if(new_height >= frames.list[clicked_frame].h) enlarge_frame(display, &frames, clicked_frame, 'y', frames.list[clicked_frame].y, new_height);
-              else shrink_frame(display, &frames, clicked_frame, 'y', frames.list[clicked_frame].y, new_height);
+              else shrink_frame(display, &frames, clicked_frame, 'y', frames.list[clicked_frame].y, new_height, frames.list[clicked_frame].x, frames.list[clicked_frame].w);
             }
             else if(new_height >= frames.list[clicked_frame].min_height + FRAME_VSPACE
               && new_height <= frames.list[clicked_frame].max_height + FRAME_VSPACE) {
@@ -753,7 +751,7 @@ int main (int argc, char* argv[]) {
             //commit width and x position changes                             
             if(frames.list[clicked_frame].mode == TILING) {
               if(new_width >= frames.list[clicked_frame].w) enlarge_frame(display, &frames, clicked_frame, 'x', new_x, new_width);
-              else shrink_frame(display, &frames, clicked_frame, 'x', new_x, new_width);
+              else shrink_frame(display, &frames, clicked_frame, 'x', new_x, new_width, frames.list[clicked_frame].y, frames.list[clicked_frame].h);
             }
             else if(new_width >= frames.list[clicked_frame].min_width + FRAME_HSPACE
               && new_width <= frames.list[clicked_frame].max_width) {
@@ -975,7 +973,7 @@ void show_mode_pulldown_list(Display *display, struct mode_pulldown_list *mode_p
 
   XFlush(display);
 
-  //do some maths to figure out where to put it so it isn't off the screen
+  //TODO: find a way to figure out if this is correct.
   XMoveWindow(display, mode_pulldown->frame, x, y);
   XRaiseWindow(display, mode_pulldown->frame);
   XMapWindow(display, mode_pulldown->frame);
@@ -1040,7 +1038,7 @@ void show_title_menu(Display *display, struct Framelist* frames, int x, int y) {
     XMoveWindow(display, frames->list[i].title_menu.entry, EDGE_WIDTH, EDGE_WIDTH + MENU_ITEM_HEIGHT * i);
     XSetWindowBackgroundPixmap (display, frames->list[i].title_menu.entry, frames->list[i].title_menu.item_title_p );    
   }
-  //make them all the same size.
+  //make them all the same width.
   for(int i = 0; i < frames->used; i++) {
     XResizeWindow(display, frames->list[i].title_menu.entry, max_length, MENU_ITEM_HEIGHT);
   }
