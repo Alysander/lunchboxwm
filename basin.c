@@ -24,6 +24,9 @@ extern Pixmap create_title_pixmap(Display* display, const char* title, enum titl
 extern int create_frame           (Display *display, struct Framelist* frames, Window framed_window, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors); 
 extern void create_startup_frames (Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
 extern void remove_frame          (Display *display, struct Framelist* frames, int index);
+extern void enlarge_frame         (Display *display, struct Framelist *frames, int index, char axis, int position, int size);
+extern void shrink_frame          (Display *display, struct Framelist *frames, int index, char axis, int position, int size, int adj_start, int adj_size);
+
 extern void remove_window         (Display *display, Window framed_window);
 extern void get_frame_program_name(Display *display, struct Frame *frame);
 extern void get_frame_name        (Display *display, struct Frame *frame);
@@ -32,10 +35,6 @@ extern void show_frame_state      (Display *display, struct Frame *frame,  struc
 extern void resize_frame          (Display *display, struct Frame *frame);
 extern int replace_frame          (Display *display, struct Frame *target, struct Frame *replacement, struct frame_pixmaps *pixmaps);
 extern int test_resize_frame      (Display *display, struct Frame *frame, int w_incr, int h_incr);
-
-
-extern void enlarge_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size);
-extern void shrink_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size, int adjacent_start, int adjacent_size);
   
 
 #include "draw.c"
@@ -455,9 +454,11 @@ int main (int argc, char* argv[]) {
             if(clicked_widget == frames.list[i].mode_pulldown) {
               if(event.xbutton.window == mode_pulldown.floating) {
                 frames.list[i].mode = FLOATING;
+                XRaiseWindow(display, frames.list[i].frame);
               }
               else if(event.xbutton.window == mode_pulldown.tiling) {
                 frames.list[i].mode = TILING;
+                //put below all other floating windows
               }
               else if(event.xbutton.window == mode_pulldown.sinking) {
                 frames.list[i].mode = SINKING;
