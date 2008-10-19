@@ -24,8 +24,7 @@ extern Pixmap create_title_pixmap(Display* display, const char* title, enum titl
 extern int create_frame           (Display *display, struct Framelist* frames, Window framed_window, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors); 
 extern void create_startup_frames (Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
 extern void remove_frame          (Display *display, struct Framelist* frames, int index);
-extern void enlarge_frame         (Display *display, struct Framelist *frames, int index, char axis, int position, int size);
-extern void shrink_frame          (Display *display, struct Framelist *frames, int index, char axis, int position, int size, int adj_start, int adj_size);
+extern void resize_tiling_frame   (Display *display, struct Framelist *frames, int index, char axis, int position, int size);
 
 extern void remove_window         (Display *display, Window framed_window);
 extern void get_frame_program_name(Display *display, struct Frame *frame);
@@ -33,9 +32,7 @@ extern void get_frame_name        (Display *display, struct Frame *frame);
 extern void get_frame_hints       (Display *display, struct Frame *frame);
 extern void show_frame_state      (Display *display, struct Frame *frame,  struct frame_pixmaps *pixmaps);
 extern void resize_frame          (Display *display, struct Frame *frame);
-extern int replace_frame          (Display *display, struct Frame *target, struct Frame *replacement, struct frame_pixmaps *pixmaps);
-extern int test_resize_frame      (Display *display, struct Frame *frame, int w_incr, int h_incr);
-  
+extern int replace_frame          (Display *display, struct Frame *target, struct Frame *replacement, struct frame_pixmaps *pixmaps);  
 
 #include "draw.c"
 #include "frame.c"
@@ -64,7 +61,7 @@ int main (int argc, char* argv[]) {
   int screen_number;
   
   XEvent event;
-  Window root, background_window, clicked_widget; 
+  Window root, background_window;
   Window pulldown;
   Pixmap background_window_p;   
   
@@ -74,16 +71,22 @@ int main (int argc, char* argv[]) {
 
   struct mode_pulldown_list mode_pulldown; //this window is created and reused.
   
-  int do_click_to_focus = 0;
-  int grab_move = 0;
-  int start_move_x, start_move_y;
+
+  int do_click_to_focus = 0; //used by EnterNotify and ButtonPress to determine when to set focus
+                             //currently requires num_lock to be off
+
+  int grab_move = 0; //used by EnterNotfy, LeaveNotify and ButtonPress to allow alt+click moves of windows
+  
+  int start_move_x, start_move_y; //used by ButtonPress and motionNotify for window movement arithmetic
   int was_sunk = 0; //for showing and cancelling sinking state on extreme squish
   
-  int clicked_frame = -1; //identifies the window being moved/resized by frame index
-  int clicked_menu_item = -1;  //this can be a frame index or FLOATING/TILING/SINKING
+  int clicked_frame = -1;      //identifies the window being moved/resized by frame index
+  Window clicked_widget;       //clicked_widget is used to determine if close buttons etc. should be activated
+  int clicked_menu_item = -1;  //this can be a frame index or FLOATING/TILING/SINKING depending on the menu pressed
   
-  int resize_x_direction = 0; //1 means LHS, -1 means RHS
-  int resize_y_direction = 0; //1 means top, -1 means bottom
+  int resize_x_direction = 0; //used in motionNotify, 1 means LHS, -1 means RHS 
+  int resize_y_direction = 0; //used in motionNotify, 1 means top, -1 means bottom
+  
   int i; //i is the iterator for the window array 
          //and is also used to check how the loop terminated
   
@@ -100,6 +103,7 @@ int main (int argc, char* argv[]) {
   
   printf("\nOpening Basin using the DISPLAY environment variable\n");
   printf("This can hang if the wrong screen number is given\n");
+  printf("Send SIGINT by pressing ctrl+c to close carefully\n");
   display = XOpenDisplay(NULL);
   
   if(display == NULL)  {
@@ -127,13 +131,12 @@ int main (int argc, char* argv[]) {
   screen_number = DefaultScreen (display);
   
   pulldown = root;
-  clicked_widget = root; //clicked_widget is used to determine if close buttons etc. should be activated
+  clicked_widget = root;
   
   XSelectInput(display, root, SubstructureRedirectMask | ButtonMotionMask | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask); 
   load_pixmaps (display, &pixmaps);
   load_cursors (display, &cursors);
   XFlush(display);
-
     
   create_title_menu(display, &frames, &pixmaps, &cursors);
   create_startup_frames(display, &frames, &pixmaps, &cursors);  
@@ -360,6 +363,8 @@ int main (int argc, char* argv[]) {
             grab_move = 1;
           }
           else {
+            //this means that a mouse click on the framed window has been detected
+            //set the window focus
             printf("set do_click_to_focus through enternotify\n");
             do_click_to_focus = 1;
           }
@@ -367,6 +372,7 @@ int main (int argc, char* argv[]) {
         }
       case LeaveNotify:
         if(event.type == LeaveNotify  &&  event.xcrossing.mode == NotifyUngrab) {
+          //ending the grab_move
           grab_move = 0;
           clicked_frame = -1;
         }
@@ -741,8 +747,7 @@ int main (int argc, char* argv[]) {
             
             //commit height changes
             if(frames.list[clicked_frame].mode == TILING) {
-              if(new_height >= frames.list[clicked_frame].h) enlarge_frame(display, &frames, clicked_frame, 'y', frames.list[clicked_frame].y, new_height);
-              else shrink_frame(display, &frames, clicked_frame, 'y', frames.list[clicked_frame].y, new_height, frames.list[clicked_frame].x, frames.list[clicked_frame].w);
+              resize_tiling_frame(display, &frames, clicked_frame, 'y', frames.list[clicked_frame].y, new_height);
             }
             else if(new_height >= frames.list[clicked_frame].min_height + FRAME_VSPACE
               && new_height <= frames.list[clicked_frame].max_height + FRAME_VSPACE) {
@@ -751,11 +756,10 @@ int main (int argc, char* argv[]) {
 
             //commit width and x position changes                             
             if(frames.list[clicked_frame].mode == TILING) {
-              if(new_width >= frames.list[clicked_frame].w) enlarge_frame(display, &frames, clicked_frame, 'x', new_x, new_width);
-              else shrink_frame(display, &frames, clicked_frame, 'x', new_x, new_width, frames.list[clicked_frame].y, frames.list[clicked_frame].h);
+              resize_tiling_frame(display, &frames, clicked_frame, 'x', new_x, new_width);
             }
             else if(new_width >= frames.list[clicked_frame].min_width + FRAME_HSPACE
-              && new_width <= frames.list[clicked_frame].max_width) {
+              && new_width <= frames.list[clicked_frame].max_width + FRAME_HSPACE) {
               frames.list[clicked_frame].x = new_x;  //for l_grip and bl_grip
               frames.list[clicked_frame].w = new_width;
             }            
@@ -780,8 +784,10 @@ int main (int argc, char* argv[]) {
             break;
           }
       break;
-      case ConfigureRequest:        
-        printf("ConfigureRequest window %d, w: %d, h %d, ser %d, send %d\n", 
+
+      case ConfigureRequest:
+
+        printf("ConfigureRequest window %d, w: %d, h %d, ser %d, send %d", 
           event.xconfigurerequest.window,
           event.xconfigurerequest.width,
           event.xconfigurerequest.height,
@@ -800,14 +806,17 @@ int main (int argc, char* argv[]) {
                && event.xconfigurerequest.height  <= frames.list[i].max_height + FRAME_VSPACE)
                 frames.list[i].h = event.xconfigurerequest.height + FRAME_VSPACE;
                
-              printf("Adjusted width,height: %d %d\n", frames.list[i].w, frames.list[i].h);
+              printf(".. width %d, height %d", frames.list[i].w, frames.list[i].h);
               resize_frame(display, &frames.list[i]);
               break;
             }
-            else printf("skipped resize request");
+            else {
+              printf("skipped resize request");
+              break;
+            }
           }
         }
-
+        printf("\n");
         //this window hasn't been mapped yet, let it update it's size
         if(i == frames.used) {
           XWindowAttributes attributes;

@@ -43,7 +43,7 @@
 //subtract this from the width of the window to find the max title width.
 #define TITLE_MAX_WIDTH_DIFF (TITLEBAR_USED_WIDTH + EDGE_WIDTH*2 + BUTTON_SIZE)
 
-#define SHRINK_GRIP_MARGIN 1
+#define PUSH_PULL_RESIZE_MARGIN 1
 
 /***** Colours for cairo as rgba amounts between 0 and 1 *******/
 #define SPOT            0.235294118, 0.549019608, 0.99, 1
@@ -99,11 +99,8 @@ struct Frame {
   } title_menu;
  
   struct {
-     int new_width;  //make this zero to skip width/x for this window
-     int new_x;
-     
-     int new_height; //make this zero to skip height/y for this window
-     int new_y;
+     int new_position;
+     int new_size;
   } indirect_resize;
   
   //InputOnly resize grips  for the bottom left, top right etc.  
