@@ -374,6 +374,13 @@ int main (int argc, char* argv[]) {
         if(event.type == LeaveNotify  &&  event.xcrossing.mode == NotifyUngrab) {
           //ending the grab_move
           grab_move = 0;
+          if(was_sunk &&  clicked_frame != -1) {
+            XLowerWindow(display, frames.list[clicked_frame].frame);
+            XLowerWindow(display, background_window);
+          }
+          else if(was_sunk) printf("Warning: sinking mode set attempt for non-existant frame\n");
+          was_sunk = 0;
+          
           clicked_frame = -1;
         }
           
@@ -451,6 +458,13 @@ int main (int argc, char* argv[]) {
       case ButtonRelease:
         printf("ButtonRelease. Window %d, subwindow %d, root %d\n", event.xbutton.window, event.xbutton.subwindow, event.xbutton.root);        
 
+        if(was_sunk &&  clicked_frame != -1) {
+          XLowerWindow(display, frames.list[clicked_frame].frame);
+          XLowerWindow(display, background_window);
+        }
+        else if(was_sunk) printf("Warning: sinking mode set attempt for non-existant frame\n");
+        was_sunk = 0;
+        
         /* Close pop-up menu and maybe activate a menu item */
         if(pulldown != root) { //
           printf("closed pulldown\n");
@@ -495,7 +509,7 @@ int main (int argc, char* argv[]) {
           pulldown = root;          
           clicked_widget = root;
         }
-
+        
         /* Activate a widget */
         if((clicked_widget != root) && (clicked_widget == event.xbutton.window)) {
           for(i = 0; i < frames.used; i++) {
@@ -542,32 +556,23 @@ int main (int argc, char* argv[]) {
         
         if(clicked_widget != root) for(i = 0; i < frames.used; i++) {
           if(clicked_widget == frames.list[i].l_grip
-             ||  clicked_widget == frames.list[i].bl_grip
-             ||  clicked_widget == frames.list[i].b_grip
-             ||  clicked_widget == frames.list[i].br_grip
-             ||  clicked_widget == frames.list[i].r_grip) {
-            printf("cancelled resize\n");
+          ||  clicked_widget == frames.list[i].bl_grip
+          ||  clicked_widget == frames.list[i].b_grip
+          ||  clicked_widget == frames.list[i].br_grip
+          ||  clicked_widget == frames.list[i].r_grip
+          ||  clicked_widget == frames.list[i].close_button) {
+            printf("Cancelled click\n");
             clicked_widget = root;
             break;
           }
         }
-        if(clicked_widget == frames.list[i].close_button) {
-          //the mouse button was released but somewhere else,
-          //so cancel rather than activating
-          clicked_widget == root;
-        }
         
         if(clicked_widget == root)  XUngrabPointer(display, CurrentTime);
         if(clicked_frame != -1) {
-          printf("cancelling frame click\n");
+          printf("Cancelling frame move/resize\n");
           XUngrabPointer(display, CurrentTime);
-          if(was_sunk) {
-            XLowerWindow(display, frames.list[clicked_frame].frame);
-            XLowerWindow(display, background_window);
-          }
           XFlush(display);
           clicked_frame = -1;
-          was_sunk = 0;
           resize_x_direction = 0;
           resize_y_direction = 0;
           

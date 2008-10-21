@@ -23,6 +23,7 @@
 #define PULLDOWN_WIDTH 100
 
 #define BUTTON_SIZE 20
+//was 20
 #define V_SPACING 4
 #define H_SPACING 4
 #define TITLEBAR_HEIGHT BUTTON_SIZE + (V_SPACING * 2)
