@@ -150,8 +150,10 @@ int main (int argc, char* argv[]) {
   XDefineCursor(display, background_window, cursors.normal);  
   XMapWindow(display, background_window);
 
-  printf("Passive alt+click grab reported: %d\n", XGrabButton(display, Button1, Mod1Mask, root, False, ButtonPressMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, cursors.grab));
 
+//  printf("Passive alt+click grab reported: %d\n", );
+  XGrabButton(display, Button1, Mod1Mask, root, False, ButtonPressMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, cursors.grab);
+  
   XFlush(display);
   
   while(!done) {
@@ -344,8 +346,8 @@ int main (int argc, char* argv[]) {
             break;
           }
           
-          printf("focussing frame %d\n", clicked_frame);
           if(clicked_frame != -1) {
+            printf("focussing frame %d\n", clicked_frame);
             if(frames.list[clicked_frame].mode == FLOATING) 
               XRaiseWindow(display, frames.list[clicked_frame].frame);
             XSetInputFocus(display, frames.list[clicked_frame].window, RevertToPointerRoot, CurrentTime);
@@ -515,8 +517,8 @@ int main (int argc, char* argv[]) {
           for(i = 0; i < frames.used; i++) {
             if(clicked_widget == frames.list[i].close_button) {
               printf("released closebutton %d, window %d\n", frames.list[i].close_button, frames.list[i].frame);
-              //XSelectInput(display, frames.list[i].window, 0);
-              //XUnmapWindow(display, frames.list[i].window);            
+//              XSelectInput(display, frames.list[i].window, 0); moved to remove_window conditionally
+//              XUnmapWindow(display, frames.list[i].window);            
               remove_window(display, frames.list[i].window);
               if(pulldown != root) {
                 XUnmapWindow(display, pulldown);
