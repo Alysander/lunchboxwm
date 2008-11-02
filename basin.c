@@ -515,15 +515,15 @@ int main (int argc, char* argv[]) {
           for(i = 0; i < frames.used; i++) {
             if(clicked_widget == frames.list[i].close_button) {
               printf("released closebutton %d, window %d\n", frames.list[i].close_button, frames.list[i].frame);
-              XSelectInput(display, frames.list[i].window, 0);
-              XUnmapWindow(display, frames.list[i].window);            
+              //XSelectInput(display, frames.list[i].window, 0);
+              //XUnmapWindow(display, frames.list[i].window);            
               remove_window(display, frames.list[i].window);
               if(pulldown != root) {
                 XUnmapWindow(display, pulldown);
                 pulldown = root;
                 
               }
-              remove_frame(display, &frames, i);
+              //remove_frame(display, &frames, i);
               clicked_widget = root;
               break;
             }

@@ -21,8 +21,12 @@ void remove_frame(Display* display, struct Framelist* frames, int index) {
   XFreePixmap(display, frames->list[index].title_menu.item_title_p);
   XFreePixmap(display, frames->list[index].title_menu.item_title_hover_p);
   
-  if(frames->list[index].window_name != NULL) XFree(frames->list[index].window_name);
-  if(frames->list[index].program_name != NULL) XFree(frames->list[index].program_name);
+  if(frames->list[index].window_name != NULL) 
+    XFree(frames->list[index].window_name);
+    
+  if(frames->list[index].program_name != NULL  
+  &&  frames->list[index].window_name != frames->list[index].program_name) 
+    XFree(frames->list[index].program_name);
   
   if((frames->used != 1) && (index != frames->used - 1)) { //the frame is not the first or the last
     frames->list[index] = frames->list[frames->used - 1]; //swap the deleted frame with the last frame
@@ -35,6 +39,7 @@ void remove_window(Display* display, Window framed_window) {
   int n, found = 0;
   Atom *protocols;
   
+  //from windowlab/aewm
   if (XGetWMProtocols(display, framed_window, &protocols, &n)) {
     for (int i = 0; i < n; i++)
       if (protocols[i] == XInternAtom(display, "WM_DELETE_WINDOW", False)) {
@@ -45,6 +50,7 @@ void remove_window(Display* display, Window framed_window) {
   }
   
   if(found)  {
+   //from windowlab/aewm
     XClientMessageEvent event;
     event.type = ClientMessage;
     event.window = framed_window;
@@ -53,9 +59,12 @@ void remove_window(Display* display, Window framed_window) {
     event.data.l[0] = (long)XInternAtom(display, "WM_DELETE_WINDOW", False);
     event.data.l[1] = CurrentTime;
     XSendEvent(display, framed_window, False, NoEventMask, (XEvent *)&event);
+    printf("Sent wm_delete_window message\n");
   }
   else {
-    printf("Killed client %d\n", framed_window);
+    printf("Killed window %d\n", framed_window);
+    XUnmapWindow(display, framed_window);
+    XFlush(display);
     XKillClient(display, framed_window);
   }
   
@@ -175,9 +184,9 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   //same y as body, with a constant width as the sides so H_SPACING
   frame.title_menu.entry = XCreateSimpleWindow(display, frames->title_menu, 10, 10, 
                                          XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black); 
-                                       
+
+  get_frame_program_name(display, &frame); //must be called before get_frame_name                                   
   get_frame_name(display, &frame);
-  get_frame_program_name(display, &frame);
   
   resize_frame(display, &frame); //resize the title menu if it isn't at it's minimum
   show_frame_state(display, &frame, pixmaps);
@@ -252,7 +261,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XMapWindow(display, frame.frame);
 
   //Intercept clicks so we can set the focus and possibly raise floating windows
-   printf("Passive click grab reported: %d\n", XGrabButton(display, Button1, 0, frame.backing, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None));
+  XGrabButton(display, Button1, 0, frame.backing, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
+  // printf("Passive click grab reported: %d\n", );
      
   XGetTransientForHint(display, framed_window, &transient);
   if(transient != 0) {
@@ -351,10 +361,26 @@ void get_frame_program_name(Display* display, struct Frame* frame) {
   XFlush(display);
 }
 
+
 /*** Update with the specified name if it is available ***/
+/*** Must call get_frame_program_name prior to calling this ***/
 void get_frame_name(Display* display, struct Frame* frame) {
-  
+
+  if(frame->window_name != NULL) {
+    XFreePixmap(display, frame->title_menu.title_normal_p);
+    XFreePixmap(display, frame->title_menu.title_pressed_p);    
+    XFreePixmap(display, frame->title_menu.title_deactivated_p);
+
+    XFreePixmap(display, frame->title_menu.item_title_p);
+    XFreePixmap(display, frame->title_menu.item_title_hover_p);
+    if(frame->window_name != frame->program_name) XFree(frame->window_name);
+  }
   XFetchName(display, frame->window, &frame->window_name);
+
+  if(frame->window_name == NULL) {
+    frame->window_name = frame->program_name;
+    if(frame->program_name == NULL) printf("Warning: program name unset! Memory leak\n");
+  }
   
   XUnmapWindow(display, frame->title_menu.title);
   XFlush(display);
