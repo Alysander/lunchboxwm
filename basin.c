@@ -82,7 +82,6 @@ int main (int argc, char* argv[]) {
   
   int clicked_frame = -1;      //identifies the window being moved/resized by frame index
   Window clicked_widget;       //clicked_widget is used to determine if close buttons etc. should be activated
-  int clicked_menu_item = -1;  //this can be a frame index or FLOATING/TILING/SINKING depending on the menu pressed
   
   int resize_x_direction = 0; //used in motionNotify, 1 means LHS, -1 means RHS 
   int resize_y_direction = 0; //used in motionNotify, 1 means top, -1 means bottom

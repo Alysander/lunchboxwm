@@ -75,7 +75,7 @@ void create_startup_frames (Display *display, struct Framelist* frames, struct f
   unsigned int windows_length;
   Window root, parent, children, *windows;
   XWindowAttributes attributes;
-  int index;
+
   root = DefaultRootWindow(display);
   
   XQueryTree(display, root, &parent, &children, &windows, &windows_length);
@@ -93,7 +93,6 @@ void create_startup_frames (Display *display, struct Framelist* frames, struct f
 int create_frame(Display* display, struct Framelist* frames, Window framed_window, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) { 
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
-  Visual* colours = XDefaultVisual(display, DefaultScreen(display));
   int black = BlackPixelOfScreen(screen);
   
   XWindowAttributes attributes; //fallback if the specified size hints don't work
