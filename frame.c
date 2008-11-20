@@ -39,10 +39,11 @@ void remove_window(Display* display, Window framed_window) {
   int n, found = 0;
   Atom *protocols;
   
-  //from windowlab/aewm
+  //based on windowlab/aewm
   if (XGetWMProtocols(display, framed_window, &protocols, &n)) {
+    Atom delete_window = XInternAtom(display, "WM_DELETE_WINDOW", False);
     for (int i = 0; i < n; i++)
-      if (protocols[i] == XInternAtom(display, "WM_DELETE_WINDOW", False)) {
+      if (protocols[i] == delete_window) {
         found++;
         break;
       }

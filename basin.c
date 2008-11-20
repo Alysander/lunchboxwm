@@ -3,14 +3,14 @@
 #include "basin.h"
 
 /*** basin.c ***/
-//int main 
 int supress_xerror (Display *display, XErrorEvent *event);
+void list_properties (Display *display, Window window);
+//int main 
 void load_pixmaps  (Display *display, struct frame_pixmaps *pixmaps);
 void load_cursors  (Display *display, struct mouse_cursors *cursors);
 void load_hints    (Display *display, struct hints *atoms);
 void free_pixmaps  (Display *display, struct frame_pixmaps *pixmaps);
 void free_cursors  (Display *display, struct mouse_cursors *cursors);
-//void load_ewm_hints(Display *display)? TODO: check what happens on connection close.
 
 void create_mode_pulldown_list(Display *display, struct mode_pulldown_list *mode_pulldown, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
 void create_title_menu        (Display *display, struct Framelist *frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
@@ -36,12 +36,9 @@ extern void show_frame_state      (Display *display, struct Frame *frame,  struc
 extern void resize_frame          (Display *display, struct Frame *frame);
 extern int replace_frame          (Display *display, struct Frame *target, struct Frame *replacement, struct frame_pixmaps *pixmaps);  
 
-/*** util.c ***/
-extern void list_properties (Display *display, Window window);
 
 #include "draw.c"
 #include "frame.c"
-#include "util.c"
 
 int done = False;
 
@@ -59,6 +56,13 @@ void end_event_loop(int sig) {
   XMapWindow(display, temp);
   XFlush(display);
   XDestroyWindow(display, temp);
+}
+
+void list_properties(Display *display, Window window) {
+  int total;
+  Atom *list = XListProperties(display, window, &total);
+  for(int i = 0; i < total; i++) printf("Property: %s\n", XGetAtomName(display, list[i]));
+  XFree(list);
 }
 
 int main (int argc, char* argv[]) {
@@ -175,7 +179,7 @@ int main (int argc, char* argv[]) {
     //these are from the StructureNotifyMask on the reparented window
     switch(event.type) { 
       case DestroyNotify:  
-        //The OpenOffice and abiword splash screens don't send an unmap event.
+        //The OpenOffice and abiword splash screens don't seeem to send an unmap event.
         printf("Destroyed window, ");
       case UnmapNotify:
         printf("Unmapping: %d\n", event.xdestroywindow.window);
@@ -1001,8 +1005,6 @@ void load_hints (Display *display, struct hints *atoms) {
   //this window is closed automatically by X11 when the connection is closed.
   Window program_instance = XCreateSimpleWindow(display, root, 0, 0, 1, 1, 0, BlackPixelOfScreen(screen), BlackPixelOfScreen(screen)); 
   
-//  number_of_atoms++; atoms->name                   = XInternAtom(display, "WM_NAME", False);
-//  number_of_atoms++; atoms->normal_hints           = XInternAtom(display, "WM_NORMAL_HINTS", False);
   number_of_atoms++; atoms->supported              = XInternAtom(display, "_NET_SUPPORTED", False);
   number_of_atoms++; atoms->supporting_wm_check    = XInternAtom(display, "_NET_SUPPORTING_WM_CHECK", False); 
   number_of_atoms++; atoms->number_of_desktops     = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);   

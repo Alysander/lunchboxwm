@@ -153,7 +153,7 @@ struct hints {
     supported,                // "_NET_SUPPORTED"
     supporting_wm_check,      // "_NET_SUPPORTING_WM_CHECK"    
     number_of_desktops,       // "_NET_NUMBER_OF_DESKTOPS" //always 1
-    desktop_geometry,         //_NET_DESKTOP_GEOMETRY //this is currently the same size as the screen
+    desktop_geometry,         // "_NET_DESKTOP_GEOMETRY" //this is currently the same size as the screen
     
     wm_full_placement,        // "_NET_WM_FULL_PLACEMENT"
     frame_extents,            // "_NET_FRAME_EXTENTS"
@@ -164,11 +164,15 @@ struct hints {
     wm_window_type_dialog,    // "_NET_WM_WINDOW_TYPE_DIALOG"  //can be transient
     wm_window_type_utility,   // "_NET_WM_WINDOW_TYPE_UTILITY" //can be transient
     wm_state,                 // "_NET_WM_STATE"
-    wm_state_fullscreen;       // "_NET_WM_STATE_FULLSCREEN"
+    wm_state_fullscreen;      // "_NET_WM_STATE_FULLSCREEN"
 
     //make sure this comes last
     
 };
+
+struct rectangle {
+  int w,h,x,y;
+}
   
 /** This enum is passed as an argument to create_pixmap to select which one to draw **/
 enum main_pixmap {
