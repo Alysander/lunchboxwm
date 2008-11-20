@@ -5,10 +5,12 @@
 /*** basin.c ***/
 //int main 
 int supress_xerror (Display *display, XErrorEvent *event);
-void load_pixmaps (Display *display, struct frame_pixmaps *pixmaps);
-void load_cursors (Display *display, struct mouse_cursors *cursors);
-void free_pixmaps (Display *display, struct frame_pixmaps *pixmaps);
-void free_cursors (Display *display, struct mouse_cursors *cursors);
+void load_pixmaps  (Display *display, struct frame_pixmaps *pixmaps);
+void load_cursors  (Display *display, struct mouse_cursors *cursors);
+void load_hints    (Display *display, struct hints *atoms);
+void free_pixmaps  (Display *display, struct frame_pixmaps *pixmaps);
+void free_cursors  (Display *display, struct mouse_cursors *cursors);
+//void load_ewm_hints(Display *display)? TODO: check what happens on connection close.
 
 void create_mode_pulldown_list(Display *display, struct mode_pulldown_list *mode_pulldown, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
 void create_title_menu        (Display *display, struct Framelist *frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
@@ -34,8 +36,12 @@ extern void show_frame_state      (Display *display, struct Frame *frame,  struc
 extern void resize_frame          (Display *display, struct Frame *frame);
 extern int replace_frame          (Display *display, struct Frame *target, struct Frame *replacement, struct frame_pixmaps *pixmaps);  
 
+/*** util.c ***/
+extern void list_properties (Display *display, Window window);
+
 #include "draw.c"
 #include "frame.c"
+#include "util.c"
 
 int done = False;
 
@@ -66,7 +72,8 @@ int main (int argc, char* argv[]) {
   Pixmap background_window_p;   
   
   struct frame_pixmaps pixmaps;
-  struct mouse_cursors cursors; 
+  struct mouse_cursors cursors;
+  struct hints atoms;
   struct Framelist frames = {NULL, 16, 0, 0};
 
   struct mode_pulldown_list mode_pulldown; //this window is created and reused.
@@ -135,6 +142,8 @@ int main (int argc, char* argv[]) {
   XSelectInput(display, root, SubstructureRedirectMask | ButtonMotionMask | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask); 
   load_pixmaps (display, &pixmaps);
   load_cursors (display, &cursors);
+  load_hints(display, &atoms);
+
   XFlush(display);
     
   create_title_menu(display, &frames, &pixmaps, &cursors);
@@ -780,11 +789,11 @@ int main (int argc, char* argv[]) {
       case PropertyNotify:
         for(i = 0; i < frames.used; i++) 
           if(event.xproperty.window == frames.list[i].window) {
-            if( strcmp(XGetAtomName(display, event.xproperty.atom), "WM_NAME") == 0) {
+            if( event.xproperty.atom == XA_WM_NAME) { //strcmp(XGetAtomName(display, event.xproperty.atom), "WM_NAME") == 0) {
               get_frame_name(display, &frames.list[i]);
               resize_frame(display, &frames.list[i]);
             }
-            else if ( strcmp(XGetAtomName(display, event.xproperty.atom), "WM_NORMAL_HINTS") == 0) {
+            else if ( event.xproperty.atom == XA_WM_NORMAL_HINTS) { //strcmp(XGetAtomName(display, event.xproperty.atom), "WM_NORMAL_HINTS") == 0) {
               get_frame_hints(display, &frames.list[i]);
             }
             break;
@@ -899,6 +908,7 @@ int supress_xerror(Display *display, XErrorEvent *event) {
   (void) event;
   return 0;
 }
+
 void load_pixmaps (Display *display, struct frame_pixmaps *pixmaps) {
   pixmaps->border_p                    = create_pixmap(display, border);  
   pixmaps->light_border_p              = create_pixmap(display, light_border);  //this pixmap is only used for the pressed state of the title_menu
@@ -928,6 +938,7 @@ void load_pixmaps (Display *display, struct frame_pixmaps *pixmaps) {
   pixmaps->item_tiling_hover_p   = create_pixmap(display, item_tiling_hover);
   
 }
+
 void free_pixmaps (Display *display, struct frame_pixmaps *pixmaps) {
   XFreePixmap(display, pixmaps->border_p);
   XFreePixmap(display, pixmaps->light_border_p);
@@ -957,17 +968,18 @@ void free_pixmaps (Display *display, struct frame_pixmaps *pixmaps) {
   XFreePixmap(display, pixmaps->item_tiling_hover_p);
 
 }
-void load_cursors (Display *display, struct mouse_cursors *cursors) {
-  cursors->normal = XcursorLibraryLoadCursor(display, "left_ptr"); 
-  cursors->pressable = XcursorLibraryLoadCursor(display, "hand2"); 
-  cursors->hand =    XcursorLibraryLoadCursor(display, "hand1");  //AFAIK  hand1 is the open hand only in DMZ-white/black
-  cursors->grab =    XcursorLibraryLoadCursor(display, "fleur");  //AFAIK  fleur is the grabbed hand only in DMZ-white/black
-  cursors->resize_h = XcursorLibraryLoadCursor(display, "h_double_arrow");
-  cursors->resize_v = XcursorLibraryLoadCursor(display, "double_arrow");
-  cursors->resize_tr_bl =  XcursorLibraryLoadCursor(display, "fd_double_arrow");
-  cursors->resize_tl_br =  XcursorLibraryLoadCursor(display, "bd_double_arrow");
 
+void load_cursors (Display *display, struct mouse_cursors *cursors) {
+  cursors->normal       = XcursorLibraryLoadCursor(display, "left_ptr"); 
+  cursors->pressable    = XcursorLibraryLoadCursor(display, "hand2"); 
+  cursors->hand         = XcursorLibraryLoadCursor(display, "hand1");  //AFAIK  hand1 is the open hand only in DMZ-white/black
+  cursors->grab         = XcursorLibraryLoadCursor(display, "fleur");  //AFAIK  fleur is the grabbed hand only in DMZ-white/black
+  cursors->resize_h     = XcursorLibraryLoadCursor(display, "h_double_arrow");
+  cursors->resize_v     = XcursorLibraryLoadCursor(display, "double_arrow");
+  cursors->resize_tr_bl = XcursorLibraryLoadCursor(display, "fd_double_arrow");
+  cursors->resize_tl_br = XcursorLibraryLoadCursor(display, "bd_double_arrow");
 }
+
 void free_cursors (Display *display, struct mouse_cursors *cursors) {
   XFreeCursor(display, cursors->normal);
   XFreeCursor(display, cursors->pressable);
@@ -977,15 +989,52 @@ void free_cursors (Display *display, struct mouse_cursors *cursors) {
   XFreeCursor(display, cursors->resize_v);
   XFreeCursor(display, cursors->resize_tr_bl);
   XFreeCursor(display, cursors->resize_tl_br);
+}
 
+void load_hints (Display *display, struct hints *atoms) {
+  Window root = DefaultRootWindow(display);
+  Screen* screen = DefaultScreenOfDisplay(display);  
+
+  unsigned char *ewmh_atoms = (unsigned char *)&(atoms->supporting_wm_check);
+  int number_of_atoms = 0;
+  static int desktops = 1;
+  //this window is closed automatically by X11 when the connection is closed.
+  Window program_instance = XCreateSimpleWindow(display, root, 0, 0, 1, 1, 0, BlackPixelOfScreen(screen), BlackPixelOfScreen(screen)); 
+  
+//  number_of_atoms++; atoms->name                   = XInternAtom(display, "WM_NAME", False);
+//  number_of_atoms++; atoms->normal_hints           = XInternAtom(display, "WM_NORMAL_HINTS", False);
+  number_of_atoms++; atoms->supported              = XInternAtom(display, "_NET_SUPPORTED", False);
+  number_of_atoms++; atoms->supporting_wm_check    = XInternAtom(display, "_NET_SUPPORTING_WM_CHECK", False); 
+  number_of_atoms++; atoms->number_of_desktops     = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);   
+  number_of_atoms++; atoms->desktop_geometry       = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);     
+  number_of_atoms++; atoms->wm_full_placement      = XInternAtom(display, "_NET_WM_FULL_PLACEMENT", False);
+  number_of_atoms++; atoms->frame_extents          = XInternAtom(display, "_NET_FRAME_EXTENTS", False);
+  number_of_atoms++; atoms->wm_window_type         = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
+  number_of_atoms++; atoms->wm_window_type_normal  = XInternAtom(display, "_NET_WM_WINDOW_TYPE_NORMAL", False);
+  number_of_atoms++; atoms->wm_window_type_dock    = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DOCK", False);
+  number_of_atoms++; atoms->wm_window_type_splash  = XInternAtom(display, "_NET_WM_WINDOW_TYPE_SPLASH", False);  //no frame
+  number_of_atoms++; atoms->wm_window_type_dialog  = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DIALOG", False);  //can be transient
+  number_of_atoms++; atoms->wm_window_type_utility = XInternAtom(display, "_NET_WM_WINDOW_TYPE_UTILITY", False); //can be transient
+  number_of_atoms++; atoms->wm_state               = XInternAtom(display, "_NET_WM_STATE", False);
+  number_of_atoms++; atoms->wm_state_fullscreen    = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", False);
+  
+  //list all ewmh hints supported.
+  XChangeProperty(display, root, atoms->supported, XA_ATOM, 32, PropModeReplace, ewmh_atoms, number_of_atoms);
+  //let clients know that a ewmh comlpient window manager is running
+  XChangeProperty(display, root, atoms->supporting_wm_check, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&program_instance, 1);
+  XChangeProperty(display, root, atoms->number_of_desktops, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&desktops, 1);  
+  
+  list_properties(display, root);
+  
+  
 }
 
 void show_mode_pulldown_list(Display *display, struct mode_pulldown_list *mode_pulldown, struct frame_pixmaps *pixmaps, int x, int y) {
   printf("showing mode pulldown\n");
   //when we map again the background of the last clicked item might be highlighted
   XSetWindowBackgroundPixmap(display, mode_pulldown->floating, pixmaps->item_floating_p);
-  XSetWindowBackgroundPixmap(display, mode_pulldown->tiling, pixmaps->item_tiling_p);
-  XSetWindowBackgroundPixmap(display, mode_pulldown->sinking, pixmaps->item_sinking_p);
+  XSetWindowBackgroundPixmap(display, mode_pulldown->tiling,   pixmaps->item_tiling_p);
+  XSetWindowBackgroundPixmap(display, mode_pulldown->sinking,  pixmaps->item_sinking_p);
 
   XFlush(display);
 

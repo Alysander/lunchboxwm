@@ -6,6 +6,7 @@
 #include <cairo/cairo-xlib.h>
 #include <string.h>
 #include <X11/Xcursor/Xcursor.h>
+#include <X11/Xatom.h> //defines XA_ATOM, an atom that stores the text ATOM
 
 #define M_PI 3.14159265359
 
@@ -143,6 +144,32 @@ struct frame_pixmaps {
          arrow_clipping_normal_p, arrow_clipping_pressed_p, arrow_clipping_deactivated_p;
 };
 
+struct hints {
+    
+    Atom name,                // "WM_NAME"
+    normal_hints,             // "WM_NORMAL_HINTS"
+
+    //make sure this is the first Extended window manager hint
+    supported,                // "_NET_SUPPORTED"
+    supporting_wm_check,      // "_NET_SUPPORTING_WM_CHECK"    
+    number_of_desktops,       // "_NET_NUMBER_OF_DESKTOPS" //always 1
+    desktop_geometry,         //_NET_DESKTOP_GEOMETRY //this is currently the same size as the screen
+    
+    wm_full_placement,        // "_NET_WM_FULL_PLACEMENT"
+    frame_extents,            // "_NET_FRAME_EXTENTS"
+    wm_window_type,           // "_NET_WM_WINDOW_TYPE"
+    wm_window_type_normal,    // "_NET_WM_WINDOW_TYPE_NORMAL"
+    wm_window_type_dock,      // "_NET_WM_WINDOW_TYPE_DOCK"
+    wm_window_type_splash,    // "_NET_WM_WINDOW_TYPE_SPLASH"  //no frame
+    wm_window_type_dialog,    // "_NET_WM_WINDOW_TYPE_DIALOG"  //can be transient
+    wm_window_type_utility,   // "_NET_WM_WINDOW_TYPE_UTILITY" //can be transient
+    wm_state,                 // "_NET_WM_STATE"
+    wm_state_fullscreen;       // "_NET_WM_STATE_FULLSCREEN"
+
+    //make sure this comes last
+    
+};
+  
 /** This enum is passed as an argument to create_pixmap to select which one to draw **/
 enum main_pixmap {
   background,
