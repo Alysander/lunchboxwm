@@ -14,19 +14,7 @@ void remove_frame(Display* display, struct Framelist* frames, int index) {
   XSetErrorHandler(NULL);    
   XUngrabServer(display);
 
-  XFreePixmap(display, frames->list[index].title_menu.title_normal_p);
-  XFreePixmap(display, frames->list[index].title_menu.title_pressed_p);
-  XFreePixmap(display, frames->list[index].title_menu.title_deactivated_p);
-  
-  XFreePixmap(display, frames->list[index].title_menu.item_title_p);
-  XFreePixmap(display, frames->list[index].title_menu.item_title_hover_p);
-  
-  if(frames->list[index].window_name != NULL) 
-    XFree(frames->list[index].window_name);
-    
-  if(frames->list[index].program_name != NULL  
-  &&  frames->list[index].window_name != frames->list[index].program_name) 
-    XFree(frames->list[index].program_name);
+  free_window_name(display, &frames->list[index]);
   
   if((frames->used != 1) && (index != frames->used - 1)) { //the frame is not the first or the last
     frames->list[index] = frames->list[frames->used - 1]; //swap the deleted frame with the last frame
@@ -118,8 +106,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   printf("attributes width %d, height %d\n", attributes.width, attributes.height);
 
   frame.selected = 1;
-  frame.window_name = NULL;
-  frame.program_name = NULL;
+//  frame.window_name = NULL;
+//  frame.program_name = NULL;
   frame.mode = FLOATING;
   frame.window = framed_window;      
   frame.title_menu.entry = root;
@@ -145,7 +133,6 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
 
   frame.selection_indicator = XCreateSimpleWindow(display, frame.titlebar, H_SPACING, V_SPACING,
                                       BUTTON_SIZE, BUTTON_SIZE,  0, black, black);
-
 
   frame.title_menu.frame =  XCreateSimpleWindow(display, frame.titlebar, H_SPACING*2 + BUTTON_SIZE, V_SPACING, 
                                       frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE, 0, black, black);
@@ -185,8 +172,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.title_menu.entry = XCreateSimpleWindow(display, frames->title_menu, 10, 10, 
                                          XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black); 
 
-  get_frame_program_name(display, &frame); //must be called before get_frame_name                                   
-  get_frame_name(display, &frame);
+  //get_frame_program_name(display, &frame);
+  load_frame_name(display, &frame);
   
   resize_frame(display, &frame); //resize the title menu if it isn't at it's minimum
   show_frame_state(display, &frame, pixmaps);
@@ -351,46 +338,48 @@ void resize_frame(Display* display, struct Frame* frame) {
   XFlush(display);
 }
 
-void get_frame_program_name(Display* display, struct Frame* frame) {
+void load_frame_program_name(Display* display, struct Frame* frame) {
   XClassHint program_hint;
   if(XGetClassHint(display, frame->window, &program_hint)) {
     printf("res_name %s, res_class %s\n", program_hint.res_name, program_hint.res_class);
     if(program_hint.res_name != NULL) XFree(program_hint.res_name);
-    frame->program_name = program_hint.res_class;
+    //frame->program_name = program_hint.res_class;
+    if(program_hint.res_class != NULL) XFree(program_hint.res_class);
   }
   XFlush(display);
 }
 
+void free_frame_name(Display* display, struct Frame* frame) {
+  XFreePixmap(display, frame->title_menu.title_normal_p);
+  XFreePixmap(display, frame->title_menu.title_pressed_p);    
+  XFreePixmap(display, frame->title_menu.title_deactivated_p);
 
-/*** Update with the specified name if it is available ***/
-/*** Must call get_frame_program_name prior to calling this ***/
-void get_frame_name(Display* display, struct Frame* frame) {
+  XFreePixmap(display, frame->title_menu.item_title_p);
+  XFreePixmap(display, frame->title_menu.item_title_hover_p);
+}
 
-  if(frame->window_name != NULL) {
-    XFreePixmap(display, frame->title_menu.title_normal_p);
-    XFreePixmap(display, frame->title_menu.title_pressed_p);    
-    XFreePixmap(display, frame->title_menu.title_deactivated_p);
+/*** Update pixmaps with the specified name if it is available.  ***/
+void load_frame_name(Display* display, struct Frame* frame) {
+  char untitled[10] = "untitled\0";
+  char *window_name;
+  window_name = NULL;
+  
+  XFetchName(display, frame->window, &window_name);
 
-    XFreePixmap(display, frame->title_menu.item_title_p);
-    XFreePixmap(display, frame->title_menu.item_title_hover_p);
-    if(frame->window_name != frame->program_name) XFree(frame->window_name);
-  }
-  XFetchName(display, frame->window, &frame->window_name);
-
-  if(frame->window_name == NULL) {
-    frame->window_name = frame->program_name;
-    if(frame->program_name == NULL) printf("Warning: program name unset! Memory leak\n");
+  if(window_name == NULL) {
+    printf("%s\n", untitled);
+    window_name = untitled;
   }
   
   XUnmapWindow(display, frame->title_menu.title);
   XFlush(display);
 
-  frame->title_menu.title_normal_p = create_title_pixmap(display, frame->window_name, title_normal);
-  frame->title_menu.title_pressed_p = create_title_pixmap(display, frame->window_name, title_pressed);
-  frame->title_menu.title_deactivated_p = create_title_pixmap(display, frame->window_name, title_deactivated);
+  frame->title_menu.title_normal_p = create_title_pixmap(display, window_name, title_normal);
+  frame->title_menu.title_pressed_p = create_title_pixmap(display, window_name, title_pressed);
+  frame->title_menu.title_deactivated_p = create_title_pixmap(display, window_name, title_deactivated);
 
-  frame->title_menu.item_title_p = create_title_pixmap(display, frame->window_name, item_title);
-  frame->title_menu.item_title_hover_p = create_title_pixmap(display, frame->window_name, item_title_hover);
+  frame->title_menu.item_title_p = create_title_pixmap(display, window_name, item_title);
+  frame->title_menu.item_title_hover_p = create_title_pixmap(display, window_name, item_title_hover);
 
   if(frame->mode == SINKING) XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_deactivated_p);
   else XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_normal_p);  
@@ -400,7 +389,8 @@ void get_frame_name(Display* display, struct Frame* frame) {
   XSetWindowBackgroundPixmap(display, frame->title_menu.entry, frame->title_menu.item_title_p);
   XMapWindow(display, frame->title_menu.entry);  
   
-  frame->title_menu.width = get_title_width(display, frame->window_name);
+  frame->title_menu.width = get_title_width(display, window_name);
+  if(window_name != untitled) XFree(window_name);
   XMapWindow(display, frame->title_menu.title);
   XFlush(display);
 }

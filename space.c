@@ -1,109 +1,168 @@
-/****
-Workspaces
-   - status windows are "global windows". They simply remain on the screen across workspaces.
-   - file windows can be shared.  However, they are technically reopened in different workspaces.
-     -  how is the "opening program" determined?
-        - open in current program?
 
-Dialog boxes should not have a title menu - this could too easily result in them being lost.
-Splash screens should not have close button.
-
-Program/workspace can be a variable in frame.  
-Whenever free space is calculated, just skip the irrelevent ones.
-
-(utility windows do and therefore can have the mode list too - but no close button)
-   
-****/
-
-
-struct rectangle_list {
-  int used;
-  int max;
-  rectangle *list;
-}
-
-/**
-calling function identifies tiled windows in workspace and "global" windows - the "used_spaces".
-It also identifies the initial space - the screen.
-
-This function then returns the largest available spaces.
-**/
-struct *rectangle_list largest_available_spaces (struct rectangle_list *used_spaces, struct rectangle_list *initial_space) {
-  struct rectangle_list new_spaces = {0, 16, NULL};
+struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist *frames) {
+  struct rectangle_list used_spaces = {0, 8, NULL};
+  struct rectangle_list free_spaces = {0, 8, NULL};
+  Window root = DefaultRootWindow(display);
+  Screen* screen = DefaultScreenOfDisplay(display);
   
-  if(used_spaces->list == NULL  ||  initial_space->list == NULL) {
-    printf("Error:  find_largest_spaces called incorrectly\n");
-    return;
-  }  
-  new_spaces.list = malloc(new_spaces.max * sizeof(rectangle_list));
-
-  if(new_spaces.list == NULL) {
+  used_spaces.list = malloc(used_spaces.max * sizeof(struct rectangle_list));
+  if(used_spaces.list == NULL) {
+    free(used_spaces.list);
     //probably could do something more intelligent here
     printf("Error: out of memory for calculating free spaces on the screen.\n");
-    return;
+    return free_spaces;
   }
   
+  for(int i = 0; i < frames->used; i++) {
+    if(frames->list[i].mode == TILING) {
+      struct rectangle current = 
+        {frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h};
+
+      printf("Tiled window %d, x %d, y %d, w %d, h %d\n",
+        i, frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h);
+      add_rectangle(&used_spaces, current);
+    }
+  }
+  free_spaces = largest_available_spaces(&used_spaces, XWidthOfScreen(screen), XHeightOfScreen(screen));
+  for(int i = 0; i < free_spaces.used; i++) {
+    printf("Free space: x %d, y %d, w %d, h %d\n",
+      free_spaces.list[i].x, free_spaces.list[i].y, free_spaces.list[i].w, free_spaces.list[i].h);
+  }
+  return free_spaces;
 }
 
-void add_rectangle(struct rectangle_list *list, rectangle new) {
+/* This implements the "Free Space Modeling" algorithm. */
+struct rectangle_list largest_available_spaces (struct rectangle_list *used_spaces, int w, int h) {
+
+  struct rectangle_list free_spaces = {0, 8, NULL};
+  free_spaces.list = malloc(free_spaces.max * sizeof(struct rectangle_list));
+  if(free_spaces.list == NULL) {
+    free(used_spaces->list);
+    //probably could do something more intelligent here
+    printf("Error: out of memory for calculating free spaces on the screen.\n");
+    return free_spaces;
+  }
+  
+  struct rectangle screen_space = {0, 0, w, h};
+  add_rectangle(&free_spaces, screen_space ); //define the intitial space.
+  
+  //for all used spaces (already tiled windows on the screen)
+  for(int i = 0; i < used_spaces->used; i++) {  
+    struct rectangle_list new_spaces = {0, 8, NULL};
+    struct rectangle_list old_spaces = {0, 8, NULL};  
+    new_spaces.list = malloc(new_spaces.max * sizeof(struct rectangle_list));
+    old_spaces.list = malloc(old_spaces.max * sizeof(struct rectangle_list));
+
+    if(new_spaces.list == NULL  ||  old_spaces.list == NULL) {
+      free(used_spaces->list);
+      free(free_spaces.list);
+      used_spaces->list == NULL;
+      free_spaces.list == NULL;          
+      //probably could do something more intelligent here
+      printf("Error: out of memory for calculating free spaces on the screen.\n");
+      return free_spaces;
+    }
+    for(int j = 0; j < free_spaces.used; j++) {
+      //if an edge intersects, modify opposing edge.  add modified to new_spaces and original to old_spaces
+      struct rectangle new = {0, 0, 0, 0};
+      if(INTERSECTS(free_spaces.list[j].y, free_spaces.list[j].h, used_spaces->list[i].y, used_spaces->list[i].h) ) {
+        printf("i %d intersects j %d in y\n", i, j);
+        if(INTERSECTS_BEFORE(free_spaces.list[j].x, free_spaces.list[j].w, used_spaces->list[i].x, used_spaces->list[i].w) ) {
+          //the free space comes before the placed rectangle, modify it's RHS    
+          new = free_spaces.list[j];
+          new.w += new.x;
+          new.x = used_spaces->list[i].x + used_spaces->list[i].w;
+          new.w -= new.x;
+          add_rectangle(&new_spaces, new);
+          add_rectangle(&old_spaces, free_spaces.list[j]);          
+          printf("LHS of free space j %d. w was %d, is %d\n", j, free_spaces.list[j].w, new.w);
+        }
+        if(INTERSECTS_AFTER(free_spaces.list[j].x, free_spaces.list[j].w, used_spaces->list[i].x, used_spaces->list[i].w) ) {
+          //the free space comes after the placed rectangle, modify it's LHS
+          new = free_spaces.list[j];
+          new.w = used_spaces->list[i].x - new.x;
+          add_rectangle(&new_spaces, new);
+          add_rectangle(&old_spaces, free_spaces.list[j]);    
+          printf("RHS of free space j %d. w was %d, is %d\n", j, free_spaces.list[j].w, new.w);
+        }
+      }
+      if(INTERSECTS(free_spaces.list[j].x, free_spaces.list[j].w, used_spaces->list[i].x, used_spaces->list[i].w) ) {
+        printf("i %d intersects j %d in x\n", i, j);
+        if(INTERSECTS_BEFORE(free_spaces.list[j].y, free_spaces.list[j].h, used_spaces->list[i].y, used_spaces->list[i].h) ) {
+          //the free space comes before the placed rectangle, modify it's Top
+          new = free_spaces.list[j];
+          new.h += new.y;
+          new.y = used_spaces->list[i].y + used_spaces->list[i].h;
+          new.h -= new.y;
+          add_rectangle(&new_spaces, new);
+          add_rectangle(&old_spaces, free_spaces.list[j]);          
+          printf("bottom of free space j %d. h was %d, is %d\n", j, free_spaces.list[j].h, new.h);
+        }
+        if(INTERSECTS_AFTER(free_spaces.list[j].y, free_spaces.list[j].h, used_spaces->list[i].y, used_spaces->list[i].h) ) {
+          //the free space comes before the placed rectangle, modify it's Bottom
+          new = free_spaces.list[j];
+          new.h = used_spaces->list[i].y - new.y;
+          add_rectangle(&new_spaces, new);
+          add_rectangle(&old_spaces, free_spaces.list[j]);          
+          printf("top of free space j %d. h was %d, is %d\n", j, free_spaces.list[j].h, new.h);          
+        }
+      }
+
+    }
+    if(new_spaces.used != 0) {
+      //remove the spaces which were modified. O(N*M)
+      for(int k = 0; k < old_spaces.used; k++) remove_rectangle(&free_spaces, old_spaces.list[k]);
+      
+      //add new_spaces to the free spaces O(N*M)
+      for(int k = 0; k < new_spaces.used; k++) add_rectangle(&free_spaces, new_spaces.list[k]);
+      
+      free(new_spaces.list);
+      free(old_spaces.list);
+    }
+  }
+  free(used_spaces->list);
+  return free_spaces;
+}
+
+/* Adds rectangles to the list.  Rectangles are checked for validity and independence/inclusion. O(n) */
+void add_rectangle(struct rectangle_list *list, struct rectangle new) {
+  if(new.h <= 0  ||  new.w <= 0  ||  new.x < 0  ||  new.y < 0) return;
   if(list->max == list->used) {
-    struct rectangle_list *temp = NULL;
-    temp = realloc(list->list, sizeof(struct rectangle_list) * frames->max * 2);
-    if(temp != NULL) frames->list = temp;
+    struct rectangle *temp = NULL;
+    temp = realloc(list->list, sizeof(struct rectangle) * list->max * 2);
+    if(temp != NULL) list->list = temp;
     else return;
     list->list = temp;
     list->max *= 2;
   }
-  
-  for(int i = 0; i < list.used; i++)
-  if(list->list[i].x == new.x
-  && list->list[i].y == new.y
-  && list->list[i].w == new.w
-  && list->list[i].h == new.h) break;
 
-  list->list[used] = new;
+  //start from the end in case it was just added. Don't add rectangles which are already covered/included
+  for(int i = list->used - 1; i >= 0; i--) 
+  if(list->list[i].x <= new.x 
+  && list->list[i].y <= new.y
+  && list->list[i].w + list->list[i].x >= new.w + new.x
+  && list->list[i].h + list->list[i].y >= new.h + new.y) return; 
+
+    
+  list->list[list->used] = new;
   list->used++;
 }
 
-void remove_rectangle(struct rectangle_list *list, int i) {
+/* Removes the rectangle from the list if it exists. O(n)*/
+void remove_rectangle(struct rectangle_list *list, struct rectangle old) {
+  int i;
+  for(i = 0; i < list->used; i++)
+  if(list->list[i].x == old.x
+  && list->list[i].y == old.y
+  && list->list[i].w == old.w
+  && list->list[i].h == old.h) break;  
+
+  if(i == list->used) return;
+  
   if((list->used != 1) && (i != list->used - 1)) { //not the first or the last
-    list->list[i] = list->list[list->used - 1]; //swap the deleted item with the last item
+    list->list[i] = list->list[list->used - 1];    //swap the deleted item with the last item
   }
   list->used--;
 }
 
-/*
 
-for every "used" space which is looked at, 
-if it intersects then the original space is removed, and the new splits are added, otherwise look at next original space.
-  - function to add space 
-  - function to remove space.
-It is inevitable that the "used" space intersects something - the total space doesn't grow.
-
-*/
-
-/*
-new_spaces = empty - new list of rectangles
-remove_spaces = empty  - list of indices
-current_spaces = list of rectangles (just the screen initially)s
-
-for all open tiled windows
-  
-  find current_spaces which are covered with the LHS of a window - add each to B
-  if(( (x >= current_spaces[i].x  &&  x < current_spaces[i].x + current_spaces[i].w)
-    || (x <  current_spaces[i].x  &&  x + w > current_spaces[i].x ))
-  && ( (y >= current_spaces[i].y  &&  y < current_spaces[i].y + current_spaces[i].h)
-    || (y <  current_spaces[i].y  &&  y + h > current_spaces[i].y ))
-      
-    modify_spaces(current_spaces, edge (x,y,w,h where h or w = 0, LHS, &new_spaces)
-    
-  repeat for LHS, RHS, Top, Bottom 
-    
-
-modify spaces:
-     
-     make the side of a window the "inner edge" of the space and add to new_spaces.
-
-
-   
-*/

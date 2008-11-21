@@ -30,15 +30,22 @@ extern void resize_tiling_frame   (Display *display, struct Framelist *frames, i
 
 extern void remove_window         (Display *display, Window framed_window);
 extern void get_frame_program_name(Display *display, struct Frame *frame);
-extern void get_frame_name        (Display *display, struct Frame *frame);
+extern void free_frame_name        (Display *display, struct Frame *frame);
+extern void load_frame_name        (Display *display, struct Frame *frame);
 extern void get_frame_hints       (Display *display, struct Frame *frame);
 extern void show_frame_state      (Display *display, struct Frame *frame,  struct frame_pixmaps *pixmaps);
 extern void resize_frame          (Display *display, struct Frame *frame);
 extern int replace_frame          (Display *display, struct Frame *target, struct Frame *replacement, struct frame_pixmaps *pixmaps);  
 
+/*** space.c ***/
+extern void add_rectangle(struct rectangle_list *list, struct rectangle new);
+extern void remove_rectangle(struct rectangle_list *list, struct rectangle old);
+extern struct rectangle_list largest_available_spaces (struct rectangle_list *used_spaces, int w, int h);
+extern struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist *frames);
 
 #include "draw.c"
 #include "frame.c"
+#include "space.c"
 
 int done = False;
 
@@ -61,7 +68,13 @@ void end_event_loop(int sig) {
 void list_properties(Display *display, Window window) {
   int total;
   Atom *list = XListProperties(display, window, &total);
-  for(int i = 0; i < total; i++) printf("Property: %s\n", XGetAtomName(display, list[i]));
+  char *name;
+  for(int i = 0; i < total; i++) {
+    name = NULL;
+    name = XGetAtomName(display, list[i]);
+    if(name != NULL) printf("Property: %s\n", name);
+    if(name != NULL) XFree(name);
+  }
   XFree(list);
 }
 
@@ -126,16 +139,6 @@ int main (int argc, char* argv[]) {
 
   //XSynchronize(display, True);  //Turns on synchronized debugging  
   
-  if(XcursorSetTheme(display, "DMZ-White") == True) { 
-    XcursorSetDefaultSize (display, 24);
-    XSync(display, False);
-  }
-  else {
-    printf("Error: could not find the cursor theme\n");
-    XCloseDisplay(display);
-    return -1;
-  }
-  
   root = DefaultRootWindow(display);
   screen = DefaultScreenOfDisplay(display);
   screen_number = DefaultScreen (display);
@@ -197,8 +200,7 @@ int main (int argc, char* argv[]) {
             }
             if(clicked_widget != root) clicked_widget = root;
             XUngrabPointer(display, CurrentTime);
-            printf("Removed frame i:%d, frame window %d\n, framed_window %d\n",
-               i, frames.list[i].frame, event.xany.window);
+            printf("Removed frame i:%d, framed_window %d\n", i, event.xany.window);
             remove_frame(display, &frames, i);
             break;
           }
@@ -491,7 +493,11 @@ int main (int argc, char* argv[]) {
                 XRaiseWindow(display, frames.list[i].frame);
               }
               else if(event.xbutton.window == mode_pulldown.tiling) {
+                struct rectangle_list free_spaces;              
                 frames.list[i].mode = TILING;
+                //TODO remember to remove this call to get_free_screen_spaces later!                
+                free_spaces = get_free_screen_spaces (display, &frames);                              
+                free(free_spaces.list);
                 //put below all other floating windows
               }
               else if(event.xbutton.window == mode_pulldown.sinking) {
@@ -794,7 +800,8 @@ int main (int argc, char* argv[]) {
         for(i = 0; i < frames.used; i++) 
           if(event.xproperty.window == frames.list[i].window) {
             if( event.xproperty.atom == XA_WM_NAME) { //strcmp(XGetAtomName(display, event.xproperty.atom), "WM_NAME") == 0) {
-              get_frame_name(display, &frames.list[i]);
+              free_frame_name(display, &frames.list[i]);
+              load_frame_name(display, &frames.list[i]);
               resize_frame(display, &frames.list[i]);
             }
             else if ( event.xproperty.atom == XA_WM_NORMAL_HINTS) { //strcmp(XGetAtomName(display, event.xproperty.atom), "WM_NORMAL_HINTS") == 0) {

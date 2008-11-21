@@ -55,7 +55,6 @@
 #define TEXT_DEACTIVATED   0.6, 0.6, 0.6, 1
 #define SHADOW          0.0, 0.0, 0.0, 1
 
-
 #define BORDER          0.13, 0.13, 0.13, 1
 #define LIGHT_EDGE      0.34, 0.34, 0.34, 1
 #define BODY            0.27, 0.27, 0.27, 1
@@ -67,10 +66,30 @@
 #define BODY            0.01, 0.6, 0.0, 1
 */
 
+#define INTERSECTS_BEFORE(x1, w1, x2, w2) (x1 + w1 > x2  &&  x1 <= x2)
+#define INTERSECTS_AFTER(x1, w1, x2, w2)  (x1 < x2 + w2  &&  x1 + w1 >= x2 + w2)
+#define INTERSECTS(x1, w1, x2, w2) (INTERSECTS_BEFORE(x1, w1, x2, w2) || INTERSECTS_AFTER(x1, w1, x2, w2))
+
+/****
+Workspaces
+   - status windows are "global windows". They simply remain on the screen across workspaces.
+   - file windows can be shared.  However, they are technically reopened in different workspaces.
+     -  how is the "opening program" determined?
+        - open in current program?
+
+Dialog boxes should not have a title menu - this could too easily result in them being lost.
+Splash screens should not have close button.
+
+Program/workspace can be a variable in frame.  
+(utility windows do and therefore can have the mode list too - but no close button)
+   
+****/
+
+
 struct Frame {
   Window window;
-  char *window_name;
-  char *program_name;
+//  char *window_name;
+//  char *program_name;
 
   int x,y,w,h;
   int mode; //FLOATING || TILING || SINKING
@@ -113,6 +132,17 @@ struct Framelist {
   struct Frame* list;
   unsigned int max, used;
   Window title_menu;
+};
+
+
+struct rectangle {
+  int x,y,w,h;
+};
+
+struct rectangle_list {
+  int used;
+  int max;
+  struct rectangle *list;
 };
 
 struct mode_pulldown_list {
@@ -170,9 +200,6 @@ struct hints {
     
 };
 
-struct rectangle {
-  int w,h,x,y;
-}
   
 /** This enum is passed as an argument to create_pixmap to select which one to draw **/
 enum main_pixmap {
