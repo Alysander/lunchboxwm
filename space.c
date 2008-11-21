@@ -31,7 +31,7 @@ struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist
   return free_spaces;
 }
 
-/* This implements the "Free Space Modeling" algorithm. */
+/* This implements "Free space modeling for placing rectangles without overlapping" by Marc Bernard and Francois Jacquenet */
 struct rectangle_list largest_available_spaces (struct rectangle_list *used_spaces, int w, int h) {
 
   struct rectangle_list free_spaces = {0, 8, NULL};
