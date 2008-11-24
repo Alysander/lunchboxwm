@@ -18,16 +18,11 @@ struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist
       struct rectangle current = 
         {frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h};
 
-      printf("Tiled window %d, x %d, y %d, w %d, h %d\n",
-        i, frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h);
+//      printf("Tiled window %d, x %d, y %d, w %d, h %d\n", i, frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h);
       add_rectangle(&used_spaces, current);
     }
   }
-  free_spaces = largest_available_spaces(&used_spaces, XWidthOfScreen(screen), XHeightOfScreen(screen));
-  for(int i = 0; i < free_spaces.used; i++) {
-    printf("Free space: x %d, y %d, w %d, h %d\n",
-      free_spaces.list[i].x, free_spaces.list[i].y, free_spaces.list[i].w, free_spaces.list[i].h);
-  }
+  free_spaces = largest_available_spaces(&used_spaces, XWidthOfScreen(screen), XHeightOfScreen(screen) - MENUBAR_HEIGHT);
   return free_spaces;
 }
 

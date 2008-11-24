@@ -24,10 +24,9 @@
 #define PULLDOWN_WIDTH 100
 
 #define BUTTON_SIZE 20
-//was 20
 #define V_SPACING 4
 #define H_SPACING 4
-#define TITLEBAR_HEIGHT BUTTON_SIZE + (V_SPACING * 2)
+#define TITLEBAR_HEIGHT (BUTTON_SIZE + (V_SPACING * 2))
 #define EDGE_WIDTH 1
 #define PIXMAP_SIZE 16
 #define SPOT_SIZE 14
@@ -44,7 +43,7 @@
 #define TITLE_MAX_HEIGHT (BUTTON_SIZE - EDGE_WIDTH*4)
 //subtract this from the width of the window to find the max title width.
 #define TITLE_MAX_WIDTH_DIFF (TITLEBAR_USED_WIDTH + EDGE_WIDTH*2 + BUTTON_SIZE)
-
+#define MENUBAR_HEIGHT (TITLEBAR_HEIGHT - V_SPACING + EDGE_WIDTH)
 #define PUSH_PULL_RESIZE_MARGIN 1
 
 /***** Colours for cairo as rgba amounts between 0 and 1 *******/
@@ -89,7 +88,6 @@ Program/workspace can be a variable in frame.
 struct Frame {
   Window window;
 //  char *window_name;
-//  char *program_name;
 
   int x,y,w,h;
   int mode; //FLOATING || TILING || SINKING

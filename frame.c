@@ -14,7 +14,7 @@ void remove_frame(Display* display, struct Framelist* frames, int index) {
   XSetErrorHandler(NULL);    
   XUngrabServer(display);
 
-  free_window_name(display, &frames->list[index]);
+  free_frame_name(display, &frames->list[index]);
   
   if((frames->used != 1) && (index != frames->used - 1)) { //the frame is not the first or the last
     frames->list[index] = frames->list[frames->used - 1]; //swap the deleted frame with the last frame
@@ -113,64 +113,71 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.title_menu.entry = root;
   get_frame_hints(display, &frame);
     
-  frame.frame =         XCreateSimpleWindow(display, root, frame.x, frame.y, 
-                                      frame.w, frame.h, 0, black, black); 
+  frame.frame =         XCreateSimpleWindow(display, root, frame.x, frame.y
+  , frame.w, frame.h, 0, black, black); 
   
-  frame.body =          XCreateSimpleWindow(display, frame.frame, EDGE_WIDTH, TITLEBAR_HEIGHT + 1, 
-                                      frame.w - EDGE_WIDTH*2, frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1) , 0, black, black);
+  frame.body =          XCreateSimpleWindow(display, frame.frame, EDGE_WIDTH, TITLEBAR_HEIGHT + 1
+  , frame.w - EDGE_WIDTH*2, frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1) , 0, black, black);
 
-  frame.innerframe =    XCreateSimpleWindow(display, frame.frame, EDGE_WIDTH + H_SPACING, TITLEBAR_HEIGHT + 1, //same y as body, with a constant width as the sides (so H_SPACING)
-                                      frame.w - (EDGE_WIDTH + H_SPACING)*2, frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1 + H_SPACING), 0, black, black); 
+  //same y as body, with a constant width as the sides (so H_SPACING)
+  frame.innerframe =    XCreateSimpleWindow(display, frame.frame, EDGE_WIDTH + H_SPACING, TITLEBAR_HEIGHT + 1
+  , frame.w - (EDGE_WIDTH + H_SPACING)*2, frame.h - (TITLEBAR_HEIGHT + EDGE_WIDTH + 1 + H_SPACING), 0, black, black); 
                                                                            
-  frame.titlebar =      XCreateSimpleWindow(display, frame.frame, EDGE_WIDTH, EDGE_WIDTH, 
-                                      frame.w - EDGE_WIDTH*2, TITLEBAR_HEIGHT, 0, black, black);
+  frame.titlebar =      XCreateSimpleWindow(display, frame.frame
+  , EDGE_WIDTH, EDGE_WIDTH
+  , frame.w - EDGE_WIDTH*2, TITLEBAR_HEIGHT, 0, black, black);
   
-  frame.close_button =  XCreateSimpleWindow(display, frame.titlebar, frame.w - H_SPACING - BUTTON_SIZE - EDGE_WIDTH*2, V_SPACING,
-                                      BUTTON_SIZE, BUTTON_SIZE, 0, black, black);
+  frame.close_button =  XCreateSimpleWindow(display, frame.titlebar
+  , frame.w - H_SPACING - BUTTON_SIZE - EDGE_WIDTH*2, V_SPACING
+  , BUTTON_SIZE, BUTTON_SIZE, 0, black, black);
                                       
-  frame.mode_pulldown = XCreateSimpleWindow(display, frame.titlebar, frame.w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH*2, V_SPACING,
-                                      PULLDOWN_WIDTH, BUTTON_SIZE, 0, black, black);
+  frame.mode_pulldown = XCreateSimpleWindow(display, frame.titlebar
+  , frame.w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH*2, V_SPACING
+  , PULLDOWN_WIDTH, BUTTON_SIZE, 0, black, black);
 
-  frame.selection_indicator = XCreateSimpleWindow(display, frame.titlebar, H_SPACING, V_SPACING,
-                                      BUTTON_SIZE, BUTTON_SIZE,  0, black, black);
+  frame.selection_indicator = XCreateSimpleWindow(display, frame.titlebar, H_SPACING, V_SPACING
+  , BUTTON_SIZE, BUTTON_SIZE,  0, black, black);
 
-  frame.title_menu.frame =  XCreateSimpleWindow(display, frame.titlebar, H_SPACING*2 + BUTTON_SIZE, V_SPACING, 
-                                      frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE, 0, black, black);
+  frame.title_menu.frame =  XCreateSimpleWindow(display, frame.titlebar, H_SPACING*2 + BUTTON_SIZE, V_SPACING
+  , frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE, 0, black, black);
 
-  frame.title_menu.body = XCreateSimpleWindow(display, frame.title_menu.frame, EDGE_WIDTH, EDGE_WIDTH, 
-                                      frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2, BUTTON_SIZE - EDGE_WIDTH*2, 0, black, black);
+  frame.title_menu.body = XCreateSimpleWindow(display, frame.title_menu.frame, EDGE_WIDTH, EDGE_WIDTH
+  , frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2, BUTTON_SIZE - EDGE_WIDTH*2, 0, black, black);
 
-  frame.title_menu.title = XCreateSimpleWindow(display, frame.title_menu.body, EDGE_WIDTH, EDGE_WIDTH, 
-                                      frame.w - TITLE_MAX_WIDTH_DIFF, TITLE_MAX_HEIGHT, 0, black, black);
+  frame.title_menu.title = XCreateSimpleWindow(display, frame.title_menu.body, EDGE_WIDTH, EDGE_WIDTH
+  , frame.w - TITLE_MAX_WIDTH_DIFF, TITLE_MAX_HEIGHT, 0, black, black);
                                       
-  frame.title_menu.arrow =  XCreateSimpleWindow(display, frame.title_menu.body, frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH, 
-                                      BUTTON_SIZE - EDGE_WIDTH , BUTTON_SIZE - EDGE_WIDTH*4, 0, black,  black);
+  frame.title_menu.arrow =  XCreateSimpleWindow(display, frame.title_menu.body
+  , frame.w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH
+  , BUTTON_SIZE - EDGE_WIDTH , BUTTON_SIZE - EDGE_WIDTH*4, 0, black,  black);
   
-  frame.title_menu.hotspot =   XCreateWindow(display, frame.frame, H_SPACING*2 + BUTTON_SIZE + EDGE_WIDTH, 0,
-                                      frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE + V_SPACING + EDGE_WIDTH, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+  frame.title_menu.hotspot =   XCreateWindow(display, frame.frame
+  , H_SPACING*2 + BUTTON_SIZE + EDGE_WIDTH, 0
+  , frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE + V_SPACING + EDGE_WIDTH, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
   
   //doesn't matter if the width of the grips is a bit bigger as it will be under the frame_window anyway
-  frame.l_grip = XCreateWindow(display, frame.frame, 0, TITLEBAR_HEIGHT + 1 + EDGE_WIDTH*2,
-                                      CORNER_GRIP_SIZE, frame.h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+  frame.l_grip = XCreateWindow(display, frame.frame, 0, TITLEBAR_HEIGHT + 1 + EDGE_WIDTH*2
+  , CORNER_GRIP_SIZE, frame.h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
                                       
-  frame.bl_grip = XCreateWindow(display, frame.frame, 0, frame.h - CORNER_GRIP_SIZE,
-                                      CORNER_GRIP_SIZE, CORNER_GRIP_SIZE, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+  frame.bl_grip = XCreateWindow(display, frame.frame, 0, frame.h - CORNER_GRIP_SIZE
+  , CORNER_GRIP_SIZE, CORNER_GRIP_SIZE, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
 
-  frame.b_grip = XCreateWindow(display, frame.frame, CORNER_GRIP_SIZE, frame.h - CORNER_GRIP_SIZE,
-                                      frame.w - CORNER_GRIP_SIZE*2, CORNER_GRIP_SIZE, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+  frame.b_grip = XCreateWindow(display, frame.frame, CORNER_GRIP_SIZE, frame.h - CORNER_GRIP_SIZE
+  , frame.w - CORNER_GRIP_SIZE*2, CORNER_GRIP_SIZE, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
 
-  frame.br_grip = XCreateWindow(display, frame.frame, frame.w - CORNER_GRIP_SIZE, frame.h - CORNER_GRIP_SIZE,
-                                      CORNER_GRIP_SIZE, CORNER_GRIP_SIZE, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+  frame.br_grip = XCreateWindow(display, frame.frame, frame.w - CORNER_GRIP_SIZE, frame.h - CORNER_GRIP_SIZE
+  , CORNER_GRIP_SIZE, CORNER_GRIP_SIZE, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
                                       
-  frame.r_grip = XCreateWindow(display, frame.frame, frame.w - CORNER_GRIP_SIZE, TITLEBAR_HEIGHT + EDGE_WIDTH*2 + 1,
-                                      CORNER_GRIP_SIZE, frame.h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);  
-  
-  frame.backing = XCreateSimpleWindow(display, frame.frame, EDGE_WIDTH*2 + H_SPACING, TITLEBAR_HEIGHT + 1 + EDGE_WIDTH, //same y as body, with a constant width as the sides (so H_SPACING)
-                                       frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE, 0, black, black); 
+  frame.r_grip = XCreateWindow(display, frame.frame, frame.w - CORNER_GRIP_SIZE, TITLEBAR_HEIGHT + EDGE_WIDTH*2 + 1
+  , CORNER_GRIP_SIZE, frame.h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);  
+
+  //same y as body, with a constant width as the sides (so H_SPACING)
+  frame.backing = XCreateSimpleWindow(display, frame.frame, EDGE_WIDTH*2 + H_SPACING, TITLEBAR_HEIGHT + 1 + EDGE_WIDTH
+  , frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE, 0, black, black); 
   
   //same y as body, with a constant width as the sides so H_SPACING
-  frame.title_menu.entry = XCreateSimpleWindow(display, frames->title_menu, 10, 10, 
-                                         XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black); 
+  frame.title_menu.entry = XCreateSimpleWindow(display, frames->title_menu, 10, 10
+  , XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black); 
 
   //get_frame_program_name(display, &frame);
   load_frame_name(display, &frame);
@@ -331,7 +338,9 @@ void resize_frame(Display* display, struct Frame* frame) {
   XMoveResizeWindow(display, frame->bl_grip, 0, frame->h - CORNER_GRIP_SIZE, CORNER_GRIP_SIZE, CORNER_GRIP_SIZE);
   XMoveResizeWindow(display, frame->b_grip, CORNER_GRIP_SIZE, frame->h - CORNER_GRIP_SIZE, frame->w - CORNER_GRIP_SIZE*2, CORNER_GRIP_SIZE);
   XMoveResizeWindow(display, frame->br_grip, frame->w - CORNER_GRIP_SIZE, frame->h - CORNER_GRIP_SIZE, CORNER_GRIP_SIZE, CORNER_GRIP_SIZE);
-  XMoveResizeWindow(display, frame->r_grip, frame->w - CORNER_GRIP_SIZE, TITLEBAR_HEIGHT + EDGE_WIDTH*2 + 1, CORNER_GRIP_SIZE, frame->h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1);
+  XMoveResizeWindow(display, frame->r_grip, frame->w - CORNER_GRIP_SIZE, TITLEBAR_HEIGHT + EDGE_WIDTH*2 + 1
+  , CORNER_GRIP_SIZE, frame->h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1);
+  
   XMoveWindow(display, frame->window, 0,0);
   //had an XSynch here in a vain attempt to stop getting bogus configure requests
   //XSync(display, False);
@@ -461,52 +470,76 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   if(frame->y - (TITLEBAR_HEIGHT + EDGE_WIDTH*2) > 0) frame->y -= TITLEBAR_HEIGHT + EDGE_WIDTH*2; 
 }
 
-int replace_frame(Display *display, struct Frame *target, struct Frame *replacement, struct frame_pixmaps *pixmaps) {
+int replace_frame(Display *display, struct Frame *target, struct Frame *replacement, Window seperator, struct frame_pixmaps *pixmaps) {
   XWindowChanges changes;
-  unsigned int mask = CWX | CWY | CWSibling | CWStackMode;
+  unsigned int mask = CWX | CWY | CWWidth | CWHeight;
 
-  if(replacement->window == target->window) return 0;
+  if(replacement->window == target->window) return 0;  //this can be chosen from the title menu
+  if(target->w < replacement->min_width
+  || target->h < replacement->min_height) {
+    printf("The requested window doesn't fit on the target window\n");
+    return 0;
+  }  
   changes.x = target->x;
   changes.y = target->y;
-  changes.sibling = target->frame;
-  changes.stack_mode = Above;
- 
-  if(target->w < replacement->max_width) {
-    if(target->w < replacement->min_width) {
-      printf("The requested window is too wide to fit on target window\n");
-      return 0;
-    }
-    changes.width = target->w;
-    replacement->w = target->w;
-    mask |= CWWidth;
+  /*
+  if(target->mode == TILING) {
+    mask |= CWSibling;
+    changes.sibling = seperator;
+    mask |= CWStackMode;
+    changes.stack_mode = Above;
   }
+  else XRaiseWindow(display, replacement);
+  */
   
-  if(target->h < replacement->max_height) {
-    if(target->h < replacement->min_height) {
-      printf("The requested window is too tall to fit on target window\n");
-      return 0;
-    }  
-    changes.height = target->h; 
-    replacement->h = target->h;
-    mask |= CWHeight;
-  }
+  if(target->w < replacement->max_width) changes.width = target->w;  //save info for request
+  else changes.width = replacement->max_width;
+      
+  if(target->h < replacement->max_height) changes.height = target->h; 
+  else changes.height = replacement->max_height;
   
   replacement->mode = target->mode;
   replacement->x = changes.x;
   replacement->y = changes.y;
+  replacement->w = changes.width;
+  replacement->h = changes.height;  
   target->mode = SINKING;
   
   XConfigureWindow(display, replacement->frame, mask, &changes);
-  XSetInputFocus(display, replacement->window, RevertToPointerRoot, CurrentTime);
   resize_frame(display, replacement);
   show_frame_state(display, target, pixmaps);
   show_frame_state(display, replacement, pixmaps);
-      
+  stack_frame(display, target, seperator);
+  stack_frame(display, replacement, seperator);  
+  
   return 1;
 }
 
-//maybe remove overlap variable and instead simply set the indirect resize parameters and just reset them is something goes wrong?
+/* Implements stacking and focus policy */
+void stack_frame(Display *display, struct Frame *frame, Window seperator) {
+  XWindowChanges changes;
+  unsigned int mask = CWSibling | CWStackMode;  
+  changes.sibling = seperator;
 
+  if(frame->mode == TILING) {
+    changes.stack_mode = Above;
+    XConfigureWindow(display, frame->frame, mask, &changes);
+    XSetInputFocus (display, frame->window, RevertToPointerRoot, CurrentTime);
+  }
+  else if(frame->mode == FLOATING) {
+    XRaiseWindow(display, frame->frame);
+    XSetInputFocus(display, frame->window, RevertToPointerRoot, CurrentTime);   
+  }
+  else if(frame->mode == SINKING) {
+    changes.stack_mode = Below;
+    XConfigureWindow(display, frame->frame, mask, &changes);
+  }
+  
+  XFlush(display);
+ 
+}
+
+//maybe remove overlap variable and instead simply set the indirect resize parameters and just reset them is something goes wrong?
 void resize_tiling_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size) {
   /******
   Purpose:  
@@ -747,5 +780,4 @@ void resize_tiling_frame(Display *display, struct Framelist *frames, int index, 
   
   return;
 }
-
 
