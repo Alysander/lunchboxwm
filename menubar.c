@@ -17,8 +17,3 @@ Window create_menubar(Display *display, struct frame_pixmaps *pixmaps, struct mo
   XMapWindow   (display, border);  
   return border;
 }
-
-/*
-void remove_menubar(Display *display, Window menubar)  {
-
-}*/

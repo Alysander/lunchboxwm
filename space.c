@@ -1,5 +1,8 @@
 
-struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist *frames) {
+struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist *frames, int start) {
+  //the start variable is used to skip windows at the start 
+  //in the handle_frame_retile function these are the intersecting tiled windows.
+  
   struct rectangle_list used_spaces = {0, 8, NULL};
   struct rectangle_list free_spaces = {0, 8, NULL};
   Window root = DefaultRootWindow(display);
@@ -13,7 +16,7 @@ struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist
     return free_spaces;
   }
   
-  for(int i = 0; i < frames->used; i++) {
+  for(int i = start; i < frames->used; i++) {
     if(frames->list[i].mode == TILING) {
       struct rectangle current = 
         {frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h};
@@ -61,7 +64,7 @@ struct rectangle_list largest_available_spaces (struct rectangle_list *used_spac
       //if an edge intersects, modify opposing edge.  add modified to new_spaces and original to old_spaces
       struct rectangle new = {0, 0, 0, 0};
       if(INTERSECTS(free_spaces.list[j].y, free_spaces.list[j].h, used_spaces->list[i].y, used_spaces->list[i].h) ) {
-        printf("i %d intersects j %d in y\n", i, j);
+        //printf("i %d intersects j %d in y\n", i, j);
         if(INTERSECTS_BEFORE(free_spaces.list[j].x, free_spaces.list[j].w, used_spaces->list[i].x, used_spaces->list[i].w) ) {
           //the free space comes before the placed rectangle, modify it's RHS    
           new = free_spaces.list[j];
@@ -70,7 +73,7 @@ struct rectangle_list largest_available_spaces (struct rectangle_list *used_spac
           new.w -= new.x;
           add_rectangle(&new_spaces, new);
           add_rectangle(&old_spaces, free_spaces.list[j]);          
-          printf("LHS of free space j %d. w was %d, is %d\n", j, free_spaces.list[j].w, new.w);
+          //printf("LHS of free space j %d. w was %d, is %d\n", j, free_spaces.list[j].w, new.w);
         }
         if(INTERSECTS_AFTER(free_spaces.list[j].x, free_spaces.list[j].w, used_spaces->list[i].x, used_spaces->list[i].w) ) {
           //the free space comes after the placed rectangle, modify it's LHS
@@ -78,7 +81,7 @@ struct rectangle_list largest_available_spaces (struct rectangle_list *used_spac
           new.w = used_spaces->list[i].x - new.x;
           add_rectangle(&new_spaces, new);
           add_rectangle(&old_spaces, free_spaces.list[j]);    
-          printf("RHS of free space j %d. w was %d, is %d\n", j, free_spaces.list[j].w, new.w);
+          //printf("RHS of free space j %d. w was %d, is %d\n", j, free_spaces.list[j].w, new.w);
         }
       }
       if(INTERSECTS(free_spaces.list[j].x, free_spaces.list[j].w, used_spaces->list[i].x, used_spaces->list[i].w) ) {
@@ -91,7 +94,7 @@ struct rectangle_list largest_available_spaces (struct rectangle_list *used_spac
           new.h -= new.y;
           add_rectangle(&new_spaces, new);
           add_rectangle(&old_spaces, free_spaces.list[j]);          
-          printf("bottom of free space j %d. h was %d, is %d\n", j, free_spaces.list[j].h, new.h);
+          //printf("bottom of free space j %d. h was %d, is %d\n", j, free_spaces.list[j].h, new.h);
         }
         if(INTERSECTS_AFTER(free_spaces.list[j].y, free_spaces.list[j].h, used_spaces->list[i].y, used_spaces->list[i].h) ) {
           //the free space comes before the placed rectangle, modify it's Bottom
@@ -99,10 +102,9 @@ struct rectangle_list largest_available_spaces (struct rectangle_list *used_spac
           new.h = used_spaces->list[i].y - new.y;
           add_rectangle(&new_spaces, new);
           add_rectangle(&old_spaces, free_spaces.list[j]);          
-          printf("top of free space j %d. h was %d, is %d\n", j, free_spaces.list[j].h, new.h);          
+          //printf("top of free space j %d. h was %d, is %d\n", j, free_spaces.list[j].h, new.h);          
         }
       }
-
     }
     if(new_spaces.used != 0) {
       //remove the spaces which were modified. O(N*M)
@@ -160,4 +162,34 @@ void remove_rectangle(struct rectangle_list *list, struct rectangle old) {
   list->used--;
 }
 
+//Prerequisites:  Rectangles a and b must not be overlapping.
+//Design:  Calculate the displacement in each axis and use pythagoras to calculate the net displacement
+//Rectangle a is the 
+double calculate_displacement(struct rectangle source, struct rectangle dest) {
+  int dx, dy;
+  double hypotenuse;
+  
+  if(source.w > dest.w
+  || source.h > dest.h) {
+    printf("too big\n");
+    return 0;
+  }
+   
+  if(source.x > dest.x  
+  && source.x + source.w < dest.x + dest.w) dx = 0;
+  else dx = dest.x - source.x;
+  
+  if(dx < 0) dx += dest.w - source.w; //move it to the nearest edge if required.
+
+  if(source.y > dest.y  
+  && source.y + source.h < dest.y + dest.h) dy = 0;
+  else dy = dest.y - source.y;
+  
+  if(dy < 0) dy += dest.h - source.h; //move it to the nearest edge if required.
+  
+  hypotenuse = sqrt(dx*dx + dy*dy);
+  printf("dest x %d, dest y %d, dx %d, dy %d, hyp %f\n", dest.x, dest.y, dx, dy, hypotenuse);  
+
+  return hypotenuse;
+}
 

@@ -105,9 +105,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   /*** Set up defaults ***/
   printf("attributes width %d, height %d\n", attributes.width, attributes.height);
 
-  frame.selected = 1;
+  frame.selected = 0;
 //  frame.window_name = NULL;
-//  frame.program_name = NULL;
   frame.mode = FLOATING;
   frame.window = framed_window;      
   frame.title_menu.entry = root;
