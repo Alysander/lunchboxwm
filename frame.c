@@ -106,7 +106,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   printf("attributes width %d, height %d\n", attributes.width, attributes.height);
 
   frame.selected = 0;
-//  frame.window_name = NULL;
+  frame.window_name = NULL;
   frame.mode = FLOATING;
   frame.window = framed_window;      
   frame.title_menu.entry = root;
@@ -341,11 +341,10 @@ void resize_frame(Display* display, struct Frame* frame) {
   , CORNER_GRIP_SIZE, frame->h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1);
   
   XMoveWindow(display, frame->window, 0,0);
-  //had an XSynch here in a vain attempt to stop getting bogus configure requests
-  //XSync(display, False);
   XFlush(display);
 }
 
+//currently this does nothing because the program name is not used - for reference later.
 void load_frame_program_name(Display* display, struct Frame* frame) {
   XClassHint program_hint;
   if(XGetClassHint(display, frame->window, &program_hint)) {
@@ -358,6 +357,8 @@ void load_frame_program_name(Display* display, struct Frame* frame) {
 }
 
 void free_frame_name(Display* display, struct Frame* frame) {
+  XFree(frame->window_name);
+  frame->window_name = NULL;  
   XFreePixmap(display, frame->title_menu.title_normal_p);
   XFreePixmap(display, frame->title_menu.title_pressed_p);    
   XFreePixmap(display, frame->title_menu.title_deactivated_p);
@@ -368,26 +369,26 @@ void free_frame_name(Display* display, struct Frame* frame) {
 
 /*** Update pixmaps with the specified name if it is available.  ***/
 void load_frame_name(Display* display, struct Frame* frame) {
-  char untitled[10] = "untitled\0";
-  char *window_name;
-  window_name = NULL;
+  char untitled[10] = "untitled";
   
-  XFetchName(display, frame->window, &window_name);
+  if(frame->window_name != NULL) free_frame_name(display, frame); 
+  
+  XFetchName(display, frame->window, &frame->window_name);
 
-  if(window_name == NULL) {
-    printf("%s\n", untitled);
-    window_name = untitled;
+  if(frame->window_name == NULL) {
+    printf("Warning: unnamed window\n");
+    frame->window_name = untitled;
   }
   
   XUnmapWindow(display, frame->title_menu.title);
   XFlush(display);
 
-  frame->title_menu.title_normal_p = create_title_pixmap(display, window_name, title_normal);
-  frame->title_menu.title_pressed_p = create_title_pixmap(display, window_name, title_pressed);
-  frame->title_menu.title_deactivated_p = create_title_pixmap(display, window_name, title_deactivated);
+  frame->title_menu.title_normal_p = create_title_pixmap(display, frame->window_name, title_normal);
+  frame->title_menu.title_pressed_p = create_title_pixmap(display,frame->window_name, title_pressed);
+  frame->title_menu.title_deactivated_p = create_title_pixmap(display, frame->window_name, title_deactivated);
 
-  frame->title_menu.item_title_p = create_title_pixmap(display, window_name, item_title);
-  frame->title_menu.item_title_hover_p = create_title_pixmap(display, window_name, item_title_hover);
+  frame->title_menu.item_title_p = create_title_pixmap(display, frame->window_name, item_title);
+  frame->title_menu.item_title_hover_p = create_title_pixmap(display, frame->window_name, item_title_hover);
 
   if(frame->mode == SINKING) XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_deactivated_p);
   else XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_normal_p);  
@@ -397,8 +398,8 @@ void load_frame_name(Display* display, struct Frame* frame) {
   XSetWindowBackgroundPixmap(display, frame->title_menu.entry, frame->title_menu.item_title_p);
   XMapWindow(display, frame->title_menu.entry);  
   
-  frame->title_menu.width = get_title_width(display, window_name);
-  if(window_name != untitled) XFree(window_name);
+  frame->title_menu.width = get_title_width(display, frame->window_name);
+  if(frame->window_name == untitled) frame->window_name = NULL;
   XMapWindow(display, frame->title_menu.title);
   XFlush(display);
 }
@@ -587,22 +588,25 @@ void resize_tiling_frame(Display *display, struct Framelist *frames, int index, 
     frame_space = FRAME_VSPACE;
   }
 
-  size_change = size - *s;
-  if(size < *min_size + FRAME_HSPACE  ||  size > *max_size) return;  
-  if(size_change == 0) return;
-  else if(size_change > 0) shrink_margin = 0;
+  size_change = size - *s; //the size difference for the specified frame
+  
+  if(size < *min_size + FRAME_HSPACE  
+  || size > *max_size
+  || size_change == 0) return;
+  
+  if(size_change > 0) shrink_margin = 0;
 
     
-  printf("resize: %c, position %d, size %d\n", axis, position, size);
+  printf("\n\nResize: %c, position %d, size %d\n", axis, position, size);
   while(!done) {  
     int i = 0;
     if(size < *min_size + FRAME_HSPACE  ||  size > *max_size) return;
     
-    printf("restarting, i %d\n", i);
+    //printf("restarting, i %d\n", i);
     for(; i < frames->used; i++) {
       if(i == index) {
-        frames->list[index].indirect_resize.new_size = 0;
-        printf("skipping index frame %d\n", index);
+        //skipping index frame
+        frames->list[index].indirect_resize.new_size = 0; 
         continue;
       }
 
@@ -624,19 +628,21 @@ void resize_tiling_frame(Display *display, struct Framelist *frames, int index, 
           fs_adj = &frames->list[i].w;
           fp_adj = &frames->list[i].x;
         }
-
-        printf("considering %d ", i);
+        //if within perpendicular range
         if((adj_position + adj_size > *fp_adj  &&  adj_position <= *fp_adj)
-        || (adj_position < *fp_adj + *fs_adj   &&  adj_position >= *fp_adj)) {
+        || (adj_position < *fp_adj + *fs_adj   &&  adj_position >= *fp_adj)
+        || (adj_position <= *fp_adj  &&  adj_position + adj_size >= *fp_adj + *fs_adj)
+        ) {
           
-          printf(".. within opposing range\n");
+          printf("Frame \" %s \" inside perp range. \n", frames->list[i].window_name);
           
+          //the size_change < 0 test determines the direction of the drag and which side is affected
           if( *p == position
           &&  *p + *s >= *fp + *fs
           &&  *p + *s <= *fp + *fs - size_change
           &&  size_change < 0 
           ) {
-            overlap = -size_change + *s + *p - (*fp + *fs);
+            overlap = (*fp + *fs) - (size + position);
             printf("above/below RHS aligned, overlap %d\n", overlap);
             frames->list[i].indirect_resize.new_position = *fp;
           }
@@ -645,8 +651,8 @@ void resize_tiling_frame(Display *display, struct Framelist *frames, int index, 
           &&  *p <= *fp
           &&  *p - size_change >= *fp
           &&  size_change < 0
-          ) { 
-            overlap = -size_change + (*fp - *p);
+          ) {           
+            overlap = position - *fp;
             printf("above/below LHS aligned, overlap %d\n", overlap);
             frames->list[i].indirect_resize.new_position = *fp + overlap;
           }
@@ -698,14 +704,15 @@ void resize_tiling_frame(Display *display, struct Framelist *frames, int index, 
             //completely encloses the area that encloses the adjacent windows
             
             adj_position = *fp_adj;
-            adj_size = *fp_adj + *fs_adj - adj_position;
+            adj_size = *fs_adj;
             break; //this will cause the loop to reset with the new values
           }
           else if(*fp_adj + *fs_adj - adj_position > adj_size) {
             //extends below the area that encloses the adjacent windows
             printf("enlarging adjacency area in h\n");
-
+            printf("adj_position %d, adj_size %d\n", adj_position, adj_size);
             adj_size = *fp_adj + *fs_adj - adj_position;
+            printf("adj_position %d, adj_size %d NOW\n", adj_position, adj_size);
             break; //this will cause the loop to reset with the new value
           }
           else if(*fp_adj < adj_position) {
@@ -716,10 +723,8 @@ void resize_tiling_frame(Display *display, struct Framelist *frames, int index, 
             break; //this will cause the loop to reset with the new values
           }
           
-          printf("i %d, overlap %d", i, overlap);
           if(*fs - overlap >= *fmin_size + frame_space &&
              *fs - overlap <= *fmax_size) {
-            printf("settings size\n");
             frames->list[i].indirect_resize.new_size = *fs - overlap;
           }
           else if (overlap > 0 ) {
@@ -755,28 +760,25 @@ void resize_tiling_frame(Display *display, struct Framelist *frames, int index, 
     if(i == frames->used) break;
   }
  
-  if(!done) {
+  if(!done) { //resize all modified windows.
     *p = position;
     *s = size;
-    if(axis == 'x') {
-      for(int i = 0; i < frames->used; i++) 
+    for(int i = 0; i < frames->used; i++) {
       if(frames->list[i].mode == TILING  &&  frames->list[i].indirect_resize.new_size) {
-        frames->list[i].x = frames->list[i].indirect_resize.new_position;
-        frames->list[i].w = frames->list[i].indirect_resize.new_size;        
-        resize_frame(display, &frames->list[i]);
-      }
-    }
-    else if(axis == 'y') 
-      for(int i = 0; i < frames->used; i++) {
-      if(frames->list[i].mode == TILING  &&  frames->list[i].indirect_resize.new_size) {
-        frames->list[i].y = frames->list[i].indirect_resize.new_position; 
-        frames->list[i].h = frames->list[i].indirect_resize.new_size;
-        resize_frame(display, &frames->list[i]);
+        if(axis == 'x') {
+          frames->list[i].x = frames->list[i].indirect_resize.new_position;
+          frames->list[i].w = frames->list[i].indirect_resize.new_size;
+        } 
+        else if(axis == 'y') {
+          frames->list[i].y = frames->list[i].indirect_resize.new_position; 
+          frames->list[i].h = frames->list[i].indirect_resize.new_size;
+        }
+        resize_frame(display, &frames->list[i]);      
       }
     }
   }
-  resize_frame(display, &frames->list[index]);
   
+  resize_frame(display, &frames->list[index]);
   return;
 }
 

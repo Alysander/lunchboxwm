@@ -16,6 +16,7 @@
 #define SHOW_CONFIGURE_REQUEST_EVENT  
 ***/
 #define SHOW_BUTTON_RELEASE_EVENT     
+#define SHOW_EDGE_RESIZE
 
 /*** basin.c ***/
 int supress_xerror (Display *display, XErrorEvent *event);
@@ -188,7 +189,6 @@ int main (int argc, char* argv[]) {
   }
 
   //XSynchronize(display, True);  //Turns on synchronized debugging  
-  
   root = DefaultRootWindow(display);
   screen = DefaultScreenOfDisplay(display);
   screen_number = DefaultScreen (display);

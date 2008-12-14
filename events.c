@@ -36,7 +36,13 @@ void handle_frame_resize (Display *display, struct Framelist *frames, int clicke
   //adjust for the toolbar
   new_y = frame->y;
   if(new_height + new_y > XHeightOfScreen(screen) - MENUBAR_HEIGHT) {
+    #ifdef SHOW_EDGE_RESIZE
+    printf("Adjusted for toolbar height %d ,", new_height);
+    #endif
     new_height = XHeightOfScreen(screen) - new_y - MENUBAR_HEIGHT;
+    #ifdef SHOW_EDGE_RESIZE
+    printf("%d \n", new_height);
+    #endif
   }
   
   //commit height changes

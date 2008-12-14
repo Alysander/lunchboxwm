@@ -87,7 +87,7 @@ Program/workspace can be a variable in frame.
 
 struct Frame {
   Window window;
-//  char *window_name;
+  char *window_name;
 
   int x,y,w,h;
   int mode; //FLOATING || TILING || SINKING
