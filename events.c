@@ -50,8 +50,8 @@ void handle_frame_resize (Display *display, struct Framelist *frames, int clicke
     resize_tiling_frame(display, frames, clicked_frame, 'y', frame->y, new_height);
   }
   else 
-  if(new_height >= frame->min_height + FRAME_VSPACE
-  && new_height <= frame->max_height + FRAME_VSPACE) {
+  if(new_height >= frame->min_height
+  && new_height <= frame->max_height) {
     frame->h = new_height;              
   }
 
@@ -60,8 +60,8 @@ void handle_frame_resize (Display *display, struct Framelist *frames, int clicke
     resize_tiling_frame(display, frames, clicked_frame, 'x', new_x, new_width);
   }
   else 
-  if(new_width >= frame->min_width + FRAME_HSPACE
-  && new_width <= frame->max_width + FRAME_HSPACE) {
+  if(new_width >= frame->min_width
+  && new_width <= frame->max_width) {
     frame->x = new_x;  //for l_grip and bl_grip
     frame->w = new_width;
   }            
@@ -102,10 +102,10 @@ extern void handle_frame_retile (Display *display, struct Framelist *frames, int
   //so start + 1 doesn't need to be checked
   free_spaces = get_free_screen_spaces (display, frames, start + 1);
   
-//  for(int k = 0; k < free_spaces.used; k++) {
-//    printf("Free space: x %d, y %d, w %d, h %d\n"
-//    , free_spaces.list[k].x, free_spaces.list[k].y, free_spaces.list[k].w, free_spaces.list[k].h);
-//  }
+  for(int k = 0; k < free_spaces.used; k++) {
+    printf("Free space: x %d, y %d, w %d, h %d\n"
+    , free_spaces.list[k].x, free_spaces.list[k].y, free_spaces.list[k].w, free_spaces.list[k].h);
+  }
   
   //iterate over the overlapping frames,  placing them each in the nearest available position.
   for(int i = 0; i <= start; i++) {
@@ -178,8 +178,8 @@ void handle_frame_move (Display *display, struct Framelist *frames, int clicked_
     *pointer_start_y = mouse_root_y;
   }
 
-  if((new_width != 0  &&  new_width < frame->min_width + FRAME_HSPACE) 
-  ||(new_height != 0  &&  new_height < frame->min_height + FRAME_VSPACE)) {
+  if((new_width != 0  &&  new_width < frame->min_width) 
+  ||(new_height != 0  &&  new_height < frame->min_height)) {
     if(new_width != 0) {
       new_width = 0;
       if(*resize_x_direction == -1) new_x = XWidthOfScreen(screen) - frame->w;
@@ -203,12 +203,12 @@ void handle_frame_move (Display *display, struct Framelist *frames, int clicked_
   }
 
   //limit resizes to max width
-  if((new_width  != 0  &&  new_width  > frame->max_width  + FRAME_HSPACE) 
-  || (new_height != 0  &&  new_height > frame->max_height + FRAME_VSPACE)) {
+  if((new_width  != 0  &&  new_width  > frame->max_width) 
+  || (new_height != 0  &&  new_height > frame->max_height)) {
     //investigate if this has similar situations as above where it moves instead of stopping
     //once limit is reached
-    if(new_width > frame->max_width + FRAME_HSPACE) new_width = 0;
-    if(new_height > frame->max_height + FRAME_VSPACE) new_height = 0;
+    if(new_width > frame->max_width) new_width = 0;
+    if(new_height > frame->max_height) new_height = 0;
   } 
 
   //do not attempt to resize windows that cannot be resized

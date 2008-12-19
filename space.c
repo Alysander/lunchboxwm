@@ -13,7 +13,7 @@ struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist
     free(used_spaces.list);
     //probably could do something more intelligent here
     printf("Error: out of memory for calculating free spaces on the screen.\n");
-    return free_spaces;
+    return free_spaces; //i.e., NULL
   }
   
   for(int i = start; i < frames->used; i++) {
@@ -21,10 +21,11 @@ struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist
       struct rectangle current = 
         {frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h};
 
-//      printf("Tiled window %d, x %d, y %d, w %d, h %d\n", i, frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h);
+      printf("Tiled window %s, x %d, y %d, w %d, h %d\n", frames->list[i].window_name, frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h);
       add_rectangle(&used_spaces, current);
     }
   }
+  printf("Finding free spaces. Width %d, Height %d\n", XWidthOfScreen(screen), XHeightOfScreen(screen) - MENUBAR_HEIGHT);
   free_spaces = largest_available_spaces(&used_spaces, XWidthOfScreen(screen), XHeightOfScreen(screen) - MENUBAR_HEIGHT);
   return free_spaces;
 }
@@ -43,6 +44,7 @@ struct rectangle_list largest_available_spaces (struct rectangle_list *used_spac
   
   struct rectangle screen_space = {0, 0, w, h};
   add_rectangle(&free_spaces, screen_space ); //define the intitial space.
+  for(int i = 0; i < used_spaces->used;i++) printf("used space %d, x %d, y %d, w %d, h %d \n", i, used_spaces->list[i].x, used_spaces->list[i].y, used_spaces->list[i].w, used_spaces->list[i].h);
   
   //for all used spaces (already tiled windows on the screen)
   for(int i = 0; i < used_spaces->used; i++) {  

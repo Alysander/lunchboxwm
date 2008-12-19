@@ -421,9 +421,9 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   frame->x = attributes.x;
   frame->y = attributes.y;  
   printf("existing x,y: %d, %d\n", frame->x, frame->y);
-  frame->min_width = MINWIDTH;
-  frame->min_height = MINHEIGHT;
-  frame->max_width = XWidthOfScreen(screen) -  FRAME_HSPACE;
+  frame->min_width = MINWIDTH -  FRAME_HSPACE;
+  frame->min_height = MINHEIGHT -  FRAME_VSPACE;
+  frame->max_width  = XWidthOfScreen(screen)  -  FRAME_HSPACE;
   frame->max_height = XHeightOfScreen(screen) -  FRAME_VSPACE;  
    
   if(XGetWMNormalHints(display, frame->window, &specified, &pre_ICCCM) != 0) {
@@ -462,6 +462,13 @@ void get_frame_hints(Display* display, struct Frame* frame) {
     
   frame->w += FRAME_HSPACE; //increase the size of the window for the frame to be drawn in
   frame->h += FRAME_VSPACE; 
+
+  frame->max_width += FRAME_HSPACE; 
+  frame->max_height += FRAME_VSPACE; 
+
+  frame->min_width += FRAME_HSPACE; //increase the size of the window for the frame to be drawn in
+  frame->min_height += FRAME_VSPACE; 
+      
   printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n", 
         frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height, frame->x, frame->y);
         
@@ -470,7 +477,7 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   if(frame->y - (TITLEBAR_HEIGHT + EDGE_WIDTH*2) > 0) frame->y -= TITLEBAR_HEIGHT + EDGE_WIDTH*2; 
 }
 
-int replace_frame(Display *display, struct Frame *target, struct Frame *replacement, Window seperator, struct frame_pixmaps *pixmaps) {
+int replace_frame(Display *display, struct Frame *target, struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, struct frame_pixmaps *pixmaps) {
   XWindowChanges changes;
   unsigned int mask = CWX | CWY | CWWidth | CWHeight;
 
@@ -482,15 +489,6 @@ int replace_frame(Display *display, struct Frame *target, struct Frame *replacem
   }  
   changes.x = target->x;
   changes.y = target->y;
-  /*
-  if(target->mode == TILING) {
-    mask |= CWSibling;
-    changes.sibling = seperator;
-    mask |= CWStackMode;
-    changes.stack_mode = Above;
-  }
-  else XRaiseWindow(display, replacement);
-  */
   
   if(target->w < replacement->max_width) changes.width = target->w;  //save info for request
   else changes.width = replacement->max_width;
@@ -509,20 +507,21 @@ int replace_frame(Display *display, struct Frame *target, struct Frame *replacem
   resize_frame(display, replacement);
   show_frame_state(display, target, pixmaps);
   show_frame_state(display, replacement, pixmaps);
-  stack_frame(display, target, seperator);
-  stack_frame(display, replacement, seperator);  
+  stack_frame(display, target, sinking_seperator, tiling_seperator);
+  stack_frame(display, replacement, sinking_seperator, tiling_seperator);  
   
   return 1;
 }
 
 /* Implements stacking and focus policy */
-void stack_frame(Display *display, struct Frame *frame, Window seperator) {
+void stack_frame(Display *display, struct Frame *frame, Window sinking_seperator, Window tiling_seperator) {
   XWindowChanges changes;
+  
   unsigned int mask = CWSibling | CWStackMode;  
-  changes.sibling = seperator;
-
+  changes.stack_mode = Below;
+  
   if(frame->mode == TILING) {
-    changes.stack_mode = Above;
+    changes.sibling = tiling_seperator;
     XConfigureWindow(display, frame->frame, mask, &changes);
     XSetInputFocus (display, frame->window, RevertToPointerRoot, CurrentTime);
   }
@@ -531,7 +530,8 @@ void stack_frame(Display *display, struct Frame *frame, Window seperator) {
     XSetInputFocus(display, frame->window, RevertToPointerRoot, CurrentTime);   
   }
   else if(frame->mode == SINKING) {
-    changes.stack_mode = Below;
+    changes.sibling = sinking_seperator;
+    //TODO revert to previously focussed window 
     XConfigureWindow(display, frame->frame, mask, &changes);
   }
   
@@ -590,7 +590,7 @@ void resize_tiling_frame(Display *display, struct Framelist *frames, int index, 
 
   size_change = size - *s; //the size difference for the specified frame
   
-  if(size < *min_size + FRAME_HSPACE  
+  if(size < *min_size + frame_space  
   || size > *max_size
   || size_change == 0) return;
   
@@ -601,7 +601,7 @@ void resize_tiling_frame(Display *display, struct Framelist *frames, int index, 
   #endif
   while(!done) {  
     int i = 0;
-    if(size < *min_size + FRAME_HSPACE  ||  size > *max_size) return;
+    if(size < *min_size + frame_space  ||  size > *max_size) return;
     
     for(; i < frames->used; i++) {
       if(i == index) {

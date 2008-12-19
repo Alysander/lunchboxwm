@@ -58,7 +58,7 @@ extern int create_frame (Display *display, struct Framelist* frames, Window fram
 extern void create_startup_frames (Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
 extern void remove_frame          (Display *display, struct Framelist* frames, int index);
 extern void resize_tiling_frame   (Display *display, struct Framelist *frames, int index, char axis, int position, int size);
-extern void stack_frame           (Display *display, struct Frame *frame, Window seperator);
+extern void stack_frame           (Display *display, struct Frame *frame, Window sinking_seperator, Window tiling_seperator);
 
 extern void remove_window         (Display *display, Window framed_window);
 extern void get_frame_program_name(Display *display, struct Frame *frame);
@@ -67,7 +67,7 @@ extern void load_frame_name       (Display *display, struct Frame *frame);
 extern void get_frame_hints       (Display *display, struct Frame *frame);
 extern void show_frame_state      (Display *display, struct Frame *frame,  struct frame_pixmaps *pixmaps);
 extern void resize_frame          (Display *display, struct Frame *frame);
-extern int replace_frame          (Display *display, struct Frame *target, struct Frame *replacement, Window seperator, struct frame_pixmaps *pixmaps);  
+extern int replace_frame          (Display *display, struct Frame *target, struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, struct frame_pixmaps *pixmaps);  
 
 /*** space.c ***/
 extern void add_rectangle(struct rectangle_list *list, struct rectangle new);
@@ -128,7 +128,9 @@ int main (int argc, char* argv[]) {
   Window root, background_window;
   Window pulldown;
   Window menubar;
-  Window seperator;  //this window is always between tiled and sunk windows.
+  Window sinking_seperator; //this window is always above sunk windows.
+  Window tiling_seperator;  //this window is always below tiled windows.
+  
   Pixmap background_window_p;   
   
   struct frame_pixmaps pixmaps;
@@ -203,15 +205,19 @@ int main (int argc, char* argv[]) {
   load_cursors (display, &cursors);
   load_hints(display, &atoms);
 
+  tiling_seperator = XCreateWindow(display, root, 0, 0
+  , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+  XLowerWindow(display, tiling_seperator);
+
+  sinking_seperator = XCreateWindow(display, root, 0, 0
+  , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+  XLowerWindow(display, sinking_seperator);
+
   XFlush(display);
     
   create_title_menu(display, &frames, &pixmaps, &cursors);
   create_startup_frames(display, &frames, &pixmaps, &cursors); 
   menubar = create_menubar(display, &pixmaps, &cursors);
-
-  seperator = XCreateWindow(display, root, 0, 0
-  , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
-  XLowerWindow(display, seperator);
   
   create_mode_pulldown_list(display, &mode_pulldown, &pixmaps, &cursors);
   
@@ -332,7 +338,7 @@ int main (int argc, char* argv[]) {
           || event.xbutton.window == frames.list[i].br_grip
           || event.xbutton.window == frames.list[i].b_grip
           || (event.xbutton.window == frames.list[i].backing && do_click_to_focus)) {
-            stack_frame(display, &frames.list[i], seperator);
+            stack_frame(display, &frames.list[i], sinking_seperator, tiling_seperator);
 
             //don't tile the sinking window if these are clicked.
             if(event.xbutton.window == frames.list[i].mode_pulldown  
@@ -377,6 +383,7 @@ int main (int argc, char* argv[]) {
                 printf("Tiling sinking window\n");
                 #endif
                 
+                //max width might be wrong here
                 if(frames.list[i].max_width > free_spaces.list[largest].w) frames.list[i].w = free_spaces.list[largest].w;
                 else frames.list[i].w = frames.list[i].max_width;
                   
@@ -395,7 +402,7 @@ int main (int argc, char* argv[]) {
             break;
           }
         }
-        if(i < frames.used) { //why not put this above? (maybe so that it breaks out of the switch rather than the loop.
+        if(i < frames.used) {
           if(event.xbutton.window == frames.list[i].frame  
           || event.xbutton.window == frames.list[i].mode_pulldown 
           || event.xbutton.window == frames.list[i].title_menu.hotspot)  {    
@@ -562,7 +569,7 @@ int main (int argc, char* argv[]) {
           //ending the grab_move
           grab_move = 0;
           if(was_sunk  &&  clicked_frame != -1) {
-            stack_frame(display, &frames.list[clicked_frame], seperator);
+            stack_frame(display, &frames.list[clicked_frame], sinking_seperator, tiling_seperator);
             was_sunk = 0; //reset was_sunk
           }
           if(clicked_frame != -1  &&  frames.list[clicked_frame].mode == TILING) {
@@ -652,7 +659,7 @@ int main (int argc, char* argv[]) {
         #endif
         
         if(was_sunk &&  clicked_frame != -1) {
-          stack_frame(display, &frames.list[clicked_frame], seperator);
+          stack_frame(display, &frames.list[clicked_frame], sinking_seperator, tiling_seperator);
         }
         was_sunk = 0;
         
@@ -669,7 +676,7 @@ int main (int argc, char* argv[]) {
               if(event.xbutton.window == mode_pulldown.floating) frames.list[i].mode = FLOATING;
               else if(event.xbutton.window == mode_pulldown.tiling) frames.list[i].mode = TILING;
               else if(event.xbutton.window == mode_pulldown.sinking) frames.list[i].mode = SINKING;
-              stack_frame(display, &frames.list[i], seperator);
+              stack_frame(display, &frames.list[i], sinking_seperator, tiling_seperator);
               show_frame_state(display, &frames.list[i], &pixmaps); //Redrawing mode pulldown
               break;
             }
@@ -679,7 +686,7 @@ int main (int argc, char* argv[]) {
               //Now we need to identify which window to put here.
               for(int j = 0; j < frames.used; j++) {               
                 if(event.xbutton.window == frames.list[j].title_menu.entry) {
-                  replace_frame(display, &frames.list[i], &frames.list[j], seperator, &pixmaps);
+                  replace_frame(display, &frames.list[i], &frames.list[j], sinking_seperator, tiling_seperator, &pixmaps);
                   break;
                 }
               }
@@ -854,13 +861,13 @@ int main (int argc, char* argv[]) {
         for(i = 0; i < frames.used; i++) { 
           if(event.xconfigurerequest.window == frames.list[i].window) {
             if(clicked_frame != i) {
-              if( event.xconfigurerequest.width >= frames.list[i].min_width + FRAME_HSPACE
-               && event.xconfigurerequest.width <= frames.list[i].max_width + FRAME_HSPACE) 
-                frames.list[i].w = event.xconfigurerequest.width + FRAME_HSPACE;
+              if( event.xconfigurerequest.width >= frames.list[i].min_width
+               && event.xconfigurerequest.width <= frames.list[i].max_width) 
+                frames.list[i].w = event.xconfigurerequest.width;
 
-              if(  event.xconfigurerequest.height >= frames.list[i].min_height + FRAME_VSPACE
-               && event.xconfigurerequest.height  <= frames.list[i].max_height + FRAME_VSPACE)
-                frames.list[i].h = event.xconfigurerequest.height + FRAME_VSPACE;
+              if(  event.xconfigurerequest.height >= frames.list[i].min_height
+               && event.xconfigurerequest.height  <= frames.list[i].max_height)
+                frames.list[i].h = event.xconfigurerequest.height;
                
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
               printf(".. width %d, height %d", frames.list[i].w, frames.list[i].h);
