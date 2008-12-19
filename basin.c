@@ -14,9 +14,9 @@
 #define SHOW_ENTER_NOTIFY_EVENTS      
 #define SHOW_LEAVE_NOTIFY_EVENTS      
 #define SHOW_CONFIGURE_REQUEST_EVENT  
+#define SHOW_EDGE_RESIZE
 ***/
 #define SHOW_BUTTON_RELEASE_EVENT     
-#define SHOW_EDGE_RESIZE
 
 /*** basin.c ***/
 int supress_xerror (Display *display, XErrorEvent *event);
@@ -747,6 +747,9 @@ int main (int argc, char* argv[]) {
         if(clicked_widget == root 
         && clicked_frame != -1
         && frames.list[clicked_frame].mode == TILING) {
+          #ifdef SHOW_BUTTON_RELEASE_EVENT
+          printf("retiling frame\n");
+          #endif    
           handle_frame_retile(display, &frames, clicked_frame, pointer_start_x, pointer_start_y, event.xbutton.x_root, event.xbutton.y_root);
         }
         

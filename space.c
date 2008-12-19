@@ -164,7 +164,6 @@ void remove_rectangle(struct rectangle_list *list, struct rectangle old) {
 
 //Prerequisites:  Rectangles a and b must not be overlapping.
 //Design:  Calculate the displacement in each axis and use pythagoras to calculate the net displacement
-//Rectangle a is the 
 double calculate_displacement(struct rectangle source, struct rectangle dest) {
   int dx, dy;
   double hypotenuse;
