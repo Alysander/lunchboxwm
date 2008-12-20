@@ -6,6 +6,7 @@
 
 /* these control which printfs are shown */
 /***
+
 #define SHOW_STARTUP                  
 #define SHOW_DESTROY_NOTIFY_EVENT     
 #define SHOW_UNMAP_NOTIFY_EVENT       
@@ -15,7 +16,7 @@
 #define SHOW_LEAVE_NOTIFY_EVENTS      
 #define SHOW_CONFIGURE_REQUEST_EVENT  
 #define SHOW_EDGE_RESIZE
-***/
+*/
 #define SHOW_BUTTON_RELEASE_EVENT     
 
 /*** basin.c ***/
@@ -36,6 +37,8 @@ void show_title_menu          (Display *display, struct Framelist *frames, int x
 void show_mode_pulldown_list  (Display *display, struct mode_pulldown_list *mode_pulldown, struct frame_pixmaps *pixmaps, int x, int y);
 
 /*** events.c ***/
+extern void handle_frame_unsink (Display *display, struct Framelist *frames, int index, struct frame_pixmaps *pixmaps);
+
 extern void handle_frame_resize (Display *display, struct Framelist *frames, int clicked_frame
 , int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y, Window clicked_widget);
 
@@ -326,7 +329,6 @@ int main (int argc, char* argv[]) {
         }
         
         /** Focus and raising policy **/
-        //Probably the focus history should be in a stack
         for(i = 0; i < frames.used; i++) {
           if(event.xbutton.window == frames.list[i].frame  
           || event.xbutton.window == frames.list[i].mode_pulldown  
@@ -338,70 +340,29 @@ int main (int argc, char* argv[]) {
           || event.xbutton.window == frames.list[i].br_grip
           || event.xbutton.window == frames.list[i].b_grip
           || (event.xbutton.window == frames.list[i].backing && do_click_to_focus)) {
+          
             stack_frame(display, &frames.list[i], sinking_seperator, tiling_seperator);
-
-            //don't tile the sinking window if these are clicked.
-            if(event.xbutton.window == frames.list[i].mode_pulldown  
-            //|| event.xbutton.window == frames.list[i].title_menu.hotspot
-            || event.xbutton.window == frames.list[i].close_button) break; 
 
             if(do_click_to_focus) { //EnterNotify on the framed window and has now been clicked.
               #ifdef SHOW_BUTTON_PRESS_EVENT            
               printf("clicked inside framed window %d - now focussed\n", i);
-              #endif
-              
+              #endif       
               XAllowEvents(display, ReplayPointer, event.xbutton.time);
-              do_click_to_focus = 0; //reset
+              do_click_to_focus = 0;
             }
 
             if(frames.list[i].mode == SINKING) {
-              struct rectangle_list free_spaces;
-              int largest = 0;
-              unsigned long int largest_area = 0;
-
-              #ifdef SHOW_BUTTON_PRESS_EVENT
-              printf("Tiling a previously sunk window\n");
-              #endif
-              free_spaces = get_free_screen_spaces (display, &frames, 0);
-            
-              for(int k = 0; k < free_spaces.used; k++) {
-                #ifdef SHOW_BUTTON_PRESS_EVENT
-                printf("Free space: x %d, y %d, w %d, h %d\n"
-                , free_spaces.list[k].x, free_spaces.list[k].y, free_spaces.list[k].w, free_spaces.list[k].h);
-                #endif
-                
-                if(frames.list[i].min_width  <= free_spaces.list[k].w
-                && frames.list[i].min_height <= free_spaces.list[k].h) {
-                  if(free_spaces.list[k].w * free_spaces.list[k].h > largest_area) {
-                    largest = k;
-                    largest_area = free_spaces.list[k].w * free_spaces.list[k].h;
-                  }
-                }
-              }
-              if(largest_area != 0) {
-                #ifdef SHOW_BUTTON_PRESS_EVENT
-                printf("Tiling sinking window\n");
-                #endif
-                
-                //max width might be wrong here
-                if(frames.list[i].max_width > free_spaces.list[largest].w) frames.list[i].w = free_spaces.list[largest].w;
-                else frames.list[i].w = frames.list[i].max_width;
-                  
-                if(frames.list[i].max_height > free_spaces.list[largest].h) frames.list[i].h = free_spaces.list[largest].h;
-                else frames.list[i].h = frames.list[i].max_height;
-                                      
-                frames.list[i].x = free_spaces.list[largest].x;
-                frames.list[i].y = free_spaces.list[largest].y;
-                frames.list[i].mode = TILING;
-
-                resize_frame(display, &frames.list[i]);
-                show_frame_state(display, &frames.list[i], &pixmaps);
-              }
-              if(free_spaces.list != NULL) free(free_spaces.list);              
+              if(event.xbutton.window == frames.list[i].mode_pulldown  
+              || event.xbutton.window == frames.list[i].close_button) 
+                break; //allow the mode pulldown and close button to be used on sinking windows.
+              
+              handle_frame_unsink (display, &frames, i, &pixmaps);
+              i = frames.used;
             }
             break;
           }
         }
+        /** Widget press registration  **/
         if(i < frames.used) {
           if(event.xbutton.window == frames.list[i].frame  
           || event.xbutton.window == frames.list[i].mode_pulldown 
@@ -849,6 +810,7 @@ int main (int argc, char* argv[]) {
       break;
 
       case ConfigureRequest:
+        
         #ifdef SHOW_CONFIGURE_REQUEST_EVENT
         printf("ConfigureRequest window %d, w: %d, h %d, ser %d, send %d", 
           event.xconfigurerequest.window,
@@ -860,32 +822,40 @@ int main (int argc, char* argv[]) {
         
         for(i = 0; i < frames.used; i++) { 
           if(event.xconfigurerequest.window == frames.list[i].window) {
-            if(clicked_frame != i) {
-              if( event.xconfigurerequest.width >= frames.list[i].min_width
-               && event.xconfigurerequest.width <= frames.list[i].max_width) 
-                frames.list[i].w = event.xconfigurerequest.width;
+            if(clicked_frame != -1  &&  frames.list[i].mode == TILING) {
+              #ifdef SHOW_CONFIGURE_REQUEST_EVENT
+              printf("Ignoring config req., due to resize operation \n");
+              #endif
+              break;
+            }
+            if( event.xconfigurerequest.width >= frames.list[i].min_width
+              && event.xconfigurerequest.width <= frames.list[i].max_width) 
+              frames.list[i].w = event.xconfigurerequest.width + FRAME_HSPACE;
 
-              if(  event.xconfigurerequest.height >= frames.list[i].min_height
-               && event.xconfigurerequest.height  <= frames.list[i].max_height)
-                frames.list[i].h = event.xconfigurerequest.height;
-               
+            if(  event.xconfigurerequest.height >= frames.list[i].min_height
+              && event.xconfigurerequest.height  <= frames.list[i].max_height)
+              frames.list[i].h = event.xconfigurerequest.height + FRAME_VSPACE;
+              
+            #ifdef SHOW_CONFIGURE_REQUEST_EVENT
+            printf(".. width %d, height %d\n", frames.list[i].w, frames.list[i].h);
+            #endif
+            if((frames.list[i].mode == SINKING  ||  frames.list[i].mode == FLOATING)
+            && (event.xconfigurerequest.detail == Above  ||  event.xconfigurerequest.detail == TopIf)) {
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
-              printf(".. width %d, height %d", frames.list[i].w, frames.list[i].h);
+              printf("Recovering window in response to possible restack request\n");
+              //it would be better to try not to refocus unnecessaraly.
               #endif
-              resize_frame(display, &frames.list[i]);
-              break;
+              
+              if(frames.list[i].mode == SINKING) {
+                frames.list[i].mode = FLOATING;
+                show_frame_state(display, &frames.list[i], &pixmaps);
+              }
+              stack_frame(display, &frames.list[i], sinking_seperator, tiling_seperator);
             }
-            else {
-              #ifdef SHOW_CONFIGURE_REQUEST_EVENT
-              printf("skipped");
-              #endif
-              break;
-            }
+            resize_frame(display, &frames.list[i]);
+            break;
           }
         }
-        #ifdef SHOW_CONFIGURE_REQUEST_EVENT        
-        printf("\n");
-        #endif
         //this window hasn't been mapped yet, let it update it's size
         if(i == frames.used) {
           XWindowAttributes attributes;
@@ -900,6 +870,9 @@ int main (int argc, char* argv[]) {
             premap_config.height = event.xconfigurerequest.height;
           }
           else {
+            #ifdef SHOW_CONFIGURE_REQUEST_EVENT        
+            printf("Bogus 200x200 premap config request\n");
+            #endif
             premap_config.width = attributes.width;
             premap_config.height = attributes.height;
           }

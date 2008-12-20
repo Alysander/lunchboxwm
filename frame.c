@@ -419,35 +419,40 @@ void get_frame_hints(Display* display, struct Frame* frame) {
 
   XGetWindowAttributes(display, frame->window, &attributes);
   frame->x = attributes.x;
-  frame->y = attributes.y;  
+  frame->y = attributes.y;
   printf("existing x,y: %d, %d\n", frame->x, frame->y);
-  frame->min_width = MINWIDTH -  FRAME_HSPACE;
-  frame->min_height = MINHEIGHT -  FRAME_VSPACE;
-  frame->max_width  = XWidthOfScreen(screen)  -  FRAME_HSPACE;
-  frame->max_height = XHeightOfScreen(screen) -  FRAME_VSPACE;  
+  frame->min_width = MINWIDTH;
+  frame->min_height = MINHEIGHT;
+  frame->max_width  = XWidthOfScreen(screen) - FRAME_HSPACE;
+  frame->max_height = XHeightOfScreen(screen)- FRAME_VSPACE;
    
   if(XGetWMNormalHints(display, frame->window, &specified, &pre_ICCCM) != 0) {
     printf("Managed to recover size hints\n");
     
-    if((specified.flags & PPosition != 0) || (specified.flags & USPosition != 0)) {
-      printf("Position specified\n");
+    if((specified.flags & PPosition) 
+    || (specified.flags & USPosition)) {
+      if(specified.flags & PPosition) printf("PPosition specified\n");
+      else printf("USPosition specified\n");
       frame->x = specified.x;
       frame->y = specified.y;
     }
-    if((specified.flags & PSize) || (specified.flags & USSize)) {
+    if((specified.flags & PSize) 
+    || (specified.flags & USSize)) {
       printf("Size specified\n");
-      frame->w = specified.width;
-      frame->h = specified.height;
+      frame->w = specified.width + FRAME_HSPACE;
+      frame->h = specified.height+ FRAME_VSPACE;
     }
-    if((specified.flags & PMinSize) && (specified.min_width >= MINWIDTH) && (specified.min_height >= MINHEIGHT)) {
+    if((specified.flags & PMinSize)
+    && (specified.min_width  + FRAME_HSPACE >= MINWIDTH)
+    && (specified.min_height + FRAME_VSPACE >= MINHEIGHT)) {
       printf("Minimum size specified\n");
-      frame->min_width = specified.min_width;
-      frame->min_height = specified.min_height;
+      frame->min_width = specified.min_width  + FRAME_HSPACE;
+      frame->min_height = specified.min_height+ FRAME_VSPACE;
     }
     if(specified.flags & PMaxSize) {
       printf("Maximum size specified\n");
-      frame->max_width = specified.max_width;
-      frame->max_height = specified.max_height;
+      frame->max_width = specified.max_width  + FRAME_HSPACE;
+      frame->max_height = specified.max_height+ FRAME_VSPACE;
     }
   }
   
@@ -465,9 +470,6 @@ void get_frame_hints(Display* display, struct Frame* frame) {
 
   frame->max_width += FRAME_HSPACE; 
   frame->max_height += FRAME_VSPACE; 
-
-  frame->min_width += FRAME_HSPACE; //increase the size of the window for the frame to be drawn in
-  frame->min_height += FRAME_VSPACE; 
       
   printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n", 
         frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height, frame->x, frame->y);

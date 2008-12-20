@@ -1,3 +1,43 @@
+void handle_frame_unsink (Display *display, struct Framelist *frames, int index, struct frame_pixmaps *pixmaps) {
+  struct rectangle_list free_spaces;
+  int largest = 0;
+  unsigned long int largest_area = 0;
+
+  #ifdef SHOW_BUTTON_PRESS_EVENT
+  printf("Tiling a previously sunk window\n");
+  #endif
+  free_spaces = get_free_screen_spaces (display, frames, 0);
+
+  for(int k = 0; k < free_spaces.used; k++) {
+    #ifdef SHOW_BUTTON_PRESS_EVENT
+    printf("Free space: x %d, y %d, w %d, h %d\n"
+    , free_spaces.list[k].x, free_spaces.list[k].y, free_spaces.list[k].w, free_spaces.list[k].h);
+    #endif
+    
+    if(frames->list[index].min_width  <= free_spaces.list[k].w
+    && frames->list[index].min_height <= free_spaces.list[k].h) {
+      if(free_spaces.list[k].w * free_spaces.list[k].h > largest_area) {
+        largest = k;
+        largest_area = free_spaces.list[k].w * free_spaces.list[k].h;
+      }
+    }
+  }
+  if(largest_area != 0) {
+    if(frames->list[index].max_width > free_spaces.list[largest].w) frames->list[index].w = free_spaces.list[largest].w;
+    else frames->list[index].w = frames->list[index].max_width;
+      
+    if(frames->list[index].max_height > free_spaces.list[largest].h) frames->list[index].h = free_spaces.list[largest].h;
+    else frames->list[index].h = frames->list[index].max_height;
+                          
+    frames->list[index].x = free_spaces.list[largest].x;
+    frames->list[index].y = free_spaces.list[largest].y;
+    frames->list[index].mode = TILING;
+
+    resize_frame(display, &frames->list[index]);
+    show_frame_state(display, &frames->list[index], pixmaps);
+  }
+  if(free_spaces.list != NULL) free(free_spaces.list);
+}
 
 void handle_frame_resize (Display *display, struct Framelist *frames, int clicked_frame
 , int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y, Window clicked_widget) {
