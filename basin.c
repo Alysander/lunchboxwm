@@ -5,19 +5,22 @@
 
 
 /* these control which printfs are shown */
-/***
 
-#define SHOW_STARTUP                  
+#define SHOW_CONFIGURE_REQUEST_EVENT  
 #define SHOW_DESTROY_NOTIFY_EVENT     
 #define SHOW_UNMAP_NOTIFY_EVENT       
 #define SHOW_MAP_REQUEST_EVENT        
+
+
+/**
+#define SHOW_STARTUP                  
 #define SHOW_BUTTON_PRESS_EVENT       
 #define SHOW_ENTER_NOTIFY_EVENTS      
 #define SHOW_LEAVE_NOTIFY_EVENTS      
-#define SHOW_CONFIGURE_REQUEST_EVENT  
 #define SHOW_EDGE_RESIZE
-*/
+
 #define SHOW_BUTTON_RELEASE_EVENT     
+**/
 
 /*** basin.c ***/
 int supress_xerror (Display *display, XErrorEvent *event);
@@ -261,19 +264,18 @@ int main (int argc, char* argv[]) {
         
         for(i = 0; i < frames.used; i++) {
           if(event.xany.window == frames.list[i].window) {
+            printf("Unmapping window %s\n", frames.list[i].window_name);
             XUngrabPointer(display, CurrentTime);          
-            if(clicked_frame != -1) { 
+            if(clicked_frame != -1) {
               #ifdef SHOW_UNMAP_NOTIFY_EVENT
               printf("Cancelling resize because a window was destroyed\n");
               #endif
-              
               clicked_frame = -1;
             }
             if(pulldown != root) {
               #ifdef SHOW_UNMAP_NOTIFY_EVENT
               printf("Closing popup and cancelling grab\n");
               #endif
-              
               XUnmapWindow(display, pulldown);
               pulldown = root;
             }
@@ -281,7 +283,6 @@ int main (int argc, char* argv[]) {
             #ifdef SHOW_UNMAP_NOTIFY_EVENT
             printf("Removed frame i:%d, framed_window %d\n", i, event.xany.window);
             #endif
-            
             remove_frame(display, &frames, i);
             break;
           }
@@ -822,12 +823,18 @@ int main (int argc, char* argv[]) {
         
         for(i = 0; i < frames.used; i++) { 
           if(event.xconfigurerequest.window == frames.list[i].window) {
-            if(clicked_frame != -1  &&  frames.list[i].mode == TILING) {
+            //ignore programs resize request if
+            if (clicked_frame == i //this window is being resized or if
+            || (clicked_frame != -1  //this window could be being resized indirectly
+               && frames.list[i].mode == TILING  
+               && frames.list[clicked_frame].mode == TILING)) {
+              //TODO  figure out how to handle tiled windows enlarging themselves.
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
-              printf("Ignoring config req., due to resize operation \n");
+              printf("Ignoring config req., due to ongoing resize operation \n");
               #endif
               break;
             }
+            
             if( event.xconfigurerequest.width >= frames.list[i].min_width
               && event.xconfigurerequest.width <= frames.list[i].max_width) 
               frames.list[i].w = event.xconfigurerequest.width + FRAME_HSPACE;
@@ -839,8 +846,8 @@ int main (int argc, char* argv[]) {
             #ifdef SHOW_CONFIGURE_REQUEST_EVENT
             printf(".. width %d, height %d\n", frames.list[i].w, frames.list[i].h);
             #endif
-            if((frames.list[i].mode == SINKING  ||  frames.list[i].mode == FLOATING)
-            && (event.xconfigurerequest.detail == Above  ||  event.xconfigurerequest.detail == TopIf)) {
+            if (frames.list[i].mode != TILING  
+            &&  (event.xconfigurerequest.detail == Above  ||  event.xconfigurerequest.detail == TopIf)) {
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
               printf("Recovering window in response to possible restack request\n");
               //it would be better to try not to refocus unnecessaraly.
@@ -934,6 +941,7 @@ int main (int argc, char* argv[]) {
 int supress_xerror(Display *display, XErrorEvent *event) {
   (void) display;
   (void) event;
+  printf("Caught an error\n");
   return 0;
 }
 

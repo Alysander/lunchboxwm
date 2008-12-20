@@ -1,4 +1,5 @@
 extern int done;
+
 /* This function reparents a framed window to root and then destroys the frame as well as cleaning up the frames drawing surfaces */
 /* It is used when the framed window has been unmapped or destroyed, or is about to be*/
 void remove_frame(Display* display, struct Framelist* frames, int index) {
@@ -84,7 +85,7 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
   
-  XWindowAttributes attributes; //fallback if the specified size hints don't work
+  XWindowAttributes attributes;
   struct Frame frame;
    
   Window transient; //this window is actually used to store a return value
@@ -103,13 +104,15 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XGetWindowAttributes(display, framed_window, &attributes);
   
   /*** Set up defaults ***/
-  printf("attributes width %d, height %d\n", attributes.width, attributes.height);
-
   frame.selected = 0;
   frame.window_name = NULL;
   frame.mode = FLOATING;
   frame.window = framed_window;      
   frame.title_menu.entry = root;
+  frame.x = attributes.x;
+  frame.y = attributes.y;
+  frame.w = attributes.width;  
+  frame.h = attributes.height;  
   get_frame_hints(display, &frame);
     
   frame.frame =         XCreateSimpleWindow(display, root, frame.x, frame.y
@@ -410,18 +413,13 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   Screen* screen;
   Window root;
   
-  XWindowAttributes attributes;
   XSizeHints specified;
   long pre_ICCCM; //pre ICCCM recovered values which are ignored.
   
   root = DefaultRootWindow(display);
   screen = DefaultScreenOfDisplay(display);
 
-  XGetWindowAttributes(display, frame->window, &attributes);
-  frame->x = attributes.x;
-  frame->y = attributes.y;
-  printf("existing x,y: %d, %d\n", frame->x, frame->y);
-  frame->min_width = MINWIDTH;
+  frame->min_width  = MINWIDTH;
   frame->min_height = MINHEIGHT;
   frame->max_width  = XWidthOfScreen(screen) - FRAME_HSPACE;
   frame->max_height = XHeightOfScreen(screen)- FRAME_VSPACE;
@@ -456,27 +454,23 @@ void get_frame_hints(Display* display, struct Frame* frame) {
     }
   }
   
-  if(attributes.width < frame->min_width) frame->w = frame->min_width;
-  else frame->w = attributes.width;
-
-  if(attributes.height < frame->min_height) frame->h = frame->min_height;
-  else frame->h = attributes.height;
-  
-  if(frame->w > frame->max_width) frame->w = frame->max_width;
+  if(frame->w < frame->min_width)  frame->w = frame->min_width;
+  if(frame->h < frame->min_height) frame->h = frame->min_height;
+  if(frame->w > frame->max_width)  frame->w = frame->max_width;
   if(frame->h > frame->max_height) frame->h = frame->max_height;
     
   frame->w += FRAME_HSPACE; //increase the size of the window for the frame to be drawn in
   frame->h += FRAME_VSPACE; 
 
-  frame->max_width += FRAME_HSPACE; 
+  frame->max_width  += FRAME_HSPACE; 
   frame->max_height += FRAME_VSPACE; 
       
   printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n", 
         frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height, frame->x, frame->y);
         
   //put splash screens where they specify, not off-centre
-  if(frame->x - (H_SPACING + EDGE_WIDTH*2)  >  0) frame->x -= H_SPACING + EDGE_WIDTH*2;
-  if(frame->y - (TITLEBAR_HEIGHT + EDGE_WIDTH*2) > 0) frame->y -= TITLEBAR_HEIGHT + EDGE_WIDTH*2; 
+  //if(frame->x - (H_SPACING + EDGE_WIDTH*2)  >  0) frame->x -= H_SPACING + EDGE_WIDTH*2;
+  //if(frame->y - (TITLEBAR_HEIGHT + EDGE_WIDTH*2) > 0) frame->y -= TITLEBAR_HEIGHT + EDGE_WIDTH*2; 
 }
 
 int replace_frame(Display *display, struct Frame *target, struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, struct frame_pixmaps *pixmaps) {
