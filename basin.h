@@ -128,8 +128,8 @@ struct Frame {
 };
 
 struct Framelist {
-  struct Frame* list;
-  unsigned int max, used;
+  unsigned int used, max;
+  struct Frame* list;  
   Window title_menu;
 };
 
@@ -139,9 +139,8 @@ struct rectangle {
 };
 
 struct rectangle_list {
-  int used;
-  int max;
-  struct rectangle *list;
+  unsigned int used, max;
+  struct rectangle *list;  
 };
 
 struct mode_pulldown_list {

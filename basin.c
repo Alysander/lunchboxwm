@@ -137,7 +137,7 @@ int main (int argc, char* argv[]) {
   struct frame_pixmaps pixmaps;
   struct mouse_cursors cursors;
   struct hints atoms;
-  struct Framelist frames = {NULL, 16, 0, 0};
+  struct Framelist frames = {0, 16, NULL, 0};
 
   struct mode_pulldown_list mode_pulldown; //this window is created and reused.
   
@@ -544,7 +544,7 @@ int main (int argc, char* argv[]) {
             if(clicked_widget == frames.list[i].close_hotspot) {
               XUnmapWindow(display, frames.list[i].close_button);
               //do not need to unselect for enter/leave notify events on the close button graphic because the hotspot window isn't effected
-              if(event.type == EnterNotify) {
+              if(event.type == EnterNotify) 
                 XSetWindowBackgroundPixmap(display, frames.list[i].close_button, pixmaps.close_button_pressed_p );
               else if (event.type == LeaveNotify) 
                 XSetWindowBackgroundPixmap(display, frames.list[i].close_button, pixmaps.close_button_normal_p );
