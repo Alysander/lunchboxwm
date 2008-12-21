@@ -132,10 +132,19 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   frame.close_button =  XCreateSimpleWindow(display, frame.titlebar
   , frame.w - H_SPACING - BUTTON_SIZE - EDGE_WIDTH*2, V_SPACING
   , BUTTON_SIZE, BUTTON_SIZE, 0, black, black);
+
+  frame.close_hotspot = XCreateWindow(display, frame.frame
+  , frame.w - H_SPACING - BUTTON_SIZE - EDGE_WIDTH*2, 0
+  , BUTTON_SIZE + H_SPACING + EDGE_WIDTH*2, BUTTON_SIZE + V_SPACING + EDGE_WIDTH*2
+  , 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
                                       
   frame.mode_pulldown = XCreateSimpleWindow(display, frame.titlebar
   , frame.w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH*2, V_SPACING
   , PULLDOWN_WIDTH, BUTTON_SIZE, 0, black, black);
+
+  frame.mode_hotspot = XCreateWindow(display, frame.frame
+  , frame.w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH*2, 0
+  , PULLDOWN_WIDTH, BUTTON_SIZE + V_SPACING + EDGE_WIDTH*2, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
 
   frame.selection_indicator = XCreateSimpleWindow(display, frame.titlebar, H_SPACING, V_SPACING
   , BUTTON_SIZE, BUTTON_SIZE,  0, black, black);
@@ -155,8 +164,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   
   frame.title_menu.hotspot =   XCreateWindow(display, frame.frame
   , H_SPACING*2 + BUTTON_SIZE + EDGE_WIDTH, 0
-  , frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE + V_SPACING + EDGE_WIDTH, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
-  
+  , frame.w - TITLEBAR_USED_WIDTH, BUTTON_SIZE + V_SPACING + EDGE_WIDTH*2, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+
   //doesn't matter if the width of the grips is a bit bigger as it will be under the frame_window anyway
   frame.l_grip = XCreateWindow(display, frame.frame, 0, TITLEBAR_HEIGHT + 1 + EDGE_WIDTH*2
   , CORNER_GRIP_SIZE, frame.h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
@@ -203,8 +212,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
 
   XSync(display, False);  //this prevents the Reparent unmap being reported.
   XSelectInput(display, frame.frame,   Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
-  XSelectInput(display, frame.close_button,  ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-  XSelectInput(display, frame.mode_pulldown, ButtonPressMask | ButtonReleaseMask);
+  XSelectInput(display, frame.close_hotspot,  ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  XSelectInput(display, frame.mode_hotspot, ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.title_menu.hotspot, ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.l_grip,  ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.bl_grip, ButtonPressMask | ButtonReleaseMask);
@@ -220,8 +229,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XDefineCursor(display, frame.frame, cursors->normal);
   XDefineCursor(display, frame.titlebar, cursors->normal);
   XDefineCursor(display, frame.body, cursors->normal);
-  XDefineCursor(display, frame.close_button, cursors->normal);
-  XDefineCursor(display, frame.mode_pulldown, cursors->normal);
+  XDefineCursor(display, frame.close_hotspot, cursors->normal);
+  XDefineCursor(display, frame.mode_hotspot, cursors->normal);
   XDefineCursor(display, frame.selection_indicator, cursors->normal);
   XDefineCursor(display, frame.title_menu.frame, cursors->normal);
   XDefineCursor(display, frame.title_menu.body, cursors->normal);
@@ -238,6 +247,8 @@ int create_frame(Display* display, struct Framelist* frames, Window framed_windo
   XMapWindow(display, frame.titlebar);
   XMapWindow(display, frame.body);
   XMapWindow(display, frame.close_button);
+  XMapWindow(display, frame.close_hotspot);  
+  XMapWindow(display, frame.mode_hotspot);
   XMapWindow(display, frame.mode_pulldown);
   XMapWindow(display, frame.selection_indicator);
   XMapWindow(display, frame.title_menu.frame);
@@ -312,7 +323,9 @@ void resize_frame(Display* display, struct Frame* frame) {
   XMoveResizeWindow(display, frame->frame, frame->x, frame->y,  frame->w, frame->h);
   XResizeWindow(display, frame->titlebar, frame->w - EDGE_WIDTH*2, TITLEBAR_HEIGHT);
   XMoveWindow(display, frame->close_button, frame->w - H_SPACING - BUTTON_SIZE - EDGE_WIDTH - 1, V_SPACING);
+  XMoveWindow(display, frame->close_hotspot, frame->w - H_SPACING - BUTTON_SIZE - EDGE_WIDTH - 1, 0);
   XMoveWindow(display, frame->mode_pulldown, frame->w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH - 1, V_SPACING);
+  XMoveWindow(display, frame->mode_hotspot, frame->w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH - 1, 0);
 
   if(frame->title_menu.width + EDGE_WIDTH*4 + BUTTON_SIZE < frame->w - TITLEBAR_USED_WIDTH) {
     XResizeWindow(display, frame->title_menu.frame, frame->title_menu.width + EDGE_WIDTH*4 + BUTTON_SIZE, BUTTON_SIZE);

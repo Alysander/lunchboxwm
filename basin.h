@@ -95,7 +95,8 @@ struct Frame {
   int min_width, max_width;
   int min_height, max_height;
   
-  Window frame, body, innerframe, titlebar, close_button, mode_pulldown, selection_indicator; 
+  Window frame, body, innerframe, titlebar, close_button, mode_pulldown, selection_indicator;
+  Window mode_hotspot, close_hotspot;
   Window backing;   //backing is the same dimensions as the framed window.  
                     //It is used so that the resize grips can cover the innerframe but still be below the framed window.
   struct {

@@ -6,21 +6,16 @@
 
 /* these control which printfs are shown */
 
-#define SHOW_CONFIGURE_REQUEST_EVENT  
-#define SHOW_DESTROY_NOTIFY_EVENT     
-#define SHOW_UNMAP_NOTIFY_EVENT       
-#define SHOW_MAP_REQUEST_EVENT        
-
-
-/**
 #define SHOW_STARTUP                  
+//#define SHOW_DESTROY_NOTIFY_EVENT     
+//#define SHOW_UNMAP_NOTIFY_EVENT       
+//#define SHOW_MAP_REQUEST_EVENT        
+//#define SHOW_CONFIGURE_REQUEST_EVENT  
 #define SHOW_BUTTON_PRESS_EVENT       
 #define SHOW_ENTER_NOTIFY_EVENTS      
 #define SHOW_LEAVE_NOTIFY_EVENTS      
-#define SHOW_EDGE_RESIZE
-
-#define SHOW_BUTTON_RELEASE_EVENT     
-**/
+//#define SHOW_EDGE_RESIZE
+//#define SHOW_BUTTON_RELEASE_EVENT     
 
 /*** basin.c ***/
 int supress_xerror (Display *display, XErrorEvent *event);
@@ -332,8 +327,8 @@ int main (int argc, char* argv[]) {
         /** Focus and raising policy **/
         for(i = 0; i < frames.used; i++) {
           if(event.xbutton.window == frames.list[i].frame  
-          || event.xbutton.window == frames.list[i].mode_pulldown  
-          || event.xbutton.window == frames.list[i].close_button   
+          || event.xbutton.window == frames.list[i].mode_hotspot  
+          || event.xbutton.window == frames.list[i].close_hotspot   
           || event.xbutton.window == frames.list[i].title_menu.hotspot
           || event.xbutton.window == frames.list[i].l_grip  //need to show that these have been disabled for sinking windows.
           || event.xbutton.window == frames.list[i].r_grip
@@ -353,8 +348,8 @@ int main (int argc, char* argv[]) {
             }
 
             if(frames.list[i].mode == SINKING) {
-              if(event.xbutton.window == frames.list[i].mode_pulldown  
-              || event.xbutton.window == frames.list[i].close_button) 
+              if(event.xbutton.window == frames.list[i].mode_hotspot  
+              || event.xbutton.window == frames.list[i].close_hotspot) 
                 break; //allow the mode pulldown and close button to be used on sinking windows.
               
               handle_frame_unsink (display, &frames, i, &pixmaps);
@@ -366,7 +361,7 @@ int main (int argc, char* argv[]) {
         /** Widget press registration  **/
         if(i < frames.used) {
           if(event.xbutton.window == frames.list[i].frame  
-          || event.xbutton.window == frames.list[i].mode_pulldown 
+          || event.xbutton.window == frames.list[i].mode_hotspot
           || event.xbutton.window == frames.list[i].title_menu.hotspot)  {    
             //A menu is being opened so grab the pointer and intercept the events so that it works.
             XGrabPointer(display,  root, True
@@ -378,22 +373,21 @@ int main (int argc, char* argv[]) {
             pointer_start_y = event.xbutton.y;
             clicked_frame = i;   
             
-            if(event.xbutton.window == frames.list[i].mode_pulldown  
+            if(event.xbutton.window == frames.list[i].mode_hotspot  
             || event.xbutton.window == frames.list[i].title_menu.hotspot) {
               pointer_start_x += 1; //compensate for relative co-ordinates of window and subwindow
               pointer_start_y += 1;
             }
             
-            if(event.xbutton.window == frames.list[i].mode_pulldown) {
+            if(event.xbutton.window == frames.list[i].mode_hotspot) {
               #ifdef SHOW_BUTTON_PRESS_EVENT
-              printf("pressed mode pulldown %d on window %d\n", frames.list[i].mode_pulldown, frames.list[i].frame);
+              printf("pressed mode pulldown %d on window %d\n", frames.list[i].mode_hotspot, frames.list[i].frame);
               #endif
               
-              clicked_widget = frames.list[i].mode_pulldown;
+              clicked_widget = frames.list[i].mode_hotspot;
               pointer_start_x += frames.list[i].w - H_SPACING*2 - PULLDOWN_WIDTH - BUTTON_SIZE - EDGE_WIDTH - 1;
               pointer_start_y += V_SPACING;
               XUnmapWindow(display, frames.list[i].mode_pulldown);
-              XFlush(display);
               #ifdef SHOW_BUTTON_PRESS_EVENT
               printf("changing mode pulldown pixmaps\n");
               #endif
@@ -415,7 +409,6 @@ int main (int argc, char* argv[]) {
               pointer_start_x += H_SPACING*2 + BUTTON_SIZE;
               pointer_start_y += V_SPACING;
               XUnmapWindow(display, frames.list[i].title_menu.frame);
-              XFlush(display);
               XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.arrow, pixmaps.arrow_pressed_p);
               XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.title, frames.list[i].title_menu.title_pressed_p);
               XMapWindow(display, frames.list[i].title_menu.frame);           
@@ -424,20 +417,23 @@ int main (int argc, char* argv[]) {
             break;
           }
           
-          else if(event.xbutton.window == frames.list[i].close_button) {
+          else if(event.xbutton.window == frames.list[i].close_hotspot) {
             #ifdef SHOW_BUTTON_PRESS_EVENT
-            printf("pressed closebutton %d on window %d\n", frames.list[i].close_button, frames.list[i].frame);
+            printf("pressed closebutton %d on window %d\n", frames.list[i].close_hotspot, frames.list[i].frame);
             #endif
             
-            clicked_widget = frames.list[i].close_button;
+            clicked_widget = frames.list[i].close_hotspot;
+            XSelectInput(display, frames.list[i].close_hotspot, 0);
             XGrabPointer(display,  root, True
             , PointerMotionMask | ButtonReleaseMask
             , GrabModeAsync,  GrabModeAsync, None, None, CurrentTime);
+            XSync(display, True); //this is required in order to supress the leavenotify event from the grab window
+            XSelectInput(display, frames.list[i].close_hotspot,  ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+
             XUnmapWindow(display, frames.list[i].close_button);
-            /* This is already selected for leavenotify and enternotify events.  */
-            /* The grab generates a leave event, the map generates an enternotify event*/
-            /* So we don't explicitly have to redraw :) */
+            XSetWindowBackgroundPixmap(display, frames.list[i].close_button, pixmaps.close_button_pressed_p );
             XMapWindow(display, frames.list[i].close_button);
+
             XFlush(display);
             break;
           }
@@ -545,15 +541,14 @@ int main (int argc, char* argv[]) {
           printf("Enter or exit.  Window %d, Subwindow %d\n", event.xcrossing.window, event.xcrossing.subwindow);
           #endif
           for (i = 0; i < frames.used; i++) {
-            if(clicked_widget == frames.list[i].close_button) {
-              XSelectInput(display, frames.list[i].close_button, 0);  
+            if(clicked_widget == frames.list[i].close_hotspot) {
               XUnmapWindow(display, frames.list[i].close_button);
-              if(event.type == EnterNotify) 
+              //do not need to unselect for enter/leave notify events on the close button graphic because the hotspot window isn't effected
+              if(event.type == EnterNotify) {
                 XSetWindowBackgroundPixmap(display, frames.list[i].close_button, pixmaps.close_button_pressed_p );
               else if (event.type == LeaveNotify) 
                 XSetWindowBackgroundPixmap(display, frames.list[i].close_button, pixmaps.close_button_normal_p );
               XMapWindow(display, frames.list[i].close_button);
-              XSelectInput(display, frames.list[i].close_button, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
               XFlush(display);
               break;
             }
@@ -562,6 +557,7 @@ int main (int argc, char* argv[]) {
         
         if(clicked_widget != root  &&  pulldown != root) {
           if(event.xcrossing.window == mode_pulldown.floating) {
+            //this prevents enter/leave notify events from being generated
             XSelectInput(display, mode_pulldown.floating, 0);  
             XFlush(display);
             XUnmapWindow(display, mode_pulldown.floating);
@@ -634,7 +630,7 @@ int main (int argc, char* argv[]) {
           XUnmapWindow(display, pulldown);
           
           for(i = 0; i < frames.used; i++) {
-            if(clicked_widget == frames.list[i].mode_pulldown) {
+            if(clicked_widget == frames.list[i].mode_hotspot) {
               if(event.xbutton.window == mode_pulldown.floating) frames.list[i].mode = FLOATING;
               else if(event.xbutton.window == mode_pulldown.tiling) frames.list[i].mode = TILING;
               else if(event.xbutton.window == mode_pulldown.sinking) frames.list[i].mode = SINKING;
@@ -663,15 +659,13 @@ int main (int argc, char* argv[]) {
         /* Activate a widget */
         if((clicked_widget != root) && (clicked_widget == event.xbutton.window)) {
           for(i = 0; i < frames.used; i++) {
-            if(clicked_widget == frames.list[i].close_button) {
+            if(clicked_widget == frames.list[i].close_hotspot) {
               #ifdef SHOW_BUTTON_RELEASE_EVENT
-              printf("released closebutton %d, window %d\n", frames.list[i].close_button, frames.list[i].frame);
+              printf("released closebutton %d, window %d\n", frames.list[i].close_hotspot, frames.list[i].frame);
               #endif
-              XSelectInput(display, frames.list[i].close_button, 0);
               XUnmapWindow(display, frames.list[i].close_button);
               XSetWindowBackgroundPixmap(display, frames.list[i].close_button, pixmaps.close_button_normal_p );
               XMapWindow(display, frames.list[i].close_button);
-              XSelectInput(display, frames.list[i].close_button, ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
               XFlush(display);
               //it is might never happen but this doesn't hurt
               if(pulldown != root) {
@@ -682,7 +676,7 @@ int main (int argc, char* argv[]) {
               clicked_widget = root;
               break;
             }
-            else if(clicked_widget == frames.list[i].mode_pulldown) {
+            else if(clicked_widget == frames.list[i].mode_hotspot) {
               #ifdef SHOW_BUTTON_RELEASE_EVENT
               printf("Pressed the mode_pulldown on window %d\n", frames.list[i].window);
               #endif
@@ -728,7 +722,7 @@ int main (int argc, char* argv[]) {
           || clicked_widget == frames.list[i].b_grip
           || clicked_widget == frames.list[i].br_grip
           || clicked_widget == frames.list[i].r_grip
-          || clicked_widget == frames.list[i].close_button) { //anything except a menu
+          || clicked_widget == frames.list[i].close_hotspot) { //anything except a menu
             #ifdef SHOW_BUTTON_RELEASE_EVENT
             printf("Cancelled click\n");
             #endif
@@ -753,7 +747,7 @@ int main (int argc, char* argv[]) {
       
       case MotionNotify:
         if(clicked_frame != -1) {
-         //these variables will hold the discarded return values from XQueryPointer
+          //these variables will hold the discarded return values from XQueryPointer
           Window mouse_root, mouse_child;  
           
           int mouse_child_x, mouse_child_y; 
@@ -762,7 +756,7 @@ int main (int argc, char* argv[]) {
           unsigned int mask;   
         
           //If a menu on the titlebar is dragged, cancel the menu and move the window.
-          if(clicked_widget == frames.list[clicked_frame].mode_pulldown) {  //cancel the pulldown lists opening
+          if(clicked_widget == frames.list[clicked_frame].mode_hotspot) {  //cancel the pulldown lists opening
             show_frame_state(display, &frames.list[clicked_frame], &pixmaps);
             clicked_widget = root;
           }
