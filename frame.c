@@ -61,11 +61,10 @@ void remove_window(Display* display, Window framed_window) {
 }
 
 /*This function is used to add frames to windows that are already open when the WM is starting*/
-void create_startup_frames (Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) {
+void create_startup_frames (Display *display, struct Framelist* frames, Window sinking_seperator, Window tiling_seperator, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) {
   unsigned int windows_length;
   Window root, parent, children, *windows;
   XWindowAttributes attributes;
-
   root = DefaultRootWindow(display);
   
   XQueryTree(display, root, &parent, &children, &windows, &windows_length);
@@ -73,6 +72,7 @@ void create_startup_frames (Display *display, struct Framelist* frames, struct f
     XGetWindowAttributes(display, windows[i], &attributes);
     if (attributes.map_state == IsViewable && !attributes.override_redirect) {
       create_frame(display, frames, windows[i], pixmaps, cursors);
+      stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator);
     }
   }
   XFree(windows);
@@ -315,6 +315,12 @@ void show_frame_state(Display *display, struct Frame *frame,  struct frame_pixma
   XMapWindow(display, frame->mode_pulldown);
   XMapWindow(display, frame->close_button);
   XMapWindow(display, frame->selection_indicator);
+  XFlush(display);
+}
+
+/*** Moves the frame and doesn't resize it **/
+void move_frame(Display* display, struct Frame* frame) {
+  XMoveWindow(display, frame->frame, frame->x, frame->y);
   XFlush(display);
 }
 

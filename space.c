@@ -1,5 +1,5 @@
 
-struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist *frames, int start) {
+struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist *frames) {
   //the start variable is used to skip windows at the start 
   //in the handle_frame_retile function these are the intersecting tiled windows.
   
@@ -16,7 +16,7 @@ struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist
     return free_spaces; //i.e., NULL
   }
   
-  for(int i = start; i < frames->used; i++) {
+  for(int i = 0; i < frames->used; i++) {
     if(frames->list[i].mode == TILING) {
       struct rectangle current = 
         {frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h};
@@ -166,8 +166,7 @@ void remove_rectangle(struct rectangle_list *list, struct rectangle old) {
 
 //Prerequisites:  Rectangles a and b must not be overlapping.
 //Design:  Calculate the displacement in each axis and use pythagoras to calculate the net displacement
-double calculate_displacement(struct rectangle source, struct rectangle dest) {
-  int dx, dy;
+double calculate_displacement(struct rectangle source, struct rectangle dest, int *dx, int *dy) {
   double hypotenuse;
   
   if(source.w > dest.w
@@ -177,19 +176,19 @@ double calculate_displacement(struct rectangle source, struct rectangle dest) {
   }
    
   if(source.x > dest.x  
-  && source.x + source.w < dest.x + dest.w) dx = 0;
-  else dx = dest.x - source.x;
+  && source.x + source.w < dest.x + dest.w) *dx = 0;
+  else *dx = dest.x - source.x;
   
-  if(dx < 0) dx += dest.w - source.w; //move it to the nearest edge if required.
+  if(*dx < 0) *dx += dest.w - source.w; //move it to the nearest edge if required.
 
   if(source.y > dest.y  
-  && source.y + source.h < dest.y + dest.h) dy = 0;
-  else dy = dest.y - source.y;
+  && source.y + source.h < dest.y + dest.h) *dy = 0;
+  else *dy = dest.y - source.y;
   
-  if(dy < 0) dy += dest.h - source.h; //move it to the nearest edge if required.
+  if(*dy < 0) *dy += dest.h - source.h; //move it to the nearest edge if required.
   
-  hypotenuse = sqrt(dx*dx + dy*dy);
-  printf("dest x %d, dest y %d, dx %d, dy %d, hyp %f\n", dest.x, dest.y, dx, dy, hypotenuse);  
+  hypotenuse = sqrt((*dx) * (*dx) + (*dy) * (*dy));
+  printf("dest x %d, dest y %d, dx %d, dy %d, hyp %f\n", dest.x, dest.y, *dx, *dy, hypotenuse);  
 
   return hypotenuse;
 }

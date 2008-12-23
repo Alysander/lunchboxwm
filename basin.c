@@ -44,7 +44,7 @@ extern void handle_frame_move (Display *display, struct Framelist *frames, int c
 , int *pointer_start_x, int *pointer_start_y, int mouse_root_x, int mouse_root_y,  int *was_sunk
 , struct frame_pixmaps *pixmaps, int *resize_x_direction, int *resize_y_direction);
 
-extern void handle_frame_retile (Display *display, struct Framelist *frames, int clicked_frame
+extern void handle_frame_drop (Display *display, struct Framelist *frames, int clicked_frame
 ,  int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y);
 
 /*** draw.c ***/
@@ -56,11 +56,12 @@ extern Pixmap create_title_pixmap(Display* display, const char* title, enum titl
 extern int create_frame (Display *display, struct Framelist* frames, Window framed_window
 , struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
 
-extern void create_startup_frames (Display *display, struct Framelist* frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
+extern void create_startup_frames (Display *display, struct Framelist* frames, Window sinking_seperator, Window tiling_seperator, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
 extern void remove_frame          (Display *display, struct Framelist* frames, int index);
 extern void resize_tiling_frame   (Display *display, struct Framelist *frames, int index, char axis, int position, int size);
-extern void stack_frame           (Display *display, struct Frame *frame, Window sinking_seperator, Window tiling_seperator);
 
+extern void stack_frame           (Display *display, struct Frame *frame, Window sinking_seperator, Window tiling_seperator);
+extern void move_frame            (Display *display, struct Frame *frame);
 extern void remove_window         (Display *display, Window framed_window);
 extern void get_frame_program_name(Display *display, struct Frame *frame);
 extern void free_frame_name       (Display *display, struct Frame *frame);
@@ -74,8 +75,8 @@ extern int replace_frame          (Display *display, struct Frame *target, struc
 extern void add_rectangle(struct rectangle_list *list, struct rectangle new);
 extern void remove_rectangle(struct rectangle_list *list, struct rectangle old);
 extern struct rectangle_list largest_available_spaces (struct rectangle_list *used_spaces, int w, int h);
-extern struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist *frames, int start);
-extern double calculate_displacement(struct rectangle source, struct rectangle dest);
+extern struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist *frames);
+extern double calculate_displacement(struct rectangle source, struct rectangle dest, int *dx, int *dy);
 
 /*** menubar.c ***/
 extern Window create_menubar(Display *display, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
@@ -217,7 +218,7 @@ int main (int argc, char* argv[]) {
   XFlush(display);
     
   create_title_menu(display, &frames, &pixmaps, &cursors);
-  create_startup_frames(display, &frames, &pixmaps, &cursors); 
+  create_startup_frames(display, &frames, sinking_seperator, tiling_seperator, &pixmaps, &cursors); 
   menubar = create_menubar(display, &pixmaps, &cursors);
   
   create_mode_pulldown_list(display, &mode_pulldown, &pixmaps, &cursors);
@@ -531,7 +532,7 @@ int main (int argc, char* argv[]) {
             was_sunk = 0; //reset was_sunk
           }
           if(clicked_frame != -1  &&  frames.list[clicked_frame].mode == TILING) {
-            handle_frame_retile(display, &frames, clicked_frame, pointer_start_x, pointer_start_y, event.xbutton.x_root, event.xbutton.y_root);
+            handle_frame_drop(display, &frames, clicked_frame, pointer_start_x, pointer_start_y, event.xbutton.x_root, event.xbutton.y_root);
           }
           clicked_frame = -1; 
         }
@@ -713,7 +714,7 @@ int main (int argc, char* argv[]) {
           #ifdef SHOW_BUTTON_RELEASE_EVENT
           printf("retiling frame\n");
           #endif    
-          handle_frame_retile(display, &frames, clicked_frame, pointer_start_x, pointer_start_y, event.xbutton.x_root, event.xbutton.y_root);
+          handle_frame_drop(display, &frames, clicked_frame, pointer_start_x, pointer_start_y, event.xbutton.x_root, event.xbutton.y_root);
         }
         
         if(clicked_widget != root) for(i = 0; i < frames.used; i++) {

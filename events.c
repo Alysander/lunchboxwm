@@ -1,3 +1,8 @@
+/* Design Rationale.    */
+
+/*
+This function attempts to tile the sinking window in available screen space.
+*/
 void handle_frame_unsink (Display *display, struct Framelist *frames, int index, struct frame_pixmaps *pixmaps) {
   struct rectangle_list free_spaces;
   int largest = 0;
@@ -6,7 +11,7 @@ void handle_frame_unsink (Display *display, struct Framelist *frames, int index,
   #ifdef SHOW_BUTTON_PRESS_EVENT
   printf("Tiling a previously sunk window\n");
   #endif
-  free_spaces = get_free_screen_spaces (display, frames, 0);
+  free_spaces = get_free_screen_spaces (display, frames);
 
   for(int k = 0; k < free_spaces.used; k++) {
     #ifdef SHOW_BUTTON_PRESS_EVENT
@@ -39,6 +44,9 @@ void handle_frame_unsink (Display *display, struct Framelist *frames, int index,
   if(free_spaces.list != NULL) free(free_spaces.list);
 }
 
+/*
+This function handles responding to the users click and drag on the resize grips of the window.
+*/
 void handle_frame_resize (Display *display, struct Framelist *frames, int clicked_frame
 , int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y, Window clicked_widget) {
 
@@ -110,61 +118,69 @@ void handle_frame_resize (Display *display, struct Framelist *frames, int clicke
   XFlush(display);
 }
 
-extern void handle_frame_retile (Display *display, struct Framelist *frames, int clicked_frame
+/*
+This function moves the dropped tiling window to the nearest available space.
+*/
+extern void handle_frame_drop (Display *display, struct Framelist *frames, int clicked_frame
 ,  int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y) {
 
   struct Frame *frame = &frames->list[clicked_frame]; 
-  struct Frame temp;
-  int start = -1;
   struct rectangle_list free_spaces = {0, 8, NULL};
-  int largest = 0;
-  unsigned long int largest_area = 0;
+  double min_displacement = 0; 
+  int min = -1;  //index of the closest free space
+  int dx = 0;
+  int dy = 0;
   
-  printf("retiling a frame\n");
-  //Find tiled windows that intersect the placed window and seperate them at the start of the list
-  for(int i = 0; i < frames->used; i++) { //put the intersecting windows first.
-    if(i == clicked_frame) continue;
-    if(INTERSECTS(frame->x, frame->w, frames->list[i].x, frames->list[i].w) 
-    && INTERSECTS(frame->y, frame->h, frames->list[i].y, frames->list[i].h)) {
-      start++;
-      if(start == i) continue;
-      temp = frames->list[start];
-      frames->list[start] = frames->list[i];
-      frames->list[i] = temp;
-    }
-  }
-
-  //return if there were no overlapping windows
-  if(start == -1) return;
+  //the frame needs to be converted to this alternative type for calculating displacement.
+  struct rectangle window =  {frames->list[clicked_frame].x
+  , frames->list[clicked_frame].y
+  , frames->list[clicked_frame].w
+  , frames->list[clicked_frame].h };
+    
+  if(frame->mode != TILING) return;
   
-  //Calculate free space but skip the intersected windows and include the placed window.
-  //there will be at least one other window apart from the intersecting windows - the clicked_frame
-  //so start + 1 doesn't need to be checked
-  free_spaces = get_free_screen_spaces (display, frames, start + 1);
+  frame->mode = FLOATING;
+  free_spaces = get_free_screen_spaces (display, frames);
+  frame->mode = TILING;  
   
   for(int k = 0; k < free_spaces.used; k++) {
-    printf("Free space: x %d, y %d, w %d, h %d\n"
-    , free_spaces.list[k].x, free_spaces.list[k].y, free_spaces.list[k].w, free_spaces.list[k].h);
-  }
-  
-  //iterate over the overlapping frames,  placing them each in the nearest available position.
-  for(int i = 0; i <= start; i++) {
-    for(int k = 0; k < free_spaces.used; k++) {
-      struct rectangle window;
-      double displacement;
-      window.x = frames->list[i].x;
-      window.y = frames->list[i].y;
-      window.w = frames->list[i].w;      
-      window.h = frames->list[i].h;
-      displacement = calculate_displacement(window, free_spaces.list[k]);
-      printf("intersecting w %d, space %d, distance %f\n", i, k, displacement);
+    double displacement = 0;    
+    displacement = calculate_displacement(window, free_spaces.list[k], &dx, &dy);
+    if(min_displacement == 0  ||  displacement < min_displacement) {
+      min_displacement = displacement;
+      min = k;
     }
+    printf("Free space:space %d, x %d, y %d, w %d, h %d, distance %f\n", displacement
+    , k, free_spaces.list[k].x, free_spaces.list[k].y, free_spaces.list[k].w, free_spaces.list[k].h);
   }
-  
+
+  if(min == -1) { 
+    //this should never occur as in the worst case the window can return to whence it came
+    printf("Impossible:  Unable to find free space to move dropped window\n");
+  }
+  else {
+    frame->x += dx;
+    frame->y += dy;
+    move_frame(display, frame);
+  }
+
   if(free_spaces.list != NULL) free(free_spaces.list);
   return;
 }
 
+/*
+This handles moving the window when the titlebar is dragged.  
+It resizes windows that are pushed against the edge of the screen,
+to sizes between the defined min and max.  If the users attemps to resize below a
+minimum size the window is sunk 
+(after a disable look is shown and the user releases the mouse button).
+
+After this function is run, another window determines if the tiled window is overlapping
+other tiled windows and then "handle_frame_retile" determines which windows need to be moved
+ and where.
+ 
+TODO:  Use the Framelist to determine the maximum available spaces (at the start of the move)
+*/
 void handle_frame_move (Display *display, struct Framelist *frames, int clicked_frame
 , int *pointer_start_x, int *pointer_start_y, int mouse_root_x, int mouse_root_y
 , int *was_sunk, struct frame_pixmaps *pixmaps, int *resize_x_direction, int *resize_y_direction) {
@@ -179,7 +195,6 @@ void handle_frame_move (Display *display, struct Framelist *frames, int clicked_
   // the resize_x/y_direction variables are used to identify when a squish resize has occured
   // and this is then used to decide when to stretch the window from the edge.
 
-  
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
 
@@ -272,7 +287,6 @@ void handle_frame_move (Display *display, struct Framelist *frames, int clicked_
       frame->x = new_x; 
       //allow movement in axis if it hasn't been resized
     }
-  
       
     if(new_height != 0) {
       frame->h = new_height;
