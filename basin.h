@@ -13,7 +13,7 @@
 //#define SHARP_SYMBOLS //turns off anti-aliasing on symbols
 
 #define MINWIDTH 240 
-#define MINHEIGHT 60
+#define MINHEIGHT 80
 
 #define FLOATING 1
 #define TILING 2
@@ -31,6 +31,7 @@
 #define PIXMAP_SIZE 16
 #define SPOT_SIZE 14
 #define CORNER_GRIP_SIZE 32
+#define MENUBAR_ITEM_WIDTH 80 /* this needs to be larger than PIXMAP_SIZE */
 #define MENU_ITEM_HEIGHT 24
 #define MENU_ITEM_VS_BUTTON_Y_DIFF 2
 
@@ -112,7 +113,9 @@ struct Frame {
            title_deactivated_p,
 
            item_title_p,
-           item_title_hover_p;
+           item_title_active_p,
+           item_title_hover_p,
+           item_title_active_hover_p;
     
     Window entry;
     int width; //this is the width of the individual title
@@ -123,7 +126,7 @@ struct Frame {
      int new_size;
   } indirect_resize;
   
-  //InputOnly resize grips  for the bottom left, top right etc.  
+  //InputOnly resize grips for the bottom left, top right etc.  
   Window l_grip, bl_grip, b_grip, br_grip, r_grip;
 };
 
@@ -132,7 +135,6 @@ struct Framelist {
   struct Frame* list;  
   Window title_menu;
 };
-
 
 struct rectangle {
   int x,y,w,h;
@@ -156,17 +158,22 @@ struct frame_pixmaps {
   Pixmap border_p, light_border_p, body_p, titlebar_background_p,
          close_button_normal_p, close_button_pressed_p, close_button_deactivated_p,
 
-         //these are have a textured background
+         //these have a textured background
          pulldown_floating_normal_p, pulldown_floating_pressed_p,
          pulldown_tiling_normal_p, pulldown_tiling_pressed_p,
   
          pulldown_deactivated_p,
 
          //these don't have a textured background
-         item_floating_p, item_floating_hover_p, 
-         item_sinking_p, item_sinking_hover_p, 
-         item_tiling_p, item_tiling_hover_p, 
+         item_floating_p, item_floating_hover_p, item_floating_active_p, item_floating_active_hover_p,
+         item_sinking_p, item_sinking_hover_p, item_sinking_active_p, item_sinking_active_hover_p,
+         item_tiling_p, item_tiling_hover_p, item_tiling_active_p, item_tiling_active_hover_p,
          
+         //these have a textured background
+         program_menu_normal_p, window_menu_normal_p, options_menu_normal_p, links_menu_normal_p, tool_menu_normal_p,
+         //these don't have a textured background
+         program_menu_pressed_p, window_menu_pressed_p, options_menu_pressed_p, links_menu_pressed_p, tool_menu_pressed_p,
+
          selection_p, 
          arrow_normal_p, arrow_pressed_p, arrow_deactivated_p,
          arrow_clipping_normal_p, arrow_clipping_pressed_p, arrow_clipping_deactivated_p;
@@ -194,8 +201,7 @@ struct hints {
     wm_state,                 // "_NET_WM_STATE"
     wm_state_fullscreen;      // "_NET_WM_STATE_FULLSCREEN"
 
-    //make sure this comes last
-    
+    //make sure this comes last  
 };
 
   
@@ -207,23 +213,25 @@ enum main_pixmap {
   light_border,
   titlebar,
   selection,
-  close_button_normal,  close_button_pressed,  close_button_deactivated,
+  close_button_normal,       close_button_pressed,      close_button_deactivated,
   pulldown_floating_normal,  pulldown_floating_pressed,  
-  pulldown_tiling_normal, pulldown_tiling_pressed,
-  //the pulldowns deactivated mode is when the sinking mode is pressed
+  pulldown_tiling_normal,    pulldown_tiling_pressed,   pulldown_tiling_deactivated,
   pulldown_deactivated, 
+  //the pulldowns deactivated mode is when the sinking mode is pressed
+   
+  item_floating, item_floating_hover, item_floating_active, item_floating_active_hover,  
+  item_sinking,  item_sinking_hover, item_sinking_active,  item_sinking_active_hover,
+  item_tiling,   item_tiling_hover,  item_tiling_active,   item_tiling_active_hover,
   
-  //remove active modes 
-  item_floating, item_floating_hover, 
-  item_sinking, item_sinking_hover, 
-  item_tiling, item_tiling_hover, 
-  
+  program_menu_normal, program_menu_pressed,
+  window_menu_normal,  window_menu_pressed, 
+  options_menu_normal, options_menu_pressed,
+  links_menu_normal,   links_menu_pressed,
+  tool_menu_normal,    tool_menu_pressed,
+
   arrow_normal,
-  arrow_clipping_normal,
   arrow_pressed,
-  arrow_clipping_pressed,
-  arrow_deactivated,
-  arrow_clipping_deactivated
+  arrow_deactivated
 };
 
 enum title_pixmap {
@@ -232,6 +240,12 @@ enum title_pixmap {
   title_deactivated,
 
   item_title,
+  item_title_active,
   item_title_hover,
+  item_title_active_hover
   //no inactive as all available choices in the menu are valid
 };
+
+struct Menubar {
+  Window border, body, program_menu, window_menu, options_menu, links_menu, tool_menu;
+}

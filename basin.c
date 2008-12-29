@@ -4,18 +4,21 @@
 #include "basin.h"
 
 
-/* these control which printfs are shown */
+/* These control which printfs are shown */
 
-#define SHOW_STARTUP                  
+//#define SHOW_STARTUP                  
 //#define SHOW_DESTROY_NOTIFY_EVENT     
 //#define SHOW_UNMAP_NOTIFY_EVENT       
 //#define SHOW_MAP_REQUEST_EVENT        
 //#define SHOW_CONFIGURE_REQUEST_EVENT  
-#define SHOW_BUTTON_PRESS_EVENT       
-#define SHOW_ENTER_NOTIFY_EVENTS      
-#define SHOW_LEAVE_NOTIFY_EVENTS      
+//#define SHOW_BUTTON_PRESS_EVENT       
+//#define SHOW_ENTER_NOTIFY_EVENTS      
+//#define SHOW_LEAVE_NOTIFY_EVENTS      
 //#define SHOW_EDGE_RESIZE
 //#define SHOW_BUTTON_RELEASE_EVENT     
+
+/* Configure behaviour */
+//#define INTERPRETIVE_SINKING
 
 /*** basin.c ***/
 int supress_xerror (Display *display, XErrorEvent *event);
@@ -31,8 +34,8 @@ void create_mode_pulldown_list(Display *display, struct mode_pulldown_list *mode
 , struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
  
 void create_title_menu        (Display *display, struct Framelist *frames, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
-void show_title_menu          (Display *display, struct Framelist *frames, int x, int y);
-void show_mode_pulldown_list  (Display *display, struct mode_pulldown_list *mode_pulldown, struct frame_pixmaps *pixmaps, int x, int y);
+void show_title_menu          (Display *display, struct Framelist *frames, int index, int x, int y);
+void show_mode_pulldown_list  (Display *display, struct mode_pulldown_list *mode_pulldown, struct Frame *active_frame, struct frame_pixmaps *pixmaps, int x, int y);
 
 /*** events.c ***/
 extern void handle_frame_unsink (Display *display, struct Framelist *frames, int index, struct frame_pixmaps *pixmaps);
@@ -44,8 +47,7 @@ extern void handle_frame_move (Display *display, struct Framelist *frames, int c
 , int *pointer_start_x, int *pointer_start_y, int mouse_root_x, int mouse_root_y,  int *was_sunk
 , struct frame_pixmaps *pixmaps, int *resize_x_direction, int *resize_y_direction);
 
-extern void handle_frame_drop (Display *display, struct Framelist *frames, int clicked_frame
-,  int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y);
+extern void handle_frame_drop (Display *display, struct Framelist *frames, int clicked_frame);
 
 /*** draw.c ***/
 extern Pixmap create_pixmap(Display* display, enum main_pixmap type);
@@ -79,7 +81,7 @@ extern struct rectangle_list get_free_screen_spaces (Display *display, struct Fr
 extern double calculate_displacement(struct rectangle source, struct rectangle dest, int *dx, int *dy);
 
 /*** menubar.c ***/
-extern Window create_menubar(Display *display, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
+extern void create_menubar(Display *display, struct Menubar menubar, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors);
 
 #include "draw.c"
 #include "frame.c"
@@ -129,12 +131,12 @@ int main (int argc, char* argv[]) {
   XEvent event;
   Window root, background_window;
   Window pulldown;
-  Window menubar;
   Window sinking_seperator; //this window is always above sunk windows.
   Window tiling_seperator;  //this window is always below tiled windows.
   
   Pixmap background_window_p;   
-  
+
+  struct Menubar menubar;  
   struct frame_pixmaps pixmaps;
   struct mouse_cursors cursors;
   struct hints atoms;
@@ -142,7 +144,6 @@ int main (int argc, char* argv[]) {
 
   struct mode_pulldown_list mode_pulldown; //this window is created and reused.
   
-
   int do_click_to_focus = 0; //used by EnterNotify and ButtonPress to determine when to set focus
                              //currently requires num_lock to be off
 
@@ -151,7 +152,7 @@ int main (int argc, char* argv[]) {
   int pointer_start_x, pointer_start_y; //used by ButtonPress and motionNotify for window movement arithmetic
   int was_sunk = 0; //for showing and cancelling sinking state on extreme squish
   
-  int clicked_frame = -1;      //identifies the window being moved/resized by frame index
+  int clicked_frame = -1;      //identifies the window being moved/resized by frame index and the frame the title menu was opened on.
   Window clicked_widget;       //clicked_widget is used to determine if close buttons etc. should be activated
   
   int resize_x_direction = 0; //used in motionNotify, 1 means LHS, -1 means RHS 
@@ -219,7 +220,7 @@ int main (int argc, char* argv[]) {
     
   create_title_menu(display, &frames, &pixmaps, &cursors);
   create_startup_frames(display, &frames, sinking_seperator, tiling_seperator, &pixmaps, &cursors); 
-  menubar = create_menubar(display, &pixmaps, &cursors);
+  create_menubar(display, &menubar, &pixmaps, &cursors);
   
   create_mode_pulldown_list(display, &mode_pulldown, &pixmaps, &cursors);
   
@@ -303,7 +304,10 @@ int main (int argc, char* argv[]) {
         #ifdef SHOW_BUTTON_PRESS_EVENT
         printf("ButtonPress %d, subwindow %d\n", event.xbutton.window, event.xbutton.subwindow);
         #endif
-        
+
+        resize_x_direction = 0;
+        resize_y_direction = 0;         
+
         if(grab_move) {
           for(i = 0; i < frames.used; i++) if(frames.list[i].frame == event.xbutton.subwindow) {
             #ifdef SHOW_BUTTON_PRESS_EVENT
@@ -314,15 +318,13 @@ int main (int argc, char* argv[]) {
             clicked_widget = root;
             pointer_start_x = event.xbutton.x - frames.list[clicked_frame].x;
             pointer_start_y = event.xbutton.y - frames.list[clicked_frame].y;      
-            resize_x_direction = 0;
-            resize_y_direction = 0;
             break;
           }
           break;
         }
         
-        if(pulldown != root) { //the pulldown has been created, ignore button press.  Only button releases activate menuitems.
-          break;
+        if(pulldown != root) { 
+          break;  //the pulldown has been created, ignore button press.  Only button releases activate menuitems.
         }
         
         /** Focus and raising policy **/
@@ -356,6 +358,7 @@ int main (int argc, char* argv[]) {
               handle_frame_unsink (display, &frames, i, &pixmaps);
               i = frames.used;
             }
+
             break;
           }
         }
@@ -532,7 +535,7 @@ int main (int argc, char* argv[]) {
             was_sunk = 0; //reset was_sunk
           }
           if(clicked_frame != -1  &&  frames.list[clicked_frame].mode == TILING) {
-            handle_frame_drop(display, &frames, clicked_frame, pointer_start_x, pointer_start_y, event.xbutton.x_root, event.xbutton.y_root);
+            handle_frame_drop(display, &frames, clicked_frame);
           }
           clicked_frame = -1; 
         }
@@ -562,8 +565,14 @@ int main (int argc, char* argv[]) {
             XSelectInput(display, mode_pulldown.floating, 0);  
             XFlush(display);
             XUnmapWindow(display, mode_pulldown.floating);
-            if(event.type == EnterNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.floating, pixmaps.item_floating_hover_p);
-            else if (event.type == LeaveNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.floating, pixmaps.item_floating_p);
+            if(frames.list[clicked_frame].mode == FLOATING) {
+              if(event.type == EnterNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.floating, pixmaps.item_floating_active_hover_p);
+              else if (event.type == LeaveNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.floating, pixmaps.item_floating_active_p);
+            }
+            else {
+              if(event.type == EnterNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.floating, pixmaps.item_floating_hover_p);
+              else if (event.type == LeaveNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.floating, pixmaps.item_floating_p);
+            }
             XMapWindow(display, mode_pulldown.floating);
             XSelectInput(display, mode_pulldown.floating,  
                   ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
@@ -573,8 +582,14 @@ int main (int argc, char* argv[]) {
             XSelectInput(display, mode_pulldown.tiling, 0);  
             XFlush(display);
             XUnmapWindow(display, mode_pulldown.tiling);
-            if(event.type == EnterNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.tiling, pixmaps.item_tiling_hover_p);
-            else if (event.type == LeaveNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.tiling, pixmaps.item_tiling_p);
+            if(frames.list[clicked_frame].mode == TILING) {
+              if(event.type == EnterNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.tiling, pixmaps.item_tiling_active_hover_p);
+              else if (event.type == LeaveNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.tiling, pixmaps.item_tiling_active_p);
+            }
+            else {
+              if(event.type == EnterNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.tiling, pixmaps.item_tiling_hover_p);
+              else if (event.type == LeaveNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.tiling, pixmaps.item_tiling_p);
+            }
             XMapWindow(display, mode_pulldown.tiling);
             XSelectInput(display, mode_pulldown.tiling,  
                   ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
@@ -584,8 +599,14 @@ int main (int argc, char* argv[]) {
             XSelectInput(display, mode_pulldown.sinking, 0);  
             XFlush(display);
             XUnmapWindow(display, mode_pulldown.sinking);            
-            if(event.type == EnterNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.sinking, pixmaps.item_sinking_hover_p);
-            else if (event.type == LeaveNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.sinking, pixmaps.item_sinking_p);
+            if(frames.list[clicked_frame].mode == SINKING) {
+              if(event.type == EnterNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.sinking, pixmaps.item_sinking_active_hover_p);
+              else if(event.type == LeaveNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.sinking, pixmaps.item_sinking_active_p);
+            }
+            else {
+              if(event.type == EnterNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.sinking, pixmaps.item_sinking_hover_p);
+              else if (event.type == LeaveNotify) XSetWindowBackgroundPixmap(display, mode_pulldown.sinking, pixmaps.item_sinking_p);
+            }
             XMapWindow(display, mode_pulldown.sinking);
             XSelectInput(display, mode_pulldown.sinking,  
                     ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
@@ -597,11 +618,18 @@ int main (int argc, char* argv[]) {
                 XSelectInput(display, frames.list[i].title_menu.entry, 0);
                 XFlush(display);
                 XUnmapWindow(display, frames.list[i].title_menu.entry);
-                if(event.type == EnterNotify) 
-                  XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.entry, frames.list[i].title_menu.item_title_hover_p);
-                else if (event.type == LeaveNotify) 
-                  XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.entry, frames.list[i].title_menu.item_title_p);
-
+                if(i == clicked_frame) {                
+                  if(event.type == EnterNotify) 
+                    XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.entry, frames.list[i].title_menu.item_title_active_hover_p);
+                  else if (event.type == LeaveNotify) 
+                    XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.entry, frames.list[i].title_menu.item_title_active_p);
+                } 
+                else {
+                  if(event.type == EnterNotify) 
+                    XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.entry, frames.list[i].title_menu.item_title_hover_p);
+                  else if (event.type == LeaveNotify) 
+                    XSetWindowBackgroundPixmap(display, frames.list[i].title_menu.entry, frames.list[i].title_menu.item_title_p);
+                }
                 XMapWindow(display, frames.list[i].title_menu.entry);
                 XSelectInput(display, frames.list[i].title_menu.entry,  
                         ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
@@ -623,7 +651,7 @@ int main (int argc, char* argv[]) {
         was_sunk = 0;
         
         /* Close pop-up menu and maybe activate a menu item */
-        if(pulldown != root) { //
+        if(pulldown != root) {
           #ifdef SHOW_BUTTON_RELEASE_EVENT
           printf("closed pulldown\n");
           printf("clicked_widget %d\n", clicked_widget);
@@ -633,8 +661,13 @@ int main (int argc, char* argv[]) {
           for(i = 0; i < frames.used; i++) {
             if(clicked_widget == frames.list[i].mode_hotspot) {
               if(event.xbutton.window == mode_pulldown.floating) frames.list[i].mode = FLOATING;
-              else if(event.xbutton.window == mode_pulldown.tiling) frames.list[i].mode = TILING;
               else if(event.xbutton.window == mode_pulldown.sinking) frames.list[i].mode = SINKING;
+              else if(event.xbutton.window == mode_pulldown.tiling) {
+                #ifdef SHOW_BUTTON_RELEASE_EVENT
+                printf("retiling frame\n");
+                #endif    
+                handle_frame_drop(display, &frames, clicked_frame);
+              }
               stack_frame(display, &frames.list[i], sinking_seperator, tiling_seperator);
               show_frame_state(display, &frames.list[i], &pixmaps); //Redrawing mode pulldown
               break;
@@ -652,9 +685,12 @@ int main (int argc, char* argv[]) {
               break;
             }
           }
-          XFlush(display);
           pulldown = root;          
           clicked_widget = root;
+          XUngrabPointer(display, CurrentTime);
+          XFlush(display);
+          clicked_frame = -1;
+          break;
         }
         
         /* Activate a widget */
@@ -672,6 +708,7 @@ int main (int argc, char* argv[]) {
               if(pulldown != root) {
                 XUnmapWindow(display, pulldown);
                 pulldown = root;
+                clicked_frame = -1;
               }
               remove_window(display, frames.list[i].window);
               clicked_widget = root;
@@ -684,9 +721,8 @@ int main (int argc, char* argv[]) {
               XChangeActivePointerGrab(display, PointerMotionMask | ButtonPressMask | ButtonReleaseMask
               , cursors.normal, CurrentTime);
               pulldown = mode_pulldown.frame;
-              show_mode_pulldown_list(display, &mode_pulldown, &pixmaps, event.xbutton.x_root, event.xbutton.y_root);
+              show_mode_pulldown_list(display, &mode_pulldown, &frames.list[clicked_frame], &pixmaps, event.xbutton.x_root, event.xbutton.y_root);
               
-              clicked_frame = -1; //cancel move ability at this stage/don't ungrab
               break;
             }
             else if(clicked_widget == frames.list[i].title_menu.hotspot) {
@@ -698,23 +734,23 @@ int main (int argc, char* argv[]) {
               , PointerMotionMask | ButtonPressMask | ButtonReleaseMask
               , cursors.normal, CurrentTime);
               pulldown = frames.title_menu;
-              show_title_menu(display, &frames, event.xbutton.x_root, event.xbutton.y_root);
+              show_title_menu(display, &frames, i, event.xbutton.x_root, event.xbutton.y_root);
               XMapWindow(display, pulldown);
               
               XFlush(display);
-              clicked_frame = -1; //cancel move ability at this stage/don't ungrab              
               break;
             }
           }
         }
         
+        /* clicked_frame could have been set by the menu's but that causes a break above*/
         if(clicked_widget == root 
         && clicked_frame != -1
         && frames.list[clicked_frame].mode == TILING) {
           #ifdef SHOW_BUTTON_RELEASE_EVENT
           printf("retiling frame\n");
           #endif    
-          handle_frame_drop(display, &frames, clicked_frame, pointer_start_x, pointer_start_y, event.xbutton.x_root, event.xbutton.y_root);
+          handle_frame_drop(display, &frames, clicked_frame);
         }
         
         if(clicked_widget != root) for(i = 0; i < frames.used; i++) {
@@ -732,22 +768,20 @@ int main (int argc, char* argv[]) {
           }
         }
         
-        //Don't ungrab the pointer after opening the pop-up menus
+        
         if(clicked_widget == root)  XUngrabPointer(display, CurrentTime);
-        if(clicked_frame != -1) {
+        else if(clicked_frame != -1  &&  pulldown == root) {  //Don't ungrab the pointer after opening the pop-up menus
           #ifdef SHOW_BUTTON_RELEASE_EVENT
           printf("Frame move or frame edge resize ended\n");
           #endif
           XUngrabPointer(display, CurrentTime);
           XFlush(display);
           clicked_frame = -1;
-          resize_x_direction = 0;
-          resize_y_direction = 0; 
         }
       break;
       
       case MotionNotify:
-        if(clicked_frame != -1) {
+        if(clicked_frame != -1  &&  pulldown == root) {
           //these variables will hold the discarded return values from XQueryPointer
           Window mouse_root, mouse_child;  
           
@@ -755,7 +789,6 @@ int main (int argc, char* argv[]) {
           int mouse_root_x, mouse_root_y;    
           
           unsigned int mask;   
-        
           //If a menu on the titlebar is dragged, cancel the menu and move the window.
           if(clicked_widget == frames.list[clicked_frame].mode_hotspot) {  //cancel the pulldown lists opening
             show_frame_state(display, &frames.list[clicked_frame], &pixmaps);
@@ -819,7 +852,7 @@ int main (int argc, char* argv[]) {
         for(i = 0; i < frames.used; i++) { 
           if(event.xconfigurerequest.window == frames.list[i].window) {
             //ignore programs resize request if
-            if (clicked_frame == i //this window is being resized or if
+            if ((clicked_frame == i  &&  pulldown == root) //this window is being resized or if
             || (clicked_frame != -1  //this window could be being resized indirectly
                && frames.list[i].mode == TILING  
                && frames.list[clicked_frame].mode == TILING)) {
@@ -830,19 +863,20 @@ int main (int argc, char* argv[]) {
               break;
             }
             
-            if( event.xconfigurerequest.width >= frames.list[i].min_width
-              && event.xconfigurerequest.width <= frames.list[i].max_width) 
+            if(event.xconfigurerequest.width >= frames.list[i].min_width
+            && event.xconfigurerequest.width <= frames.list[i].max_width) 
               frames.list[i].w = event.xconfigurerequest.width + FRAME_HSPACE;
 
-            if(  event.xconfigurerequest.height >= frames.list[i].min_height
-              && event.xconfigurerequest.height  <= frames.list[i].max_height)
+            if(event.xconfigurerequest.height >= frames.list[i].min_height
+            && event.xconfigurerequest.height  <= frames.list[i].max_height)
               frames.list[i].h = event.xconfigurerequest.height + FRAME_VSPACE;
               
             #ifdef SHOW_CONFIGURE_REQUEST_EVENT
             printf(".. width %d, height %d\n", frames.list[i].w, frames.list[i].h);
             #endif
-            if (frames.list[i].mode != TILING  
-            &&  (event.xconfigurerequest.detail == Above  ||  event.xconfigurerequest.detail == TopIf)) {
+            if(frames.list[i].mode != TILING  
+            && (event.xconfigurerequest.detail == Above  
+               ||  event.xconfigurerequest.detail == TopIf)) {
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
               printf("Recovering window in response to possible restack request\n");
               //it would be better to try not to refocus unnecessaraly.
@@ -895,8 +929,7 @@ int main (int argc, char* argv[]) {
           XFlush(display);
         }
       break;
-      case MappingNotify:      
-        //printf("MappingNotify\n");
+      case MappingNotify:
       break;
       case ClientMessage:
         printf("Unhandled client message...\n");
@@ -968,7 +1001,25 @@ void load_pixmaps (Display *display, struct frame_pixmaps *pixmaps) {
   pixmaps->item_sinking_hover_p  = create_pixmap(display, item_sinking_hover);
   pixmaps->item_tiling_p         = create_pixmap(display, item_tiling);
   pixmaps->item_tiling_hover_p   = create_pixmap(display, item_tiling_hover);
-  
+
+  pixmaps->item_floating_active_p       = create_pixmap(display, item_floating_active);
+  pixmaps->item_floating_active_hover_p = create_pixmap(display, item_floating_active_hover);
+  pixmaps->item_sinking_active_p        = create_pixmap(display, item_sinking_active);
+  pixmaps->item_sinking_active_hover_p  = create_pixmap(display, item_sinking_active_hover);
+  pixmaps->item_tiling_active_p         = create_pixmap(display, item_tiling_active);
+  pixmaps->item_tiling_active_hover_p   = create_pixmap(display, item_tiling_active_hover);
+
+  //these have a textured background
+  pixmaps->program_menu_normal_p  = create_pixmap(display, program_menu_normal);
+  pixmaps->program_menu_pressed_p = create_pixmap(display, program_menu_pressed);
+  pixmaps->window_menu_normal_p   = create_pixmap(display, window_menu_normal);
+  pixmaps->window_menu_pressed_p  = create_pixmap(display, window_menu_pressed);
+  pixmaps->options_menu_normal_p  = create_pixmap(display, options_menu_normal);
+  pixmaps->options_menu_pressed_p = create_pixmap(display, options_menu_pressed);
+  pixmaps->links_menu_normal_p    = create_pixmap(display, links_menu_normal);
+  pixmaps->links_menu_pressed_p   = create_pixmap(display, links_menu_pressed);
+  pixmaps->tool_menu_normal_p     = create_pixmap(display, tool_menu_normal);
+  pixmaps->tool_menu_pressed_p    = create_pixmap(display, tool_menu_pressed);
 }
 
 void free_pixmaps (Display *display, struct frame_pixmaps *pixmaps) {
@@ -999,6 +1050,24 @@ void free_pixmaps (Display *display, struct frame_pixmaps *pixmaps) {
   XFreePixmap(display, pixmaps->item_tiling_p);
   XFreePixmap(display, pixmaps->item_tiling_hover_p);
 
+  XFreePixmap(display, pixmaps->item_floating_active_p);
+  XFreePixmap(display, pixmaps->item_floating_active_hover_p);
+  XFreePixmap(display, pixmaps->item_sinking_active_p);
+  XFreePixmap(display, pixmaps->item_sinking_active_hover_p);
+  XFreePixmap(display, pixmaps->item_tiling_active_p);
+  XFreePixmap(display, pixmaps->item_tiling_active_hover_p);
+
+  XFreePixmap(display, pixmaps->program_menu_normal_p);
+  XFreePixmap(display, pixmaps->program_menu_pressed_p);
+  XFreePixmap(display, pixmaps->window_menu_normal_p);
+  XFreePixmap(display, pixmaps->window_menu_pressed_p);
+  XFreePixmap(display, pixmaps->options_menu_normal_p);
+  XFreePixmap(display, pixmaps->options_menu_pressed_p);
+  XFreePixmap(display, pixmaps->links_menu_normal_p);
+  XFreePixmap(display, pixmaps->links_menu_pressed_p);
+  XFreePixmap(display, pixmaps->tool_menu_normal_p );
+  XFreePixmap(display, pixmaps->tool_menu_pressed_p);
+  
 }
 
 void load_cursors (Display *display, struct mouse_cursors *cursors) {
@@ -1061,12 +1130,21 @@ void load_hints (Display *display, struct hints *atoms) {
   
 }
 
-void show_mode_pulldown_list(Display *display, struct mode_pulldown_list *mode_pulldown, struct frame_pixmaps *pixmaps, int x, int y) {
+void show_mode_pulldown_list(Display *display, struct mode_pulldown_list *mode_pulldown, struct Frame *active_frame, struct frame_pixmaps *pixmaps, int x, int y) {
   printf("showing mode pulldown\n");
   //when we map again the background of the last clicked item might be highlighted
-  XSetWindowBackgroundPixmap(display, mode_pulldown->floating, pixmaps->item_floating_p);
-  XSetWindowBackgroundPixmap(display, mode_pulldown->tiling,   pixmaps->item_tiling_p);
-  XSetWindowBackgroundPixmap(display, mode_pulldown->sinking,  pixmaps->item_sinking_p);
+
+  if(active_frame->mode == FLOATING) 
+    XSetWindowBackgroundPixmap(display, mode_pulldown->floating, pixmaps->item_floating_active_p);
+  else  XSetWindowBackgroundPixmap(display, mode_pulldown->floating, pixmaps->item_floating_p);
+  
+  if(active_frame->mode == TILING)
+    XSetWindowBackgroundPixmap(display, mode_pulldown->tiling,   pixmaps->item_tiling_active_p);
+  else  XSetWindowBackgroundPixmap(display, mode_pulldown->tiling,   pixmaps->item_tiling_p);
+  
+  if(active_frame->mode == SINKING)  
+    XSetWindowBackgroundPixmap(display, mode_pulldown->sinking,  pixmaps->item_sinking_active_p);
+  else  XSetWindowBackgroundPixmap(display, mode_pulldown->sinking,  pixmaps->item_sinking_p);
 
   XFlush(display);
 
@@ -1128,14 +1206,15 @@ void create_title_menu(Display *display, struct Framelist *frames, struct frame_
   XDefineCursor(display, frames->title_menu, cursors->normal);
 }
 
-void show_title_menu(Display *display, struct Framelist* frames, int x, int y) {
+void show_title_menu(Display *display, struct Framelist* frames, int index, int x, int y) {
   int max_length = 100;
   XMoveResizeWindow(display, frames->title_menu, x, y, max_length, MENU_ITEM_HEIGHT*frames->used);
 
   for(int i = 0; i < frames->used; i++) {
     if(frames->list[i].title_menu.width > max_length) max_length = frames->list[i].title_menu.width;
     XMoveWindow(display, frames->list[i].title_menu.entry, EDGE_WIDTH, EDGE_WIDTH + MENU_ITEM_HEIGHT * i);
-    XSetWindowBackgroundPixmap (display, frames->list[i].title_menu.entry, frames->list[i].title_menu.item_title_p );    
+    if(i == index)  XSetWindowBackgroundPixmap (display, frames->list[i].title_menu.entry, frames->list[i].title_menu.item_title_active_p );
+    else  XSetWindowBackgroundPixmap (display, frames->list[i].title_menu.entry, frames->list[i].title_menu.item_title_p );
   }
   //make them all the same width.
   for(int i = 0; i < frames->used; i++) {

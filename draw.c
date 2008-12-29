@@ -39,15 +39,45 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
     cairo_paint(cr);  
   break;
   case titlebar: //this is just the titlebar background
-    pixmap = XCreatePixmap(display, root, PIXMAP_SIZE, TITLEBAR_HEIGHT, XDefaultDepth(display, screen_number));
-    surface = cairo_xlib_surface_create(display, pixmap, colours, PIXMAP_SIZE, TITLEBAR_HEIGHT);
+  case program_menu_normal:
+  case program_menu_pressed:  
+  case window_menu_normal:
+  case window_menu_pressed:
+  case options_menu_normal:
+  case options_menu_pressed:
+  case links_menu_normal:
+  case links_menu_pressed:
+  case tool_menu_normal:
+  case tool_menu_pressed:
+    pixmap = XCreatePixmap(display, root, MENUBAR_ITEM_WIDTH, TITLEBAR_HEIGHT, XDefaultDepth(display, screen_number));
+    surface = cairo_xlib_surface_create(display, pixmap, colours, MENUBAR_ITEM_WIDTH, TITLEBAR_HEIGHT);
     cr = cairo_create(surface);
-    cairo_set_source_rgba(cr, LIGHT_EDGE);  
-    cairo_rectangle(cr, 0, 0, PIXMAP_SIZE, LIGHT_EDGE_HEIGHT);
-    cairo_fill(cr); 
-    cairo_set_source_rgba(cr, BODY);  
-    cairo_rectangle(cr, 0, LIGHT_EDGE_HEIGHT, PIXMAP_SIZE, TITLEBAR_HEIGHT - LIGHT_EDGE_HEIGHT);
+    cairo_set_source_rgba(cr, LIGHT_EDGE);
+    cairo_rectangle(cr, 0, 0, MENUBAR_ITEM_WIDTH, LIGHT_EDGE_HEIGHT);
     cairo_fill(cr);
+    cairo_set_source_rgba(cr, BODY);
+    cairo_rectangle(cr, 0, LIGHT_EDGE_HEIGHT, MENUBAR_ITEM_WIDTH, TITLEBAR_HEIGHT - LIGHT_EDGE_HEIGHT);
+    cairo_fill(cr);
+    if(type != titlebar) {
+      if(type == program_menu_pressed
+      || type == window_menu_pressed
+      || type == options_menu_pressed
+      || type == links_menu_pressed
+      || type == tool_menu_pressed) {
+        cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+      }
+      else cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+
+      cairo_set_source_rgba(cr, TEXT);
+      cairo_set_font_size(cr, 13.5); 
+      cairo_move_to(cr, 6, 15); //was 22      
+      if(type == program_menu_normal ||  type == program_menu_pressed) cairo_show_text(cr, "Program");
+      if(type == window_menu_normal  ||  type == window_menu_pressed)  cairo_show_text(cr, "Window");
+      if(type == options_menu_normal ||  type == options_menu_pressed) cairo_show_text(cr, "Options");
+      if(type == links_menu_normal   ||  type == links_menu_pressed)   cairo_show_text(cr, "Links");
+      if(type == tool_menu_normal    ||  type == tool_menu_pressed)    cairo_show_text(cr, "Tool");
+      //need to put arrow in
+    }
   break;
   case selection:
     pixmap = XCreatePixmap(display, root, BUTTON_SIZE, BUTTON_SIZE, XDefaultDepth(display, screen_number));
@@ -57,14 +87,14 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
     cairo_translate(cr, -H_SPACING, -V_SPACING);
     
     //drawing the background
-    cairo_set_source_rgba(cr, LIGHT_EDGE);  
+    cairo_set_source_rgba(cr, LIGHT_EDGE);
     cairo_rectangle(cr, 0, 0, BUTTON_SIZE + H_SPACING, LIGHT_EDGE_HEIGHT);
     cairo_fill(cr); 
-    cairo_set_source_rgba(cr, BODY);  
+    cairo_set_source_rgba(cr, BODY);
     cairo_rectangle(cr, 0, LIGHT_EDGE_HEIGHT, BUTTON_SIZE + H_SPACING, TITLEBAR_HEIGHT - LIGHT_EDGE_HEIGHT);
     cairo_fill(cr);
     
-    //draw selection spot indicator    
+    //draw selection spot indicator 
     cairo_set_source_rgba(cr, SPOT);
     cairo_arc(cr, 14, 14, 8, 0, 2* M_PI);
     cairo_fill(cr);
@@ -163,52 +193,65 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
   case item_sinking_hover:
   case item_tiling:
   case item_tiling_hover:
-    if (type == item_floating
-      || type == item_tiling
-      || type == item_sinking
-      || type == item_floating_hover
-      || type == item_tiling_hover
-      || type == item_sinking_hover) {
-      
+  case item_floating_active:
+  case item_floating_active_hover:
+  case item_sinking_active:
+  case item_sinking_active_hover:
+  case item_tiling_active:
+  case item_tiling_active_hover:
+    if(type == item_floating
+    || type == item_tiling
+    || type == item_sinking
+    || type == item_floating_hover
+    || type == item_tiling_hover
+    || type == item_sinking_hover
+    || type == item_floating_active
+    || type == item_tiling_active
+    || type == item_sinking_active
+    || type == item_floating_active_hover
+    || type == item_tiling_active_hover
+    || type == item_sinking_active_hover) {     
       pixmap = XCreatePixmap(display, root, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, XDefaultDepth(display, screen_number));    
       surface = cairo_xlib_surface_create(display, pixmap, colours, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT);      
     }
-
-    
     cr = cairo_create(surface);
-    
-    
     if(type == pulldown_floating_normal
-        || type == pulldown_floating_pressed
-        || type == pulldown_tiling_normal
-        || type == pulldown_tiling_pressed
-        || type == pulldown_deactivated) {
+    || type == pulldown_floating_pressed
+    || type == pulldown_tiling_normal
+    || type == pulldown_tiling_pressed
+    || type == pulldown_tiling_deactivated
+    || type == pulldown_deactivated) {
       cairo_set_source_rgba(cr, BORDER);
-      
     }  
-    else if(type == item_floating
-             || type == item_tiling
-             || type == item_sinking) {
+    else 
+    if(type == item_floating
+    || type == item_tiling
+    || type == item_sinking
+    || type == item_floating_active
+    || type == item_tiling_active
+    || type == item_sinking_active) {
       cairo_set_source_rgba(cr, BODY); 
     }
-    else //for the hover modes
+    else //for the hover modes, draw same color as light edge
       cairo_set_source_rgba(cr, LIGHT_EDGE);
-
 
     cairo_rectangle(cr, 0, 0, PULLDOWN_WIDTH, BUTTON_SIZE + MENU_ITEM_HEIGHT);
     cairo_fill(cr);
 
-    if (type == item_floating
-      || type == item_tiling
-      || type == item_sinking
-      || type == item_floating_hover
-      || type == item_tiling_hover
-      || type == item_sinking_hover)
+    if(type == item_floating
+    || type == item_tiling
+    || type == item_sinking
+    || type == item_floating_hover
+    || type == item_tiling_hover
+    || type == item_sinking_hover)
       cairo_translate(cr, 0, MENU_ITEM_VS_BUTTON_Y_DIFF);
 
     if(type == item_floating
-       || type == item_tiling
-       || type == item_sinking)
+    || type == item_tiling
+    || type == item_sinking
+    || type == item_floating_active
+    || type == item_tiling_active
+    || type == item_sinking_active)
       cairo_set_source_rgba(cr, BODY);    
     else 
       cairo_set_source_rgba(cr, LIGHT_EDGE); 
@@ -217,10 +260,13 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
     cairo_fill(cr);
 
     if(type == pulldown_tiling_pressed  
-       || type == pulldown_floating_pressed
-       || type == item_floating_hover
-       || type == item_tiling_hover
-       || type == item_sinking_hover)
+    || type == pulldown_floating_pressed
+    || type == item_floating_hover
+    || type == item_tiling_hover
+    || type == item_sinking_hover
+    || type == item_sinking_active_hover    
+    || type == item_floating_active_hover
+    || type == item_tiling_active_hover)
       cairo_set_source_rgba(cr, LIGHT_EDGE);  
     else cairo_set_source_rgba(cr, BODY);  
     
@@ -228,15 +274,18 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
     cairo_fill(cr); 
 
     cairo_set_source_rgba(cr, TEXT);
+    if(type == pulldown_deactivated  
+    || type == pulldown_tiling_deactivated)
+      cairo_set_source_rgba(cr, TEXT_DEACTIVATED);
+    
     if(type == item_floating
-       || type == item_floating
-       || type == item_tiling
-       || type == item_sinking
-       || type == item_floating_hover
-       || type == item_tiling_hover
-       || type == item_sinking_hover)
+    || type == item_floating
+    || type == item_tiling
+    || type == item_sinking
+    || type == item_floating_hover
+    || type == item_tiling_hover
+    || type == item_sinking_hover) 
       cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL); 
-      
     else 
       cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD); 
 
@@ -244,11 +293,14 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
     cairo_move_to(cr, 22, 15); 
     
     if(type == pulldown_tiling_normal  
-       ||  type == pulldown_tiling_pressed  
-       ||  type == item_tiling
-       ||  type == item_tiling_hover) {
+    || type == pulldown_tiling_pressed  
+    || type == item_tiling
+    || type == item_tiling_hover
+    || type == item_tiling_active
+    || type == item_tiling_active_hover     
+    || type == pulldown_tiling_deactivated) {
       cairo_show_text(cr, "Tiling");
-      
+            
       cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
       cairo_rectangle(cr, 5, 7, 4, 7);
       cairo_rectangle(cr, 4, 5, 6, 10);
@@ -259,12 +311,12 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
       cairo_rectangle(cr, 11, 5, 6, 10);
       cairo_fill(cr);    
     }
-    else if(type == pulldown_deactivated
-             ||  type == item_sinking
-             ||  type == item_sinking_hover) {
-      if(type == pulldown_deactivated)
-        cairo_set_source_rgba(cr, TEXT_DEACTIVATED);
-        
+    else 
+    if(type == pulldown_deactivated
+    || type == item_sinking
+    || type == item_sinking_hover
+    || type == item_sinking_active
+    || type == item_sinking_active_hover) {
       cairo_show_text(cr, "Sinking");
               
       cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD); //means don't fill areas that are filled twice.
@@ -289,10 +341,13 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
       cairo_stroke(cr);
       
     }
-    else if(type == pulldown_floating_normal  
-             ||  type == pulldown_floating_pressed
-             ||  type == item_floating
-             ||  type == item_floating_hover) {
+    else 
+    if(type == pulldown_floating_normal  
+    || type == pulldown_floating_pressed
+    || type == item_floating
+    || type == item_floating_hover
+    || type == item_floating_active
+    || type == item_floating_active_hover) {
       cairo_show_text(cr, "Floating");
       
       cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD); //means don't fill areas that are filled twice.
@@ -311,10 +366,10 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
       
     }
     if(type == pulldown_floating_normal
-        || type == pulldown_floating_pressed
-        || type == pulldown_tiling_normal
-        || type == pulldown_tiling_pressed
-        || type == pulldown_deactivated) { 
+    || type == pulldown_floating_pressed
+    || type == pulldown_tiling_normal
+    || type == pulldown_tiling_pressed
+    || type == pulldown_deactivated) { 
       #ifdef SHARP_SYMBOLS
       cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);    
       #endif
@@ -345,9 +400,10 @@ Pixmap create_title_pixmap(Display* display, const char* title, enum title_pixma
   cairo_surface_t *surface;
   cairo_t *cr;  
   
+  //the heights are different
   if(type == title_normal  ||  type == title_pressed  ||  type == title_deactivated) {
     pixmap = XCreatePixmap(display, root, XWidthOfScreen(screen), TITLE_MAX_HEIGHT, XDefaultDepth(display, screen_number));
-  surface = cairo_xlib_surface_create(display, pixmap, colours,  XWidthOfScreen(screen), TITLE_MAX_HEIGHT);
+    surface = cairo_xlib_surface_create(display, pixmap, colours,  XWidthOfScreen(screen), TITLE_MAX_HEIGHT);
   }
   else {
     pixmap = XCreatePixmap(display, root, XWidthOfScreen(screen), MENU_ITEM_HEIGHT, XDefaultDepth(display, screen_number));
@@ -370,7 +426,7 @@ Pixmap create_title_pixmap(Display* display, const char* title, enum title_pixma
       cairo_rectangle(cr, 0, LIGHT_EDGE_HEIGHT, XWidthOfScreen(screen), TITLE_MAX_HEIGHT - LIGHT_EDGE_HEIGHT);
       cairo_fill(cr);  
 
-      //draw text    
+      //draw text
       if(type == title_deactivated) {
         cairo_set_source_rgba(cr, TEXT_DEACTIVATED);
         cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
@@ -385,9 +441,10 @@ Pixmap create_title_pixmap(Display* display, const char* title, enum title_pixma
       cairo_fill(cr);  
     break;
     case item_title:
+    case item_title_active:
     case item_title_hover:
-    
-      if(type == item_title_hover)
+    case item_title_active_hover:
+      if(type == item_title_hover  ||  type == item_title_active_hover)
         cairo_set_source_rgba(cr, LIGHT_EDGE);
       else cairo_set_source_rgba(cr, BODY);
 
@@ -396,7 +453,8 @@ Pixmap create_title_pixmap(Display* display, const char* title, enum title_pixma
       cairo_translate(cr, 0, MENU_ITEM_VS_BUTTON_Y_DIFF);      
       cairo_set_source_rgba(cr, TEXT);  
       
-      cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+      if(type == item_title_active  ||  type == item_title_active_hover) cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+      else cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
       
       cairo_set_font_size(cr, 13.5);
       cairo_move_to(cr, 3, 15);

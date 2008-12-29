@@ -166,13 +166,14 @@ void remove_rectangle(struct rectangle_list *list, struct rectangle old) {
 
 //Prerequisites:  Rectangles a and b must not be overlapping.
 //Design:  Calculate the displacement in each axis and use pythagoras to calculate the net displacement
+//Returns -1 if source is larger than dest
 double calculate_displacement(struct rectangle source, struct rectangle dest, int *dx, int *dy) {
   double hypotenuse;
   
   if(source.w > dest.w
   || source.h > dest.h) {
-    printf("too big\n");
-    return 0;
+    printf("Doesn't fit: source w %d, dest w %d, source h %d, dest h %d\n", source.w, dest.w, source.h, dest.h);
+    return -1;
   }
    
   if(source.x > dest.x  
@@ -188,7 +189,7 @@ double calculate_displacement(struct rectangle source, struct rectangle dest, in
   if(*dy < 0) *dy += dest.h - source.h; //move it to the nearest edge if required.
   
   hypotenuse = sqrt((*dx) * (*dx) + (*dy) * (*dy));
-  printf("dest x %d, dest y %d, dx %d, dy %d, hyp %f\n", dest.x, dest.y, *dx, *dy, hypotenuse);  
+  printf("dest x %d, dest y %d, dx %d, dy %d, hyp %f\n", dest.x, dest.y, *dx, *dy, hypotenuse);
 
   return hypotenuse;
 }

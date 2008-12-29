@@ -1,9 +1,14 @@
-/* Design Rationale.    */
+/* Design Rationale.  These functions were previously included in the main function and have been seperated to enhance readability.
+Therefore, they accept lots of parameters and look messy, beause there are inter-relationships with other events. */
 
 /*
-This function attempts to tile the sinking window in available screen space.
+This function responds to a user's request to unsink a window by changing its mode from sinking
 */
 void handle_frame_unsink (Display *display, struct Framelist *frames, int index, struct frame_pixmaps *pixmaps) {
+  handle_frame_drop(display, frames, index);
+  show_frame_state(display, &frames->list[index], pixmaps);
+  //previously it placed the window in the largest space:
+  /*
   struct rectangle_list free_spaces;
   int largest = 0;
   unsigned long int largest_area = 0;
@@ -42,6 +47,8 @@ void handle_frame_unsink (Display *display, struct Framelist *frames, int index,
     show_frame_state(display, &frames->list[index], pixmaps);
   }
   if(free_spaces.list != NULL) free(free_spaces.list);
+  */
+  
 }
 
 /*
@@ -49,16 +56,17 @@ This function handles responding to the users click and drag on the resize grips
 */
 void handle_frame_resize (Display *display, struct Framelist *frames, int clicked_frame
 , int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y, Window clicked_widget) {
-
+  
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
-  
+
   int new_width = 0;
   int new_height = 0;
   int new_x = mouse_root_x - pointer_start_x;
   int new_y = mouse_root_y - pointer_start_y;
 
   struct Frame *frame = &frames->list[clicked_frame];  
+
 
   if(clicked_widget == frame->l_grip) {
     new_width = frame->w + (frame->x - new_x);
@@ -119,48 +127,94 @@ void handle_frame_resize (Display *display, struct Framelist *frames, int clicke
 }
 
 /*
-This function moves the dropped tiling window to the nearest available space.
+This function moves the dropped window to the nearest available space.
+If the window has been enlarged so that it exceeds all available sizes,
+a best-fit algorithm is used to determine the closest size.
+If all spaces are smaller than the window's minimum size 
+(which can only happen if the window's mode is being changed) the window
+remains in it's previous mode. Otherwise the window's mode is changed to tiling.
+
 */
-extern void handle_frame_drop (Display *display, struct Framelist *frames, int clicked_frame
-,  int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y) {
+void handle_frame_drop (Display *display, struct Framelist *frames, int clicked_frame) {
 
   struct Frame *frame = &frames->list[clicked_frame]; 
   struct rectangle_list free_spaces = {0, 8, NULL};
   double min_displacement = 0; 
-  int min = -1;  //index of the closest free space
-  int dx = 0;
-  int dy = 0;
+  int min = -1;
+  int min_dx = 0;
+  int min_dy = 0;
   
-  //the frame needs to be converted to this alternative type for calculating displacement.
-  struct rectangle window =  {frames->list[clicked_frame].x
-  , frames->list[clicked_frame].y
-  , frames->list[clicked_frame].w
-  , frames->list[clicked_frame].h };
+  //make the frame into a rectangle for calculating displacement function
+  struct rectangle window =  {frame->x
+  , frame->y
+  , frame->w
+  , frame->h };
     
-  if(frame->mode != TILING) return;
+  printf("Retiling dropped window\n");
   
-  frame->mode = FLOATING;
-  free_spaces = get_free_screen_spaces (display, frames);
-  frame->mode = TILING;  
+  if(frame->mode == TILING) {
+    frame->mode = SINKING;
+    free_spaces = get_free_screen_spaces (display, frames);
+    frame->mode = TILING;
+  }
+  else free_spaces = get_free_screen_spaces (display, frames);
+
+  if(free_spaces.list == NULL) return;
   
   for(int k = 0; k < free_spaces.used; k++) {
-    double displacement = 0;    
+    double displacement = 0;
+    int dx = 0;
+    int dy = 0;
     displacement = calculate_displacement(window, free_spaces.list[k], &dx, &dy);
-    if(min_displacement == 0  ||  displacement < min_displacement) {
+    printf("Free space:space %d, x %d, y %d, w %d, h %d, distance %f\n", k
+    , free_spaces.list[k].x, free_spaces.list[k].y
+    , free_spaces.list[k].w, free_spaces.list[k].h, (float)displacement);
+    if(displacement >= 0  &&  (min_displacement == 0  ||  displacement < min_displacement)) {
       min_displacement = displacement;
       min = k;
+      min_dx = dx;
+      min_dy = dy;
     }
-    printf("Free space:space %d, x %d, y %d, w %d, h %d, distance %f\n", displacement
-    , k, free_spaces.list[k].x, free_spaces.list[k].y, free_spaces.list[k].w, free_spaces.list[k].h);
   }
-
+  
+  //the window is too large to fit in any current spaces.
+  //find the space which is the closest size
   if(min == -1) { 
-    //this should never occur as in the worst case the window can return to whence it came
-    printf("Impossible:  Unable to find free space to move dropped window\n");
+    printf("move failed - finding the nearest size\n");
+    double w_proportion, h_proportion, current_fit;
+    double best_fit = -1;
+    int best_space = -1;
+    for(int k = 0; k < free_spaces.used; k++) {
+      w_proportion = frame->w / free_spaces.list[k].w;
+      h_proportion = frame->h / free_spaces.list[k].h;
+      if(w_proportion > 1) free_spaces.list[k].w / frame->w;
+      if(h_proportion > 1) free_spaces.list[k].h / frame->h;
+      current_fit = w_proportion * h_proportion;
+      if(current_fit > best_fit
+      && free_spaces.list[k].w >= frame->min_width
+      && free_spaces.list[k].h >= frame->min_height) {
+        best_fit = current_fit;
+        best_space = k;
+      }
+    }
+    
+    if(best_space != -1) {
+      frame->mode = TILING;    
+      frame->x = free_spaces.list[best_space].x;
+      frame->y = free_spaces.list[best_space].y;
+      frame->w = free_spaces.list[best_space].w;
+      frame->h = free_spaces.list[best_space].h;
+      
+      if(frame->w > frame->max_width) frame->w = frame->max_width;
+      if(frame->h > frame->max_height) frame->h = frame->max_height;
+      resize_frame(display, frame);
+    }
   }
   else {
-    frame->x += dx;
-    frame->y += dy;
+    printf("Found min_dx %d, min_dy %d, distance %f\n", min_dx, min_dy, (float)min_displacement);
+    frame->mode = TILING;
+    frame->x += min_dx;
+    frame->y += min_dy;
     move_frame(display, frame);
   }
 
@@ -169,17 +223,11 @@ extern void handle_frame_drop (Display *display, struct Framelist *frames, int c
 }
 
 /*
-This handles moving the window when the titlebar is dragged.  
+This handles moving/resizing the window when the titlebar is dragged.  
 It resizes windows that are pushed against the edge of the screen,
 to sizes between the defined min and max.  If the users attemps to resize below a
-minimum size the window is sunk 
-(after a disable look is shown and the user releases the mouse button).
-
-After this function is run, another window determines if the tiled window is overlapping
-other tiled windows and then "handle_frame_retile" determines which windows need to be moved
- and where.
+minimum size the window is sunk (after a disable look is shown and the user releases the mouse button).
  
-TODO:  Use the Framelist to determine the maximum available spaces (at the start of the move)
 */
 void handle_frame_move (Display *display, struct Framelist *frames, int clicked_frame
 , int *pointer_start_x, int *pointer_start_y, int mouse_root_x, int mouse_root_y
@@ -212,7 +260,7 @@ void handle_frame_move (Display *display, struct Framelist *frames, int clicked_
   }
   
   if((new_x < 0) //window moving off LHS
-  ||(*resize_x_direction == 1)) { 
+  || (*resize_x_direction == 1)) { 
     *resize_x_direction = 1;
     new_width = frame->w + new_x;
     new_x = 0;
@@ -220,61 +268,65 @@ void handle_frame_move (Display *display, struct Framelist *frames, int clicked_
   }
 
   if((new_y + frame->h > XHeightOfScreen(screen) - MENUBAR_HEIGHT) //window moving off the bottom
-  ||(*resize_y_direction == -1)) { 
+  || (*resize_y_direction == -1)) { 
     *resize_y_direction = -1;
     new_height = XHeightOfScreen(screen) - MENUBAR_HEIGHT - new_y;
   }
   
   if((new_y < 0) //window moving off the top of the screen
-  ||(*resize_y_direction == 1)) { 
+  || (*resize_y_direction == 1)) { 
     *resize_y_direction = 1;
     new_height = frame->h + new_y;
     new_y = 0;
     *pointer_start_y = mouse_root_y;
   }
 
-  if((new_width != 0  &&  new_width < frame->min_width) 
-  ||(new_height != 0  &&  new_height < frame->min_height)) {
-    if(new_width != 0) {
-      new_width = 0;
-      if(*resize_x_direction == -1) new_x = XWidthOfScreen(screen) - frame->w;
-      //don't move the window off the RHS if it has reached it's minimum size
-      //LHS not considered because x has already been set to 0
-      
-      /** Show Sinking state**/
-      if(!*was_sunk) {
-        *was_sunk = frame->mode;
-        printf("setting sinking mode from %d\n", *was_sunk);
-        frame->mode = SINKING;
-        show_frame_state(display, frame, pixmaps);
-      }
+  
+  if(new_width != 0  &&  new_width < frame->min_width) {
+    printf("new width was %d, is %d\n", new_width, frame->min_width);
+    new_width = frame->min_width;
+    if(*resize_x_direction == -1) new_x = XWidthOfScreen(screen) - frame->min_width;
+    //don't move the window off the RHS if it has reached it's minimum size
+    //LHS not considered because x has already been set to 0
+
+    #ifdef INTERPRETIVE_SINKING
+    /** Show Sinking state**/
+    if(!*was_sunk) {
+      *was_sunk = frame->mode;
+      printf("Setting sinking mode from %d\n", *was_sunk);
+      frame->mode = SINKING;
+      show_frame_state(display, frame, pixmaps);
     }
-    if(new_height != 0) {
-      new_height = 0;    
-      //don't move the window off the bottom if it has reached it's minimum size
-      //Top not considered because y has already been set to 0
-      if(*resize_y_direction == -1) new_y = XHeightOfScreen(screen) - frame->h;
-    }
+    #endif
+  }
+  
+  if (new_height != 0  &&  new_height < frame->min_height) {
+    printf("new height was %d, is %d\n", new_height, frame->min_height);
+    new_height = frame->min_height;    
+    //don't move the window off the bottom if it has reached it's minimum size
+    //Top not considered because y has already been set to 0
+    if(*resize_y_direction == -1) new_y = XHeightOfScreen(screen) - frame->min_height - MENUBAR_HEIGHT;
   }
 
   //limit resizes to max width
   if((new_width  != 0  &&  new_width  > frame->max_width) 
   || (new_height != 0  &&  new_height > frame->max_height)) {
-    //investigate if this has similar situations as above where it moves instead of stopping
-    //once limit is reached
-    if(new_width > frame->max_width) new_width = 0;
-    if(new_height > frame->max_height) new_height = 0;
+    //these have been changed from zero to max values..
+    if(new_width > frame->max_width) new_width = frame->max_width;
+    if(new_height > frame->max_height) new_height = frame->max_height;
   } 
-
+    
   //do not attempt to resize windows that cannot be resized
-  if(frame->min_width == frame->max_width) *resize_x_direction = 0;
-  if(frame->min_height == frame->max_height) *resize_y_direction = 0;
+  if(frame->min_width == frame->max_width) *resize_x_direction = 0;  if(frame->min_height == frame->max_height) *resize_y_direction = 0;
               
   if(new_width != 0  ||  new_height != 0) {   //resize window if required
+    //allow movement in axis if it hasn't been resized
+    frame->x = new_x;
+    frame->y = new_y;
     if(new_width != 0) {
-      frame->w = new_width;              
-      frame->x = new_x;
+      frame->w = new_width; 
       //Cancel sinking look
+      #ifdef INTERPRETIVE_SINKING      
       if(*was_sunk) {
         printf("Cancel edge slam by width, new mode %d\n", *was_sunk);
         frame->mode = *was_sunk;
@@ -282,23 +334,18 @@ void handle_frame_move (Display *display, struct Framelist *frames, int clicked_
         XSync(display, False);
         *was_sunk = 0;
       }
+      #endif
     }
-    else {
-      frame->x = new_x; 
-      //allow movement in axis if it hasn't been resized
-    }
-      
-    if(new_height != 0) {
-      frame->h = new_height;
-      frame->y = new_y;
-    }
-    else frame->y = new_y; //allow movement in axis if it hasn't been resized
+    
+    if(new_height != 0) frame->h = new_height;
+    //allow movement in axis if it hasn't been resized
     
     resize_frame(display, frame);
     
   }
   else {
     //Moves the window to the specified location if there is no resizing going on.
+    #ifdef INTERPRETIVE_SINKING
     if(frame->x != new_x  &&  *was_sunk) {
       printf("Cancel edge slam by movement in x, new mode is %d\n", *was_sunk);
       frame->mode = *was_sunk;
@@ -306,6 +353,7 @@ void handle_frame_move (Display *display, struct Framelist *frames, int clicked_
       XSync(display, False);
       *was_sunk = 0;
     }
+    #endif
     frame->x = new_x;
     frame->y = new_y;
     XMoveWindow(display, frame->frame, frame->x, frame->y);

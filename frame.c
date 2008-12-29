@@ -80,7 +80,7 @@ void create_startup_frames (Display *display, struct Framelist* frames, Window s
 
 
 /*returns the frame index of the newly created window or -1 if out of memory */
-int create_frame(Display* display, struct Framelist* frames, Window framed_window, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) { 
+int create_frame(Display* display, struct Framelist* frames, Window framed_window, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) {
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
@@ -410,7 +410,9 @@ void load_frame_name(Display* display, struct Frame* frame) {
   frame->title_menu.title_deactivated_p = create_title_pixmap(display, frame->window_name, title_deactivated);
 
   frame->title_menu.item_title_p = create_title_pixmap(display, frame->window_name, item_title);
+  frame->title_menu.item_title_active_p = create_title_pixmap(display, frame->window_name, item_title_active);
   frame->title_menu.item_title_hover_p = create_title_pixmap(display, frame->window_name, item_title_hover);
+  frame->title_menu.item_title_active_hover_p = create_title_pixmap(display, frame->window_name, item_title_active_hover);
 
   if(frame->mode == SINKING) XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_deactivated_p);
   else XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_normal_p);  
@@ -438,10 +440,10 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   root = DefaultRootWindow(display);
   screen = DefaultScreenOfDisplay(display);
 
-  frame->min_width  = MINWIDTH;
-  frame->min_height = MINHEIGHT;
+  frame->min_width  = MINWIDTH - FRAME_HSPACE;
+  frame->min_height = MINHEIGHT - FRAME_VSPACE;
   frame->max_width  = XWidthOfScreen(screen) - FRAME_HSPACE;
-  frame->max_height = XHeightOfScreen(screen)- FRAME_VSPACE;
+  frame->max_height = XHeightOfScreen(screen) - MENUBAR_HEIGHT - FRAME_VSPACE;
    
   if(XGetWMNormalHints(display, frame->window, &specified, &pre_ICCCM) != 0) {
     printf("Managed to recover size hints\n");
@@ -456,40 +458,44 @@ void get_frame_hints(Display* display, struct Frame* frame) {
     if((specified.flags & PSize) 
     || (specified.flags & USSize)) {
       printf("Size specified\n");
-      frame->w = specified.width + FRAME_HSPACE;
-      frame->h = specified.height+ FRAME_VSPACE;
+      frame->w = specified.width ;
+      frame->h = specified.height;
     }
     if((specified.flags & PMinSize)
-    && (specified.min_width  + FRAME_HSPACE >= MINWIDTH)
-    && (specified.min_height + FRAME_VSPACE >= MINHEIGHT)) {
+    && (specified.min_width >= frame->min_width)
+    && (specified.min_height >= frame->min_height)) {
       printf("Minimum size specified\n");
-      frame->min_width = specified.min_width  + FRAME_HSPACE;
-      frame->min_height = specified.min_height+ FRAME_VSPACE;
+      frame->min_width = specified.min_width;
+      frame->min_height = specified.min_height;
     }
-    if(specified.flags & PMaxSize) {
+    if((specified.flags & PMaxSize) 
+    && (specified.max_width >= frame->min_width)
+    && (specified.max_height >= frame->min_height)) {
       printf("Maximum size specified\n");
-      frame->max_width = specified.max_width  + FRAME_HSPACE;
-      frame->max_height = specified.max_height+ FRAME_VSPACE;
+      frame->max_width = specified.max_width;
+      frame->max_height = specified.max_height;
     }
   }
-  
+
   if(frame->w < frame->min_width)  frame->w = frame->min_width;
   if(frame->h < frame->min_height) frame->h = frame->min_height;
   if(frame->w > frame->max_width)  frame->w = frame->max_width;
   if(frame->h > frame->max_height) frame->h = frame->max_height;
-    
-  frame->w += FRAME_HSPACE; //increase the size of the window for the frame to be drawn in
+
+  //all of the initial values are sans the frame 
+  //increase the size of the window for the frame to be drawn in 
+  //this means that the attributes must be saved without the extra width and height
+  frame->w += FRAME_HSPACE; 
   frame->h += FRAME_VSPACE; 
 
   frame->max_width  += FRAME_HSPACE; 
   frame->max_height += FRAME_VSPACE; 
+
+  frame->min_width  += FRAME_HSPACE; 
+  frame->min_height += FRAME_VSPACE; 
       
   printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n", 
         frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height, frame->x, frame->y);
-        
-  //put splash screens where they specify, not off-centre
-  //if(frame->x - (H_SPACING + EDGE_WIDTH*2)  >  0) frame->x -= H_SPACING + EDGE_WIDTH*2;
-  //if(frame->y - (TITLEBAR_HEIGHT + EDGE_WIDTH*2) > 0) frame->y -= TITLEBAR_HEIGHT + EDGE_WIDTH*2; 
 }
 
 int replace_frame(Display *display, struct Frame *target, struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, struct frame_pixmaps *pixmaps) {
@@ -569,7 +575,7 @@ void resize_tiling_frame(Display *display, struct Framelist *frames, int index, 
     position is the new x or y co-ordinate and is within a valid range.
   *****/
   
-  int shrink_margin = PUSH_PULL_RESIZE_MARGIN;
+  int shrink_margin = 1;
   
   int size_change;
   int overlap;
