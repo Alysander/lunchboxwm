@@ -399,17 +399,14 @@ Pixmap create_title_pixmap(Display* display, const char* title, enum title_pixma
   Pixmap pixmap;
   cairo_surface_t *surface;
   cairo_t *cr;  
+  int height;  
   
-  //the heights are different
-  if(type == title_normal  ||  type == title_pressed  ||  type == title_deactivated) {
-    pixmap = XCreatePixmap(display, root, XWidthOfScreen(screen), TITLE_MAX_HEIGHT, XDefaultDepth(display, screen_number));
-    surface = cairo_xlib_surface_create(display, pixmap, colours,  XWidthOfScreen(screen), TITLE_MAX_HEIGHT);
-  }
-  else {
-    pixmap = XCreatePixmap(display, root, XWidthOfScreen(screen), MENU_ITEM_HEIGHT, XDefaultDepth(display, screen_number));
-    surface = cairo_xlib_surface_create(display, pixmap, colours,  XWidthOfScreen(screen), MENU_ITEM_HEIGHT);
-  }
+  if(type == title_normal  ||  type == title_pressed  ||  type == title_deactivated) height = TITLE_MAX_HEIGHT;
+  else height = MENU_ITEM_HEIGHT;
 
+  pixmap = XCreatePixmap(display, root, XWidthOfScreen(screen), height, XDefaultDepth(display, screen_number));
+  surface = cairo_xlib_surface_create(display, pixmap, colours,  XWidthOfScreen(screen), height);
+    
   cr = cairo_create(surface);
   switch(type) {
     case title_normal:
@@ -443,17 +440,24 @@ Pixmap create_title_pixmap(Display* display, const char* title, enum title_pixma
     case item_title:
     case item_title_active:
     case item_title_hover:
+    case item_title_deactivated:
     case item_title_active_hover:
-      if(type == item_title_hover  ||  type == item_title_active_hover)
-        cairo_set_source_rgba(cr, LIGHT_EDGE);
+    case item_title_deactivated_hover:    
+      if(type == item_title_hover  
+      || type == item_title_active_hover  
+      || type == item_title_deactivated_hover) cairo_set_source_rgba(cr, LIGHT_EDGE);
       else cairo_set_source_rgba(cr, BODY);
 
       cairo_rectangle(cr, 0, 0, XWidthOfScreen(screen), MENU_ITEM_HEIGHT);      
       cairo_fill(cr);
       cairo_translate(cr, 0, MENU_ITEM_VS_BUTTON_Y_DIFF);      
-      cairo_set_source_rgba(cr, TEXT);  
+
+      if(type == item_title_deactivated
+      || type == item_title_deactivated_hover) cairo_set_source_rgba(cr, TEXT_DEACTIVATED);
+      else cairo_set_source_rgba(cr, TEXT);
       
-      if(type == item_title_active  ||  type == item_title_active_hover) cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+      if(type == item_title_active  
+      || type == item_title_active_hover) cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
       else cairo_select_font_face (cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
       
       cairo_set_font_size(cr, 13.5);

@@ -1,38 +1,30 @@
-struct Focuslist {
-  int used, max;
-  Window* list;
-}
-
-//caller allocates and frees the focus list.
-int add_focus(Window new, Focuslist* focus) {
-  if(focus->used == focus->max) {
+void add_focus(Window new, Focus_list* focus) {
+  remove_focus(new, focus); //remove duplicates
+  if(focus->used == focus->max  ||  focus->list == NULL) {
     Window *temp = NULL;
-    temp = realloc(focus->list, sizeof(Window) * focus->max * 2);
-    if(temp != NULL) focus->list = temp;
-    else return -1;
-    focus->max *= 2;
+    if(focus->list != NULL) temp = realloc(focus->list, sizeof(Window) * focus->max * 2);
+    else {
+      focus->used = 0;
+      focus->max = 4;
+      temp = malloc(sizeof(Window) * focus->max * 2);
+    }
+    
+    if(temp != NULL) {
+      focus->list = temp;
+      focus->max *= 2;
+    }
+    else remove_focus(focus->list[0], focus);  //if out of memory start overwriting old values
   }
   focus->list[focus->used] = new;
   focus->used++;
-  return 1;
 }
 
-void remove_focus(Window old, Focuslist* focus) {
+void remove_focus(Window old, Focus_list* focus) {
   int i;
-  for( i = 0; i < focus->used; i++) if(focus->list[i] == old) break;
 
-  if(i == focus->used) return;
-
+  //recently added windows are more likely to be removed
+  for( i = focus->used - 1; i >= 0; i--) if(focus->list[i] == old) break;
+  if(i < 0) return; //not found
   focus->used--;
-    
-  if(!focus->used) return;
-
   for( ; i < focus->used; i++) focus->list[i] = focus->list[i + 1];
-}
-
-Window pop_focus(Window root, Focuslist* focus) {
-  
-  if(focus->used == 0) return root;
-  focus->used--;
-  return focus->list[focus->used];
 }

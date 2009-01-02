@@ -57,7 +57,10 @@
 
 #define BORDER          0.13, 0.13, 0.13, 1
 #define LIGHT_EDGE      0.34, 0.34, 0.34, 1
+/* Medium gray body
 #define BODY            0.27, 0.27, 0.27, 1
+*/
+#define BODY            0.24, 0.24, 0.24, 1
 
 /*** Green theme at Fraser's suggestion ***/
 /*
@@ -100,39 +103,50 @@ struct Frame {
   Window mode_hotspot, close_hotspot;
   Window backing;   //backing is the same dimensions as the framed window.  
                     //It is used so that the resize grips can cover the innerframe but still be below the framed window.
+
   struct {
-    Window frame,   //frame is the outline, 
-           body,    //body is the inner border, 
-           title,   //title has the background pixmap and 
-           arrow,   //arrow is the pulldownarrow on the title menu
-           hotspot; //hotspot is an input_only window to make the events easier to identify
+    Window frame   //frame is the outline, 
+    , body          //body is the inner border, 
+    , title         //title has the background pixmap and 
+    , arrow         //arrow is the pulldownarrow on the title menu
+    , hotspot;      //hotspot is an input_only window to make the events easier to identify
 
     //these pixmaps include the bevel, background and  text
-    Pixmap title_normal_p,
-           title_pressed_p,
-           title_deactivated_p,
-
-           item_title_p,
-           item_title_active_p,
-           item_title_hover_p,
-           item_title_active_hover_p;
+    Pixmap title_normal_p
+    , title_pressed_p
+    , title_deactivated_p
+    , item_title_p
+    , item_title_active_p
+    , item_title_deactivated_p
+    , item_title_hover_p
+    , item_title_active_hover_p
+    , item_title_deactivated_hover_p;           
     
     Window entry;
     int width; //this is the width of the individual title
   } title_menu;
  
   struct {
-     int new_position;
-     int new_size;
+    int new_position;
+    int new_size;
   } indirect_resize;
   
   //InputOnly resize grips for the bottom left, top right etc.  
   Window l_grip, bl_grip, b_grip, br_grip, r_grip;
 };
 
-struct Framelist {
+struct Focus_list {
   unsigned int used, max;
-  struct Frame* list;  
+  Window* list;
+};
+
+struct Frame_list {
+  unsigned int used, max;
+  struct Frame* list;
+  struct Focus_list focus;
+  
+  char *workspace_name;
+  Window virtual_desktop;
   Window title_menu;
 };
 
@@ -150,58 +164,55 @@ struct mode_pulldown_list {
 };
 
 struct mouse_cursors {
-  Cursor normal, hand, grab, pressable,
-         resize_h, resize_v, resize_tr_bl, resize_tl_br;
+  Cursor normal, hand, grab, pressable
+  , resize_h, resize_v, resize_tr_bl, resize_tl_br;
 };
 
 struct frame_pixmaps {
-  Pixmap border_p, light_border_p, body_p, titlebar_background_p,
-         close_button_normal_p, close_button_pressed_p, close_button_deactivated_p,
+  Pixmap border_p, light_border_p, body_p, titlebar_background_p
+  , close_button_normal_p, close_button_pressed_p, close_button_deactivated_p
 
-         //these have a textured background
-         pulldown_floating_normal_p, pulldown_floating_pressed_p,
-         pulldown_tiling_normal_p, pulldown_tiling_pressed_p,
+  , desktop_background_p
+  //these have a textured background
+  ,pulldown_floating_normal_p, pulldown_floating_pressed_p
+  ,pulldown_tiling_normal_p, pulldown_tiling_pressed_p
+
+  ,pulldown_deactivated_p
+
+  //these don't have a textured background
+  ,item_floating_p, item_floating_hover_p, item_floating_active_p, item_floating_active_hover_p
+  ,item_sinking_p, item_sinking_hover_p, item_sinking_active_p, item_sinking_active_hover_p
+  ,item_tiling_p, item_tiling_hover_p, item_tiling_active_p, item_tiling_active_hover_p
   
-         pulldown_deactivated_p,
+  //these have a textured background
+  ,program_menu_normal_p, window_menu_normal_p, options_menu_normal_p, links_menu_normal_p, tool_menu_normal_p
+  ,program_menu_pressed_p, window_menu_pressed_p, options_menu_pressed_p, links_menu_pressed_p, tool_menu_pressed_p
 
-         //these don't have a textured background
-         item_floating_p, item_floating_hover_p, item_floating_active_p, item_floating_active_hover_p,
-         item_sinking_p, item_sinking_hover_p, item_sinking_active_p, item_sinking_active_hover_p,
-         item_tiling_p, item_tiling_hover_p, item_tiling_active_p, item_tiling_active_hover_p,
-         
-         //these have a textured background
-         program_menu_normal_p, window_menu_normal_p, options_menu_normal_p, links_menu_normal_p, tool_menu_normal_p,
-         //these don't have a textured background
-         program_menu_pressed_p, window_menu_pressed_p, options_menu_pressed_p, links_menu_pressed_p, tool_menu_pressed_p,
-
-         selection_p, 
-         arrow_normal_p, arrow_pressed_p, arrow_deactivated_p,
-         arrow_clipping_normal_p, arrow_clipping_pressed_p, arrow_clipping_deactivated_p;
+  ,selection_p, arrow_normal_p, arrow_pressed_p, arrow_deactivated_p;
 };
 
-struct hints {
-    
-    Atom name,                // "WM_NAME"
-    normal_hints,             // "WM_NORMAL_HINTS"
+struct hints {    
+  Atom name                  // "WM_NAME"
+  , normal_hints             // "WM_NORMAL_HINTS"
 
-    //make sure this is the first Extended window manager hint
-    supported,                // "_NET_SUPPORTED"
-    supporting_wm_check,      // "_NET_SUPPORTING_WM_CHECK"    
-    number_of_desktops,       // "_NET_NUMBER_OF_DESKTOPS" //always 1
-    desktop_geometry,         // "_NET_DESKTOP_GEOMETRY" //this is currently the same size as the screen
-    
-    wm_full_placement,        // "_NET_WM_FULL_PLACEMENT"
-    frame_extents,            // "_NET_FRAME_EXTENTS"
-    wm_window_type,           // "_NET_WM_WINDOW_TYPE"
-    wm_window_type_normal,    // "_NET_WM_WINDOW_TYPE_NORMAL"
-    wm_window_type_dock,      // "_NET_WM_WINDOW_TYPE_DOCK"
-    wm_window_type_splash,    // "_NET_WM_WINDOW_TYPE_SPLASH"  //no frame
-    wm_window_type_dialog,    // "_NET_WM_WINDOW_TYPE_DIALOG"  //can be transient
-    wm_window_type_utility,   // "_NET_WM_WINDOW_TYPE_UTILITY" //can be transient
-    wm_state,                 // "_NET_WM_STATE"
-    wm_state_fullscreen;      // "_NET_WM_STATE_FULLSCREEN"
+  //make sure this is the first Extended window manager hint
+  , supported                // "_NET_SUPPORTED"
+  , supporting_wm_check      // "_NET_SUPPORTING_WM_CHECK"    
+  , number_of_desktops       // "_NET_NUMBER_OF_DESKTOPS" //always 1
+  , desktop_geometry         // "_NET_DESKTOP_GEOMETRY" //this is currently the same size as the screen
+  
+  , wm_full_placement        // "_NET_WM_FULL_PLACEMENT"
+  , frame_extents            // "_NET_FRAME_EXTENTS"
+  , wm_window_type           // "_NET_WM_WINDOW_TYPE"
+  , wm_window_type_normal    // "_NET_WM_WINDOW_TYPE_NORMAL"
+  , wm_window_type_dock      // "_NET_WM_WINDOW_TYPE_DOCK"
+  , wm_window_type_splash    // "_NET_WM_WINDOW_TYPE_SPLASH"  //no frame
+  , wm_window_type_dialog    // "_NET_WM_WINDOW_TYPE_DIALOG"  //can be transient
+  , wm_window_type_utility   // "_NET_WM_WINDOW_TYPE_UTILITY" //can be transient
+  , wm_state                 // "_NET_WM_STATE"
+  , wm_state_fullscreen;     // "_NET_WM_STATE_FULLSCREEN"
 
-    //make sure this comes last  
+  //make sure this comes last  
 };
 
   
@@ -241,11 +252,13 @@ enum title_pixmap {
 
   item_title,
   item_title_active,
+  item_title_deactivated,
   item_title_hover,
-  item_title_active_hover
+  item_title_active_hover,
+  item_title_deactivated_hover
   //no inactive as all available choices in the menu are valid
 };
 
 struct Menubar {
   Window border, body, program_menu, window_menu, options_menu, links_menu, tool_menu;
-}
+};

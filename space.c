@@ -1,5 +1,5 @@
 
-struct rectangle_list get_free_screen_spaces (Display *display, struct Framelist *frames) {
+struct rectangle_list get_free_screen_spaces (Display *display, struct Frame_list *frames) {
   //the start variable is used to skip windows at the start 
   //in the handle_frame_retile function these are the intersecting tiled windows.
   

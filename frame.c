@@ -2,13 +2,21 @@ extern int done;
 
 /* This function reparents a framed window to root and then destroys the frame as well as cleaning up the frames drawing surfaces */
 /* It is used when the framed window has been unmapped or destroyed, or is about to be*/
-void remove_frame(Display* display, struct Framelist* frames, int index) {
+void remove_frame(Display* display, struct Frame_list* frames, int index) {
+  XWindowChanges changes;
+  Window root = DefaultRootWindow(display);
+  unsigned int mask = CWSibling | CWStackMode;  
+
+  changes.stack_mode = Below;
+  changes.sibling = frames->list[index].frame;
+  
   //always unmap the title pulldown before removing the frame or else it will crash
   XDestroyWindow(display, frames->list[index].title_menu.entry);
   
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);
-  XReparentWindow(display, frames->list[index].window, DefaultRootWindow(display), frames->list[index].x, frames->list[index].y);
+  XReparentWindow(display, frames->list[index].window, root, frames->list[index].x, frames->list[index].y);
+  XConfigureWindow(display, frames->list[index].window, mask, &changes);  //keep the stacking order
   XRemoveFromSaveSet (display, frames->list[index].window); //this will not destroy the window because it has been reparented to root
   XDestroyWindow(display, frames->list[index].frame);
   XSync(display, False);
@@ -59,28 +67,45 @@ void remove_window(Display* display, Window framed_window) {
   }
   
 }
+/*
+void create_frame_list(Display *display, struct Workspace_list* Workspaces) {
+  
+   Create the background window 
+  frames.virtual_desktop = XCreateSimpleWindow(display, root, 0, 0
+  , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, black, black);
+  XLowerWindow(display, background_window);
+  XSetWindowBackgroundPixmap (display, frames.virtual_desktop, pixmaps.desktop_background_p );
+  XDefineCursor(display, background_window, cursors.normal);  
+  XMapWindow(display, background_window);
+}
+*/
 
 /*This function is used to add frames to windows that are already open when the WM is starting*/
-void create_startup_frames (Display *display, struct Framelist* frames, Window sinking_seperator, Window tiling_seperator, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) {
+void create_startup_frames (Display *display, struct Frame_list* frames, Window sinking_seperator, Window tiling_seperator, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) {
   unsigned int windows_length;
   Window root, parent, children, *windows;
   XWindowAttributes attributes;
   root = DefaultRootWindow(display);
   
   XQueryTree(display, root, &parent, &children, &windows, &windows_length);
-  if(windows != NULL) for (int i = 0; i < windows_length; i++)  {
+  if(windows != NULL) for(int i = 0; i < windows_length; i++)  {
     XGetWindowAttributes(display, windows[i], &attributes);
     if (attributes.map_state == IsViewable && !attributes.override_redirect) {
       create_frame(display, frames, windows[i], pixmaps, cursors);
-      stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator);
     }
   }
   XFree(windows);
+
+  if(frames->list != NULL)  for(int i = 0; i < frames->used; i++) {
+    //handle_frame_drop(display, frames, i);
+    //frames->list[i].mode = FLOATING;
+    stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator);
+  }
 }
 
 
 /*returns the frame index of the newly created window or -1 if out of memory */
-int create_frame(Display* display, struct Framelist* frames, Window framed_window, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) {
+int create_frame(Display* display, struct Frame_list* frames, Window framed_window, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) {
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
@@ -411,9 +436,12 @@ void load_frame_name(Display* display, struct Frame* frame) {
 
   frame->title_menu.item_title_p = create_title_pixmap(display, frame->window_name, item_title);
   frame->title_menu.item_title_active_p = create_title_pixmap(display, frame->window_name, item_title_active);
+
+  frame->title_menu.item_title_deactivated_p = create_title_pixmap(display, frame->window_name, item_title_deactivated);
   frame->title_menu.item_title_hover_p = create_title_pixmap(display, frame->window_name, item_title_hover);
   frame->title_menu.item_title_active_hover_p = create_title_pixmap(display, frame->window_name, item_title_active_hover);
-
+  frame->title_menu.item_title_deactivated_hover_p = create_title_pixmap(display, frame->window_name, item_title_deactivated_hover);
+  
   if(frame->mode == SINKING) XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_deactivated_p);
   else XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_normal_p);  
   
@@ -440,43 +468,72 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   root = DefaultRootWindow(display);
   screen = DefaultScreenOfDisplay(display);
 
+  printf("BEFORE: width %d, height %d, x %d, y %d\n", 
+        frame->w, frame->h, frame->x, frame->y);
+
+  frame->max_width  = XWidthOfScreen(screen) - FRAME_HSPACE;
+  frame->max_height = XHeightOfScreen(screen) - MENUBAR_HEIGHT - FRAME_VSPACE;  
   frame->min_width  = MINWIDTH - FRAME_HSPACE;
   frame->min_height = MINHEIGHT - FRAME_VSPACE;
-  frame->max_width  = XWidthOfScreen(screen) - FRAME_HSPACE;
-  frame->max_height = XHeightOfScreen(screen) - MENUBAR_HEIGHT - FRAME_VSPACE;
-   
+
+  #ifdef ALLOW_OVERSIZE_WINDOWS_WITHOUT_MINIMUM_HINTS
+  /* Ugh Horrible.  */
+  /* Many apps that are resizeable like gedit ask to be the size of the screen
+     and then become much more difficult to be used. */
+     
+  if(frame->w > XWidthOfScreen(screen)) {
+    frame->min_width = frame->w;
+    frame->max_width = frame->min_width;      
+  }
+  if(frame->h > XHeightOfScreen(screen)) {
+    frame->min_height = frame->h;
+    frame->max_height = frame->min_height;
+  }
+  #endif
+
   if(XGetWMNormalHints(display, frame->window, &specified, &pre_ICCCM) != 0) {
+    #ifdef SHOW_FRAME_HINTS
     printf("Managed to recover size hints\n");
-    
+    #endif
+    #ifdef ALLOW_POSITION_HINTS
     if((specified.flags & PPosition) 
     || (specified.flags & USPosition)) {
+      #ifdef SHOW_FRAME_HINTS
       if(specified.flags & PPosition) printf("PPosition specified\n");
       else printf("USPosition specified\n");
+      #endif
       frame->x = specified.x;
       frame->y = specified.y;
     }
+    #endif
     if((specified.flags & PSize) 
     || (specified.flags & USSize)) {
+      #ifdef SHOW_FRAME_HINTS    
       printf("Size specified\n");
+      #endif
       frame->w = specified.width ;
       frame->h = specified.height;
     }
     if((specified.flags & PMinSize)
     && (specified.min_width >= frame->min_width)
     && (specified.min_height >= frame->min_height)) {
+      #ifdef SHOW_FRAME_HINTS
       printf("Minimum size specified\n");
+      #endif
       frame->min_width = specified.min_width;
       frame->min_height = specified.min_height;
     }
     if((specified.flags & PMaxSize) 
     && (specified.max_width >= frame->min_width)
     && (specified.max_height >= frame->min_height)) {
+      #ifdef SHOW_FRAME_HINTS
       printf("Maximum size specified\n");
+      #endif
       frame->max_width = specified.max_width;
       frame->max_height = specified.max_height;
     }
   }
-
+    
   if(frame->w < frame->min_width)  frame->w = frame->min_width;
   if(frame->h < frame->min_height) frame->h = frame->min_height;
   if(frame->w > frame->max_width)  frame->w = frame->max_width;
@@ -493,9 +550,19 @@ void get_frame_hints(Display* display, struct Frame* frame) {
 
   frame->min_width  += FRAME_HSPACE; 
   frame->min_height += FRAME_VSPACE; 
-      
-  printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n", 
-        frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height, frame->x, frame->y);
+
+  #ifdef SHOW_FRAME_HINTS      
+  printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n"
+  , frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height, frame->x, frame->y);
+  #endif         
+  
+  if(frame->x + frame->w > XWidthOfScreen(screen)) 
+    frame->x -= (frame->x + frame->w) - XWidthOfScreen(screen);
+  if(frame->y + frame->h > XHeightOfScreen(screen) - MENUBAR_HEIGHT)
+    frame->y -= (frame->y + frame->h) - (XHeightOfScreen(screen)  - MENUBAR_HEIGHT);
+  if(frame->x < 0) frame->x = 0;
+  if(frame->y < 0) frame->y = 0;
+  
 }
 
 int replace_frame(Display *display, struct Frame *target, struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, struct frame_pixmaps *pixmaps) {
@@ -505,7 +572,9 @@ int replace_frame(Display *display, struct Frame *target, struct Frame *replacem
   if(replacement->window == target->window) return 0;  //this can be chosen from the title menu
   if(target->w < replacement->min_width
   || target->h < replacement->min_height) {
+    #ifdef SHOW_BUTTON_PRESS_EVENT
     printf("The requested window doesn't fit on the target window\n");
+    #endif
     return 0;
   }  
   changes.x = target->x;
@@ -561,14 +630,14 @@ void stack_frame(Display *display, struct Frame *frame, Window sinking_seperator
 }
 
 //maybe remove overlap variable and instead simply set the indirect resize parameters and just reset them is something goes wrong?
-void resize_tiling_frame(Display *display, struct Framelist *frames, int index, char axis, int position, int size) {
+void resize_tiling_frame(Display *display, struct Frame_list *frames, int index, char axis, int position, int size) {
   /******
   Purpose:  
     Resizes a window and enlarges any adjacent tiled windows in either axis
      up to a maximum size for the adjacent windows or to a minimum size for the shrinking window.
   Preconditions:  
     axis is 'x' or 'y',
-    frames is a valid Framelist,
+    frames is a valid Frame_list,
     index is a valid index to frames,
     display is valid x11 connection,
     size is the new width or height 
