@@ -120,7 +120,7 @@ struct Frame {
     , item_title_deactivated_p
     , item_title_hover_p
     , item_title_active_hover_p
-    , item_title_deactivated_hover_p;           
+    , item_title_deactivated_hover_p;
     
     Window entry;
     int width; //this is the width of the individual title
@@ -146,29 +146,47 @@ struct Frame_list {
   struct Focus_list focus;
   
   char *workspace_name;
+  
+  struct {
+    Pixmap item_title_p
+    , item_title_active_p
+    , item_title_deactivated_p
+    , item_title_hover_p
+    , item_title_active_hover_p
+    , item_title_deactivated_hover_p;
+    Window entry;
+    int width;
+  } workspace_menu;
+  
   Window virtual_desktop;
   Window title_menu;
 };
 
-struct rectangle {
+struct Workspace_list {
+  unsigned int used, max;
+  struct Frame_list* list;
+  Window workspace_menu;
+};
+
+struct Rectangle {
   int x,y,w,h;
 };
 
-struct rectangle_list {
+struct Rectangle_list {
   unsigned int used, max;
-  struct rectangle *list;  
+  struct Rectangle *list;  
 };
 
-struct mode_pulldown_list {
+struct Mode_menu {
   Window frame, floating, tiling, sinking;
 };
 
-struct mouse_cursors {
+struct Cursors {
   Cursor normal, hand, grab, pressable
   , resize_h, resize_v, resize_tr_bl, resize_tl_br;
 };
 
-struct frame_pixmaps {
+struct Pixmaps {
   Pixmap border_p, light_border_p, body_p, titlebar_background_p
   , close_button_normal_p, close_button_pressed_p, close_button_deactivated_p
 
@@ -191,7 +209,7 @@ struct frame_pixmaps {
   ,selection_p, arrow_normal_p, arrow_pressed_p, arrow_deactivated_p;
 };
 
-struct hints {    
+struct Hint_atoms {    
   Atom name                  // "WM_NAME"
   , normal_hints             // "WM_NORMAL_HINTS"
 
@@ -217,7 +235,7 @@ struct hints {
 
   
 /** This enum is passed as an argument to create_pixmap to select which one to draw **/
-enum main_pixmap {
+enum Main_pixmap {
   background,
   body,
   border,
@@ -245,7 +263,7 @@ enum main_pixmap {
   arrow_deactivated
 };
 
-enum title_pixmap {
+enum Title_pixmap {
   title_normal, 
   title_pressed,
   title_deactivated,

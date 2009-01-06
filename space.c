@@ -1,14 +1,14 @@
 
-struct rectangle_list get_free_screen_spaces (Display *display, struct Frame_list *frames) {
+struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_list *frames) {
   //the start variable is used to skip windows at the start 
   //in the handle_frame_retile function these are the intersecting tiled windows.
   
-  struct rectangle_list used_spaces = {0, 8, NULL};
-  struct rectangle_list free_spaces = {0, 8, NULL};
+  struct Rectangle_list used_spaces = {0, 8, NULL};
+  struct Rectangle_list free_spaces = {0, 8, NULL};
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
   
-  used_spaces.list = malloc(used_spaces.max * sizeof(struct rectangle_list));
+  used_spaces.list = malloc(used_spaces.max * sizeof(struct Rectangle_list));
   if(used_spaces.list == NULL) {
     free(used_spaces.list);
     //probably could do something more intelligent here
@@ -18,7 +18,7 @@ struct rectangle_list get_free_screen_spaces (Display *display, struct Frame_lis
   
   for(int i = 0; i < frames->used; i++) {
     if(frames->list[i].mode == TILING) {
-      struct rectangle current = 
+      struct Rectangle current = 
         {frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h};
 
       printf("Tiled window %s, x %d, y %d, w %d, h %d\n", frames->list[i].window_name, frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h);
@@ -31,10 +31,10 @@ struct rectangle_list get_free_screen_spaces (Display *display, struct Frame_lis
 }
 
 /* This implements "Free space modeling for placing rectangles without overlapping" by Marc Bernard and Francois Jacquenet */
-struct rectangle_list largest_available_spaces (struct rectangle_list *used_spaces, int w, int h) {
+struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spaces, int w, int h) {
 
-  struct rectangle_list free_spaces = {0, 8, NULL};
-  free_spaces.list = malloc(free_spaces.max * sizeof(struct rectangle_list));
+  struct Rectangle_list free_spaces = {0, 8, NULL};
+  free_spaces.list = malloc(free_spaces.max * sizeof(struct Rectangle_list));
   if(free_spaces.list == NULL) {
     free(used_spaces->list);
     //probably could do something more intelligent here
@@ -42,16 +42,17 @@ struct rectangle_list largest_available_spaces (struct rectangle_list *used_spac
     return free_spaces;
   }
   
-  struct rectangle screen_space = {0, 0, w, h};
+  struct Rectangle screen_space = {0, 0, w, h};
   add_rectangle(&free_spaces, screen_space ); //define the intitial space.
-  for(int i = 0; i < used_spaces->used;i++) printf("used space %d, x %d, y %d, w %d, h %d \n", i, used_spaces->list[i].x, used_spaces->list[i].y, used_spaces->list[i].w, used_spaces->list[i].h);
+  for(int i = 0; i < used_spaces->used; i++) 
+    printf("used space %d, x %d, y %d, w %d, h %d \n", i, used_spaces->list[i].x, used_spaces->list[i].y, used_spaces->list[i].w, used_spaces->list[i].h);
   
   //for all used spaces (already tiled windows on the screen)
   for(int i = 0; i < used_spaces->used; i++) {  
-    struct rectangle_list new_spaces = {0, 8, NULL};
-    struct rectangle_list old_spaces = {0, 8, NULL};  
-    new_spaces.list = malloc(new_spaces.max * sizeof(struct rectangle_list));
-    old_spaces.list = malloc(old_spaces.max * sizeof(struct rectangle_list));
+    struct Rectangle_list new_spaces = {0, 8, NULL};
+    struct Rectangle_list old_spaces = {0, 8, NULL};  
+    new_spaces.list = malloc(new_spaces.max * sizeof(struct Rectangle_list));
+    old_spaces.list = malloc(old_spaces.max * sizeof(struct Rectangle_list));
 
     if(new_spaces.list == NULL  ||  old_spaces.list == NULL) {
       free(used_spaces->list);
@@ -64,7 +65,7 @@ struct rectangle_list largest_available_spaces (struct rectangle_list *used_spac
     }
     for(int j = 0; j < free_spaces.used; j++) {
       //if an edge intersects, modify opposing edge.  add modified to new_spaces and original to old_spaces
-      struct rectangle new = {0, 0, 0, 0};
+      struct Rectangle new = {0, 0, 0, 0};
       if(INTERSECTS(free_spaces.list[j].y, free_spaces.list[j].h, used_spaces->list[i].y, used_spaces->list[i].h) ) {
         //printf("i %d intersects j %d in y\n", i, j);
         if(INTERSECTS_BEFORE(free_spaces.list[j].x, free_spaces.list[j].w, used_spaces->list[i].x, used_spaces->list[i].w) ) {
@@ -124,11 +125,11 @@ struct rectangle_list largest_available_spaces (struct rectangle_list *used_spac
 }
 
 /* Adds rectangles to the list.  Rectangles are checked for validity and independence/inclusion. O(n) */
-void add_rectangle(struct rectangle_list *list, struct rectangle new) {
+void add_rectangle(struct Rectangle_list *list, struct Rectangle new) {
   if(new.h <= 0  ||  new.w <= 0  ||  new.x < 0  ||  new.y < 0) return;
   if(list->max == list->used) {
-    struct rectangle *temp = NULL;
-    temp = realloc(list->list, sizeof(struct rectangle) * list->max * 2);
+    struct Rectangle *temp = NULL;
+    temp = realloc(list->list, sizeof(struct Rectangle) * list->max * 2);
     if(temp != NULL) list->list = temp;
     else return;
     list->list = temp;
@@ -148,7 +149,7 @@ void add_rectangle(struct rectangle_list *list, struct rectangle new) {
 }
 
 /* Removes the rectangle from the list if it exists. O(n)*/
-void remove_rectangle(struct rectangle_list *list, struct rectangle old) {
+void remove_rectangle(struct Rectangle_list *list, struct Rectangle old) {
   int i;
   for(i = 0; i < list->used; i++)
   if(list->list[i].x == old.x
@@ -167,7 +168,7 @@ void remove_rectangle(struct rectangle_list *list, struct rectangle old) {
 //Prerequisites:  Rectangles a and b must not be overlapping.
 //Design:  Calculate the displacement in each axis and use pythagoras to calculate the net displacement
 //Returns -1 if source is larger than dest
-double calculate_displacement(struct rectangle source, struct rectangle dest, int *dx, int *dy) {
+double calculate_displacement(struct Rectangle source, struct Rectangle dest, int *dx, int *dy) {
   double hypotenuse;
   
   if(source.w > dest.w

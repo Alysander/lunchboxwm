@@ -1,6 +1,6 @@
 
 /*** Pixmap creation function, these pixmaps are used for double buffering reusable elements of the GUI ***/
-Pixmap create_pixmap(Display* display, enum main_pixmap type) {
+Pixmap create_pixmap(Display* display, enum Main_pixmap type) {
   Window root = DefaultRootWindow(display); 
   int screen_number = DefaultScreen (display);
   Screen* screen = DefaultScreenOfDisplay(display);
@@ -391,7 +391,7 @@ Pixmap create_pixmap(Display* display, enum main_pixmap type) {
 
 //Width and height arguments cannot be negative or zero
 //This function draws the title pop-up menu
-Pixmap create_title_pixmap(Display* display, const char* title, enum title_pixmap type) {
+Pixmap create_title_pixmap(Display* display, const char* title, enum Title_pixmap type) {
   Window root = DefaultRootWindow(display); 
   int screen_number = DefaultScreen (display);
   Screen* screen = DefaultScreenOfDisplay(display);

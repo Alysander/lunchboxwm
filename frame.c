@@ -32,7 +32,7 @@ void remove_frame(Display* display, struct Frame_list* frames, int index) {
 }
 
 /*This function is called when the close button on the frame is pressed */
-void remove_window(Display* display, Window framed_window) {
+void close_window(Display* display, Window framed_window) {
   int n, found = 0;
   Atom *protocols;
   
@@ -60,52 +60,16 @@ void remove_window(Display* display, Window framed_window) {
     printf("Sent wm_delete_window message\n");
   }
   else {
-    printf("Killed window %d\n", framed_window);
+    printf("Killed window %lu\n", (unsigned long)framed_window);
     XUnmapWindow(display, framed_window);
     XFlush(display);
     XKillClient(display, framed_window);
   }
   
 }
-/*
-void create_frame_list(Display *display, struct Workspace_list* Workspaces) {
-  
-   Create the background window 
-  frames.virtual_desktop = XCreateSimpleWindow(display, root, 0, 0
-  , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, black, black);
-  XLowerWindow(display, background_window);
-  XSetWindowBackgroundPixmap (display, frames.virtual_desktop, pixmaps.desktop_background_p );
-  XDefineCursor(display, background_window, cursors.normal);  
-  XMapWindow(display, background_window);
-}
-*/
-
-/*This function is used to add frames to windows that are already open when the WM is starting*/
-void create_startup_frames (Display *display, struct Frame_list* frames, Window sinking_seperator, Window tiling_seperator, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) {
-  unsigned int windows_length;
-  Window root, parent, children, *windows;
-  XWindowAttributes attributes;
-  root = DefaultRootWindow(display);
-  
-  XQueryTree(display, root, &parent, &children, &windows, &windows_length);
-  if(windows != NULL) for(int i = 0; i < windows_length; i++)  {
-    XGetWindowAttributes(display, windows[i], &attributes);
-    if (attributes.map_state == IsViewable && !attributes.override_redirect) {
-      create_frame(display, frames, windows[i], pixmaps, cursors);
-    }
-  }
-  XFree(windows);
-
-  if(frames->list != NULL)  for(int i = 0; i < frames->used; i++) {
-    //handle_frame_drop(display, frames, i);
-    //frames->list[i].mode = FLOATING;
-    stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator);
-  }
-}
-
 
 /*returns the frame index of the newly created window or -1 if out of memory */
-int create_frame(Display* display, struct Frame_list* frames, Window framed_window, struct frame_pixmaps *pixmaps, struct mouse_cursors *cursors) {
+int create_frame(Display* display, struct Frame_list* frames, Window framed_window, struct Pixmaps *pixmaps, struct Cursors *cursors) {
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
@@ -123,7 +87,7 @@ int create_frame(Display* display, struct Frame_list* frames, Window framed_wind
     else return -1;
     frames->max *= 2;
   }
-  printf("Creating new frame at %d with window %d\n", frames->used, framed_window);
+  printf("Creating frames->list[%d] with window %lu, connection %lu\n", frames->used, (unsigned long)framed_window, (unsigned long)display);
   XAddToSaveSet(display, framed_window); //add this window to the save set as soon as possible so that if an error occurs it is still available
   XSync(display, False);
   XGetWindowAttributes(display, framed_window, &attributes);
@@ -249,7 +213,7 @@ int create_frame(Display* display, struct Frame_list* frames, Window framed_wind
   //Property notify is used to update titles, structureNotify for destroyNotify events
 
   XSelectInput(display, frame.backing, SubstructureRedirectMask | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-  XSelectInput(display, frame.title_menu.entry, ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);  
+  XSelectInput(display, frame.title_menu.entry, ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
   
   XDefineCursor(display, frame.frame, cursors->normal);
   XDefineCursor(display, frame.titlebar, cursors->normal);
@@ -308,7 +272,7 @@ int create_frame(Display* display, struct Frame_list* frames, Window framed_wind
   return (frames->used - 1);
 } 
 
-void show_frame_state(Display *display, struct Frame *frame,  struct frame_pixmaps *pixmaps) {
+void show_frame_state(Display *display, struct Frame *frame,  struct Pixmaps *pixmaps) {
   XUnmapWindow(display, frame->title_menu.frame);
   XUnmapWindow(display, frame->mode_pulldown);
   XUnmapWindow(display, frame->close_button);
@@ -388,18 +352,6 @@ void resize_frame(Display* display, struct Frame* frame) {
   , CORNER_GRIP_SIZE, frame->h - TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2 - 1);
   
   XMoveWindow(display, frame->window, 0,0);
-  XFlush(display);
-}
-
-//currently this does nothing because the program name is not used - for reference later.
-void load_frame_program_name(Display* display, struct Frame* frame) {
-  XClassHint program_hint;
-  if(XGetClassHint(display, frame->window, &program_hint)) {
-    printf("res_name %s, res_class %s\n", program_hint.res_name, program_hint.res_class);
-    if(program_hint.res_name != NULL) XFree(program_hint.res_name);
-    //frame->program_name = program_hint.res_class;
-    if(program_hint.res_class != NULL) XFree(program_hint.res_class);
-  }
   XFlush(display);
 }
 
@@ -565,7 +517,7 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   
 }
 
-int replace_frame(Display *display, struct Frame *target, struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, struct frame_pixmaps *pixmaps) {
+int replace_frame(Display *display, struct Frame *target, struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, struct Pixmaps *pixmaps) {
   XWindowChanges changes;
   unsigned int mask = CWX | CWY | CWWidth | CWHeight;
 
@@ -615,14 +567,14 @@ void stack_frame(Display *display, struct Frame *frame, Window sinking_seperator
     XConfigureWindow(display, frame->frame, mask, &changes);
     XSetInputFocus (display, frame->window, RevertToPointerRoot, CurrentTime);
   }
-  else if(frame->mode == FLOATING) {
-    XRaiseWindow(display, frame->frame);
-    XSetInputFocus(display, frame->window, RevertToPointerRoot, CurrentTime);   
-  }
   else if(frame->mode == SINKING) {
     changes.sibling = sinking_seperator;
     //TODO revert to previously focussed window 
     XConfigureWindow(display, frame->frame, mask, &changes);
+  }  
+  else if(frame->mode == FLOATING) {
+    XRaiseWindow(display, frame->frame);
+    XSetInputFocus(display, frame->window, RevertToPointerRoot, CurrentTime);   
   }
   
   XFlush(display);

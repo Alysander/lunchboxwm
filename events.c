@@ -4,7 +4,7 @@ Therefore, they accept lots of parameters and look messy, beause there are inter
 /*
 This function responds to a user's request to unsink a window by changing its mode from sinking
 */
-void handle_frame_unsink (Display *display, struct Frame_list *frames, int index, struct frame_pixmaps *pixmaps) {
+void handle_frame_unsink (Display *display, struct Frame_list *frames, int index, struct Pixmaps *pixmaps) {
   handle_frame_drop(display, frames, index);
   show_frame_state(display, &frames->list[index], pixmaps); 
 }
@@ -96,14 +96,14 @@ remains in it's previous mode. Otherwise the window's mode is changed to tiling.
 void handle_frame_drop (Display *display, struct Frame_list *frames, int clicked_frame) {
 
   struct Frame *frame = &frames->list[clicked_frame]; 
-  struct rectangle_list free_spaces = {0, 8, NULL};
+  struct Rectangle_list free_spaces = {0, 8, NULL};
   double min_displacement = 0; 
   int min = -1;
   int min_dx = 0;
   int min_dy = 0;
   
   //make the frame into a rectangle for calculating displacement function
-  struct rectangle window =  {frame->x
+  struct Rectangle window =  {frame->x
   , frame->y
   , frame->w
   , frame->h };
@@ -201,7 +201,7 @@ minimum size the window is sunk (after a disable look is shown and the user rele
 */
 void handle_frame_move (Display *display, struct Frame *frame
 , int *pointer_start_x, int *pointer_start_y, int mouse_root_x, int mouse_root_y
-, int *was_sunk, struct frame_pixmaps *pixmaps, int *resize_x_direction, int *resize_y_direction) {
+, int *was_sunk, struct Pixmaps *pixmaps, int *resize_x_direction, int *resize_y_direction) {
   
   //the pointer start variables may be updated as the window is squished against the LHS or top of the screen
   //because of the changing relative co-ordinates of the pointer on the window.
@@ -222,9 +222,7 @@ void handle_frame_move (Display *display, struct Frame *frame
   int new_y = mouse_root_y - *pointer_start_y;
 
   //do not attempt to resize if the window is larger than the screen
-  if(frame->w <= XWidthOfScreen(screen)  
-  && frame->h <= XHeightOfScreen(screen) - MENUBAR_HEIGHT
-  && frame->min_width <= XWidthOfScreen(screen)
+  if(frame->min_width <= XWidthOfScreen(screen)
   && frame->min_height <= XHeightOfScreen(screen) - MENUBAR_HEIGHT) {
   
     if((new_x + frame->w > XWidthOfScreen(screen)) //window moving off RHS

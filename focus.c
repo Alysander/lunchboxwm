@@ -1,4 +1,4 @@
-void add_focus(Window new, Focus_list* focus) {
+void add_focus(Window new, struct Focus_list* focus) {
   remove_focus(new, focus); //remove duplicates
   if(focus->used == focus->max  ||  focus->list == NULL) {
     Window *temp = NULL;
@@ -19,7 +19,7 @@ void add_focus(Window new, Focus_list* focus) {
   focus->used++;
 }
 
-void remove_focus(Window old, Focus_list* focus) {
+void remove_focus(Window old, struct Focus_list* focus) {
   int i;
 
   //recently added windows are more likely to be removed
