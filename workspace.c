@@ -98,7 +98,6 @@ void remove_frame_list(Display *display, struct Workspace_list* workspaces, int 
     XFreePixmap(display, frames->workspace_menu.item_title_hover_p);
     XFreePixmap(display, frames->workspace_menu.item_title_active_hover_p);
     XFreePixmap(display, frames->workspace_menu.item_title_deactivated_hover_p);
-    XFreePixmap(display, frames->workspace_menu.width);
   }
   //remove the focus list
   //close the background window
