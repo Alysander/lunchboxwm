@@ -5,18 +5,19 @@
 
 /* These control which printfs are shown */
 
-#define SHOW_STARTUP                  
-#define SHOW_DESTROY_NOTIFY_EVENT     
-#define SHOW_UNMAP_NOTIFY_EVENT       
-#define SHOW_MAP_REQUEST_EVENT       
-#define SHOW_FRAME_HINTS 
-#define SHOW_CONFIGURE_REQUEST_EVENT  
-#define SHOW_BUTTON_PRESS_EVENT       
+//#define SHOW_STARTUP                  
+//#define SHOW_DESTROY_NOTIFY_EVENT     
+//#define SHOW_UNMAP_NOTIFY_EVENT       
+//#define SHOW_MAP_REQUEST_EVENT       
+//#define SHOW_FRAME_HINTS 
+//#define SHOW_CONFIGURE_REQUEST_EVENT  
+//#define SHOW_BUTTON_PRESS_EVENT       
 //#define SHOW_ENTER_NOTIFY_EVENTS      
 //#define SHOW_LEAVE_NOTIFY_EVENTS      
-#define SHOW_FRAME_DROP  
-#define SHOW_EDGE_RESIZE
-#define SHOW_BUTTON_RELEASE_EVENT     
+//#define SHOW_FRAME_DROP  
+//#define SHOW_EDGE_RESIZE
+//#define SHOW_BUTTON_RELEASE_EVENT     
+#define SHOW_PROPERTIES
 
 /**** Configure behaviour *****/
 /* This turns on a sort of "sinking" feature by */
@@ -65,7 +66,7 @@ extern Pixmap create_title_pixmap(Display* display, const char* title, enum Titl
 
 /*** frame.c ***/
 extern int create_frame            (Display *display, struct Frame_list* frames
-, Window framed_window, struct Pixmaps *pixmaps, struct Cursors *cursors);
+, Window framed_window, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Hint_atoms *atoms);
 extern void remove_frame           (Display *display, struct Frame_list* frames, int index);
 extern void resize_tiling_frame    (Display *display, struct Frame_list* frames, int index, char axis, int position, int size);
 extern void stack_frame            (Display *display, struct Frame *frame
@@ -80,6 +81,7 @@ extern void show_frame_state       (Display *display, struct Frame *frame, struc
 extern void resize_frame           (Display *display, struct Frame *frame);
 extern int replace_frame           (Display *display, struct Frame *target
 , struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, struct Pixmaps *pixmaps);  
+extern void get_frame_type        (Display *display, struct Frame *frame, struct Hint_atoms *atoms);
 
 /*** space.c ***/
 extern void add_rectangle                             (struct Rectangle_list *list, struct Rectangle new);
@@ -104,8 +106,8 @@ extern void add_focus   (Window new, struct Focus_list *focus);
 /*** workspaces.c ***/
 extern int create_frame_list        (Display *display, struct Workspace_list* workspaces, char *workspace_name, struct Pixmaps *pixmaps, struct Cursors *cursors);
 extern void remove_frame_list       (Display *display, struct Workspace_list* workspaces, int index);
-extern int create_startup_workspaces(Display *display, struct Workspace_list *workspaces, struct Pixmaps *pixmaps, struct Cursors *cursors);
-extern int add_frame_to_workspace   (Display *display, struct Workspace_list *workspaces, Window window, struct Pixmaps *pixmaps, struct Cursors *cursors);
+extern int create_startup_workspaces(Display *display, struct Workspace_list *workspaces, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Hint_atoms *atoms);
+extern int add_frame_to_workspace   (Display *display, struct Workspace_list *workspaces, Window window, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Hint_atoms *atoms);
 extern void change_to_workspace     (Display *display, struct Workspace_list *workspaces, int index,  Window sinking_seperator, Window tiling_seperator);
 
 #include "draw.c"
@@ -125,7 +127,7 @@ void end_event_loop(int sig) {
   done = True;
   if(display != NULL) {
     XSetInputFocus(display, DefaultRootWindow(display), RevertToPointerRoot, CurrentTime);
-    XFlush(display);  
+    XSync(display, False);  
   }
 }
 
@@ -138,37 +140,22 @@ int supress_xerror(Display *display, XErrorEvent *event) {
   return 0;
 }
 
-void list_properties(Display *display, Window window) {
-  int total;
-  Atom *list = XListProperties(display, window, &total);
-  char *name;
-  for(int i = 0; i < total; i++) {
-    name = NULL;
-    name = XGetAtomName(display, list[i]);
-    if(name != NULL) { 
-      printf("Property: %s\n", name);  
-      XFree(name);
-    }
-  }
-  XFree(list);
-}
-
 int main (int argc, char* argv[]) {
   Display* display = NULL; 
   Screen* screen;  
   int screen_number;
   int black;
-    
+
   XEvent event;
   Window root;
-  
+
   Window pulldown; //this is a sort of "pointer" window.  
                    //it has the window ID of the currently open pop-up
                    //this reduces state and allows the currently open pop-up to be removed
                    //from the screen.
   Window sinking_seperator; //this window is always above sunk windows.
   Window tiling_seperator;  //this window is always below tiled windows.
-  
+
   struct Menubar menubar;  
   struct Pixmaps pixmaps;
   struct Cursors cursors;
@@ -181,7 +168,7 @@ int main (int argc, char* argv[]) {
                              //currently requires num_lock to be off
 
   int grab_move = 0; //used by EnterNotfy, LeaveNotify and ButtonPress to allow alt+click moves of windows
-  
+
   int pointer_start_x, pointer_start_y; //used by ButtonPress and motionNotify for window movement arithmetic
   int was_sunk = 0; //for showing and cancelling sinking state on extreme squish
   
@@ -247,7 +234,7 @@ int main (int argc, char* argv[]) {
 
   create_menubar(display, &menubar, &pixmaps, &cursors);
   create_mode_menu(display, &mode_menu, &pixmaps, &cursors);
-  create_startup_workspaces(display, &workspaces, &pixmaps, &cursors);
+  create_startup_workspaces(display, &workspaces, &pixmaps, &cursors, &atoms);
   
   current_workspace = workspaces.used - 1;
   change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator);  
@@ -336,7 +323,7 @@ int main (int argc, char* argv[]) {
           XWindowAttributes attributes;
           XGetWindowAttributes(display, event.xmaprequest.window, &attributes);
           if(attributes.override_redirect == False) {
-            new_workspace = add_frame_to_workspace(display, &workspaces, event.xmaprequest.window, &pixmaps, &cursors);
+            new_workspace = add_frame_to_workspace(display, &workspaces, event.xmaprequest.window, &pixmaps, &cursors, &atoms);
             if(new_workspace == workspaces.used - 1) { //if it is a newly created workspace
               current_workspace = new_workspace;
               change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator);
@@ -898,7 +885,7 @@ int main (int argc, char* argv[]) {
             , cursors.normal, CurrentTime);
             XFlush(display);
             show_title_menu(display, menubar.window_menu, frames, -1
-            , event.xbutton.x_root, event.xbutton.y_root);
+            , event.xbutton.x_root - event.xbutton.x, event.xbutton.y_root - event.xbutton.y);
           }
           else if (clicked_widget == menubar.program_menu) {
             printf("Program menu opening\n");
@@ -912,7 +899,7 @@ int main (int argc, char* argv[]) {
             , cursors.normal, CurrentTime);
             XFlush(display);
             show_workspace_menu(display, menubar.program_menu, &workspaces, current_workspace
-            , event.xbutton.x_root, event.xbutton.y_root);
+            , event.xbutton.x_root - event.xbutton.x - EDGE_WIDTH, event.xbutton.y_root - event.xbutton.y);
           }
           else for(int k = 0; k < workspaces.used; k++) {
             struct Frame_list *frames = &workspaces.list[k];
@@ -942,7 +929,8 @@ int main (int argc, char* argv[]) {
                 XChangeActivePointerGrab(display, PointerMotionMask | ButtonPressMask | ButtonReleaseMask
                 , cursors.normal, CurrentTime);
                 pulldown = mode_menu.frame;
-                show_mode_menu(display, frames->list[i].mode_hotspot, &mode_menu, &frames->list[i], &pixmaps, event.xbutton.x_root, event.xbutton.y_root);
+                show_mode_menu(display, frames->list[i].mode_hotspot, &mode_menu, &frames->list[i], &pixmaps
+                , event.xbutton.x_root - event.xbutton.x + EDGE_WIDTH, event.xbutton.y_root - event.xbutton.y - EDGE_WIDTH*2);
                 
                 break;
               }
@@ -955,7 +943,8 @@ int main (int argc, char* argv[]) {
                 , PointerMotionMask | ButtonPressMask | ButtonReleaseMask
                 , cursors.normal, CurrentTime);
                 pulldown = frames->title_menu;
-                show_title_menu(display, frames->list[i].title_menu.hotspot, frames, i, event.xbutton.x_root, event.xbutton.y_root);
+                show_title_menu(display, frames->list[i].title_menu.hotspot, frames, i
+                , event.xbutton.x_root - event.xbutton.x, event.xbutton.y_root - event.xbutton.y - EDGE_WIDTH);
                 XMapWindow(display, pulldown);
                 
                 XFlush(display);
@@ -1199,7 +1188,7 @@ int main (int argc, char* argv[]) {
   free_pixmaps(display, &pixmaps);
   free_cursors(display, &cursors);
   
-  remove_frame_list(display, &workspaces, 0);
+  for(int k = 0; k < workspaces.used; k++) remove_frame_list(display, &workspaces, k);
     
   XCloseDisplay(display);
   
@@ -1331,6 +1320,21 @@ void free_cursors (Display *display, struct Cursors *cursors) {
   XFreeCursor(display, cursors->resize_tl_br);
 }
 
+void list_properties(Display *display, Window window) {
+  int total;
+  Atom *list = XListProperties(display, window, &total);
+  char *name;
+  for(int i = 0; i < total; i++) {
+    name = NULL;
+    name = XGetAtomName(display, list[i]);
+    if(name != NULL) { 
+      printf("Property: %s\n", name);  
+      XFree(name);
+    }
+  }
+  XFree(list);
+}
+
 void load_hints (Display *display, struct Hint_atoms *atoms) {
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
@@ -1341,20 +1345,23 @@ void load_hints (Display *display, struct Hint_atoms *atoms) {
   //this window is closed automatically by X11 when the connection is closed.
   Window program_instance = XCreateSimpleWindow(display, root, 0, 0, 1, 1, 0, BlackPixelOfScreen(screen), BlackPixelOfScreen(screen));
   
-  number_of_atoms++; atoms->supported              = XInternAtom(display, "_NET_SUPPORTED", False);
-  number_of_atoms++; atoms->supporting_wm_check    = XInternAtom(display, "_NET_SUPPORTING_WM_CHECK", False);
-  number_of_atoms++; atoms->number_of_desktops     = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);
-  number_of_atoms++; atoms->desktop_geometry       = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);
-  number_of_atoms++; atoms->wm_full_placement      = XInternAtom(display, "_NET_WM_FULL_PLACEMENT", False);
-  number_of_atoms++; atoms->frame_extents          = XInternAtom(display, "_NET_FRAME_EXTENTS", False);
-  number_of_atoms++; atoms->wm_window_type         = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
-  number_of_atoms++; atoms->wm_window_type_normal  = XInternAtom(display, "_NET_WM_WINDOW_TYPE_NORMAL", False);
-  number_of_atoms++; atoms->wm_window_type_dock    = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DOCK", False);
-  number_of_atoms++; atoms->wm_window_type_splash  = XInternAtom(display, "_NET_WM_WINDOW_TYPE_SPLASH", False);  //no frame
-  number_of_atoms++; atoms->wm_window_type_dialog  = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DIALOG", False);  //can be transient
-  number_of_atoms++; atoms->wm_window_type_utility = XInternAtom(display, "_NET_WM_WINDOW_TYPE_UTILITY", False); //can be transient
-  number_of_atoms++; atoms->wm_state               = XInternAtom(display, "_NET_WM_STATE", False);
-  number_of_atoms++; atoms->wm_state_fullscreen    = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", False);
+  number_of_atoms++; atoms->supported                  = XInternAtom(display, "_NET_SUPPORTED", False);
+  number_of_atoms++; atoms->supporting_wm_check        = XInternAtom(display, "_NET_SUPPORTING_WM_CHECK", False);
+  number_of_atoms++; atoms->number_of_desktops         = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);
+  number_of_atoms++; atoms->desktop_geometry           = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);
+  number_of_atoms++; atoms->wm_full_placement          = XInternAtom(display, "_NET_WM_FULL_PLACEMENT", False);
+  number_of_atoms++; atoms->frame_extents              = XInternAtom(display, "_NET_FRAME_EXTENTS", False);
+  number_of_atoms++; atoms->wm_window_type             = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
+  number_of_atoms++; atoms->wm_window_type_normal      = XInternAtom(display, "_NET_WM_WINDOW_TYPE_NORMAL", False);
+  number_of_atoms++; atoms->wm_window_type_dock        = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DOCK", False);
+  number_of_atoms++; atoms->wm_window_type_desktop     = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DESKTOP", False);
+  number_of_atoms++; atoms->wm_window_type_splash      = XInternAtom(display, "_NET_WM_WINDOW_TYPE_SPLASH", False);  //no frame
+  number_of_atoms++; atoms->wm_window_type_dialog      = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DIALOG", False);  //can be transient
+  number_of_atoms++; atoms->wm_window_type_utility     = XInternAtom(display, "_NET_WM_WINDOW_TYPE_UTILITY", False); //can be transient
+  number_of_atoms++; atoms->wm_state                   = XInternAtom(display, "_NET_WM_STATE", False);
+  number_of_atoms++; atoms->wm_state_demands_attention = XInternAtom(display, "_NET_WM_STATE_DEMANDS_ATTENTION", False);
+  number_of_atoms++; atoms->wm_state_modal             = XInternAtom(display, "_NET_WM_STATE_MODAL", False);
+  number_of_atoms++; atoms->wm_state_fullscreen        = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", False);
   
   //list all ewmh hints supported.
   XChangeProperty(display, root, atoms->supported, XA_ATOM, 32, PropModeReplace, ewmh_atoms, number_of_atoms);

@@ -123,7 +123,7 @@ char *make_default_program_name(Display *display, Window window, char *name) {
   XFlush(display);
 }
 
-int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window window, struct Pixmaps *pixmaps, struct Cursors *cursors) {
+int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window window, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Hint_atoms *atoms) {
   char *program_name = load_program_name(display, window);
   int k;
     
@@ -148,12 +148,12 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
       return -1;
     }
   }
-  create_frame(display, &workspaces->list[k], window, pixmaps, cursors);
+  create_frame(display, &workspaces->list[k], window, pixmaps, cursors, atoms);
 
   return k;
 }
 
-int create_startup_workspaces(Display *display, struct Workspace_list *workspaces, struct Pixmaps *pixmaps, struct Cursors *cursors) {
+int create_startup_workspaces(Display *display, struct Workspace_list *workspaces, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Hint_atoms *atoms) {
   unsigned int windows_length;
   Window root, parent, children, *windows;
   XWindowAttributes attributes;
@@ -166,7 +166,7 @@ int create_startup_workspaces(Display *display, struct Workspace_list *workspace
   if(windows != NULL) for(int i = 0; i < windows_length; i++)  {
     XGetWindowAttributes(display, windows[i], &attributes);
     if(attributes.map_state == IsViewable && !attributes.override_redirect)  {
-      add_frame_to_workspace(display, workspaces, windows[i], pixmaps, cursors);
+      add_frame_to_workspace(display, workspaces, windows[i], pixmaps, cursors, atoms);
     }
   }
   XFree(windows);

@@ -185,15 +185,36 @@ void show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *m
   place_popup_menu(display, calling_widget, mode_menu->frame, x, y, width, height);
 }
 
+/*
 void place_popup_menu(Display *display, Window calling_widget, Window popup_menu, int x, int y, int width, int height) {
   Screen* screen = DefaultScreenOfDisplay(display);
   //calling widget is currently not being used, but an XGetWindowAttributes could be used to get its size
   //and position and then ensure that the popup is not overlapping it.
   //however, since this code is currently simpler and a bit faster to use, I prefer it.
-  if(x + width > XWidthOfScreen(screen)) x -= width;
-  if(y + height > XHeightOfScreen(screen)) y -= height;
-  if(x < 0) x = XWidthOfScreen(screen) - width;  
-  if(y < 0) y = XHeightOfScreen(screen) - height;
+
+  if(x + width > XWidthOfScreen(screen)) x = XWidthOfScreen(screen) - width;
+  if(y + height > XHeightOfScreen(screen)) y = XHeightOfScreen(screen) - height;
+
+  XMoveResizeWindow(display, popup_menu, x, y, width, height);
+  XRaiseWindow(display, popup_menu);
+  XMapWindow(display, popup_menu);
+  XFlush(display);
+}
+*/
+
+void place_popup_menu(Display *display, Window calling_widget, Window popup_menu, int x, int y, int width, int height) {
+  Screen* screen = DefaultScreenOfDisplay(display);
+  //calling widget is currently not being used, but an XGetWindowAttributes could be used to get its size
+  //and position and then ensure that the popup is not overlapping it.
+  //however, since this code is currently simpler and a bit faster to use, I prefer it.
+  XWindowAttributes details;
+  
+  XGetWindowAttributes(display, calling_widget, &details);
+  y += details.height;
+  if(y + height > XHeightOfScreen(screen)) y = y - (details.height + height); //either side of the widget
+  if(y < 0) y = XHeightOfScreen(screen) - height;  
+  if(x + width > XWidthOfScreen(screen)) x = XWidthOfScreen(screen) - width;
+  
   XMoveResizeWindow(display, popup_menu, x, y, width, height);
   XRaiseWindow(display, popup_menu);
   XMapWindow(display, popup_menu);

@@ -91,18 +91,32 @@ int create_frame(Display* display, struct Frame_list* frames, Window framed_wind
   XAddToSaveSet(display, framed_window); //add this window to the save set as soon as possible so that if an error occurs it is still available
   XSync(display, False);
   XGetWindowAttributes(display, framed_window, &attributes);
-  
+
   /*** Set up defaults ***/
   frame.selected = 0;
   frame.window_name = NULL;
-  frame.mode = FLOATING;
-  frame.window = framed_window;      
+  frame.window = framed_window;
+  frame.mode = FLOATING;     
   frame.title_menu.entry = root;
   frame.x = attributes.x;
   frame.y = attributes.y;
   frame.w = attributes.width;  
   frame.h = attributes.height;  
-  get_frame_hints(display, &frame);
+  get_frame_hints(display, &frame);  
+  
+  get_frame_type (display, &frame, atoms);
+  if(frame.type == desktop) {
+    XReparentWindow(display, frame.window, frames->virtual_desktop, 0, 0);
+    XResizeWindow(display, frame.window
+    , XWidthOfScreen(screen), XHeightOfScreen(screen) - MENUBAR_HEIGHT);
+    XMapWindow(display, frame.window);
+    XFlush(display);
+    //don't allocate a frame structure for the desktop window because it doesn't need a frame.
+    //It is highly unlikely a single program would have more than one desktop window but
+    //if it doesn this will jut map one over the other. Which is what current ones do anyway.
+    //TODO make sure the remove_frame_list checks for children and reparents them too
+    return -1;
+  }
     
   frame.frame =         XCreateSimpleWindow(display, root, frame.x, frame.y
   , frame.w, frame.h, 0, black, black); 
@@ -876,3 +890,99 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
   return;
 }
 
+void get_frame_type(Display *display, struct Frame *frame, struct Hint_atoms *atoms) {
+  unsigned char *contents = NULL;
+  Atom return_type;
+  int return_format;
+  unsigned long items;
+  unsigned long bytes;
+  XGetWindowProperty(display, frame->window, atoms->wm_window_type, 0, 1 //long long_length?
+  , False, AnyPropertyType, &return_type, &return_format,  &items, &bytes, &contents);
+
+  frame->type = normal; 
+  if(return_type == XA_ATOM  && contents != NULL) {
+    Atom *window_type = (Atom*)contents;
+    #ifdef SHOW_PROPERTIES
+    printf("Number of atoms %lu\n", items);
+    #endif
+    for(int i =0; i < items; i++) {
+    //these are fairly mutually exclusive so be suprised if there are others
+      if(window_type[i] == atoms->wm_window_type_desktop) {
+        #ifdef SHOW_PROPERTIES
+        printf("type: desktop\n");
+        #endif
+        frame->type = desktop;
+      }
+      else if(window_type[i] == atoms->wm_window_type_normal) {
+        #ifdef SHOW_PROPERTIES
+        printf("type: normal\n");
+        #endif
+        frame->type = normal;
+      }
+      else if(window_type[i] == atoms->wm_window_type_dock) {
+        #ifdef SHOW_PROPERTIES
+        printf("type: dock\n");
+        #endif
+        frame->type = dock;
+      }
+      else if(window_type[i] == atoms->wm_window_type_splash) {
+        #ifdef SHOW_PROPERTIES
+        printf("type: splash\n");
+        #endif
+        frame->type = splash;
+      }
+      else if(window_type[i] ==atoms->wm_window_type_dialog) {
+        #ifdef SHOW_PROPERTIES
+        printf("type: dialog\n");
+        #endif
+        frame->type = dialog;
+      }
+      else if(window_type[i] == atoms->wm_window_type_utility) {
+        #ifdef SHOW_PROPERTIES
+        printf("type: utility\n");
+        #endif
+        frame->type = utility;
+      }
+    }
+  }
+  if(contents != NULL) XFree(contents);
+}
+
+void get_frame_state(Display *display, struct Frame *frame, struct Hint_atoms *atoms) {
+  unsigned char *contents = NULL;
+  Atom return_type;
+  int return_format;
+  unsigned long items;
+  unsigned long bytes;
+  XGetWindowProperty(display, frame->window, atoms->wm_state, 0, 1 //long long_length?
+  , False, AnyPropertyType, &return_type, &return_format,  &items, &bytes, &contents);
+
+  frame->state = unstated; 
+  if(return_type == XA_ATOM  && contents != NULL) {
+    Atom *window_state = (Atom*)contents;
+    #ifdef SHOW_PROPERTIES
+    printf("Number of atoms %lu\n", items);
+    #endif
+    for(int i =0; i < items; i++) {
+      if(window_state[i] == atoms->wm_state_demands_attention) {
+        #ifdef SHOW_PROPERTIES
+        printf("state: urgent\n");
+        #endif
+        frame->state = demands_attention;
+      }
+      else if(window_state[i] == atoms->wm_state_modal) {
+        #ifdef SHOW_PROPERTIES
+        printf("type/state: modal dialog\n");
+        #endif
+        frame->type = modal_dialog;
+      }
+      else if(window_state[i] == atoms->wm_state_fullscreen) {
+        #ifdef SHOW_PROPERTIES
+        printf("state: fullscreen\n");
+        #endif
+        frame->state = fullscreen;
+      }
+    }
+  }
+  if(contents != NULL) XFree(contents);
+}

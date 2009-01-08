@@ -91,7 +91,6 @@ a best-fit algorithm is used to determine the closest size.
 If all spaces are smaller than the window's minimum size 
 (which can only happen if the window's mode is being changed) the window
 remains in it's previous mode. Otherwise the window's mode is changed to tiling.
-
 */
 void handle_frame_drop (Display *display, struct Frame_list *frames, int clicked_frame) {
 

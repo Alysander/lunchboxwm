@@ -69,6 +69,7 @@
 #define BODY            0.01, 0.6, 0.0, 1
 */
 
+/*** Convenience Macros ***/
 #define INTERSECTS_BEFORE(x1, w1, x2, w2) (x1 + w1 > x2  &&  x1 <= x2)
 #define INTERSECTS_AFTER(x1, w1, x2, w2)  (x1 < x2 + w2  &&  x1 + w1 >= x2 + w2)
 #define INTERSECTS(x1, w1, x2, w2) (INTERSECTS_BEFORE(x1, w1, x2, w2) || INTERSECTS_AFTER(x1, w1, x2, w2))
@@ -88,6 +89,22 @@ Program/workspace can be a variable in frame.
    
 ****/
 
+enum Window_type {
+  desktop,
+  normal,
+  dock,
+  splash,
+  dialog,
+  modal_dialog,
+  utility,
+  status //NOT EWMH
+};
+
+enum Window_state {
+  fullscreen,
+  demands_attention,
+  unstated
+};
 
 struct Frame {
   Window window;
@@ -95,10 +112,13 @@ struct Frame {
 
   int x,y,w,h;
   int mode; //FLOATING || TILING || SINKING
+  enum Window_type type; //EWMH 
+  enum Window_state state; //EWMH 
   int selected;
   int min_width, max_width;
   int min_height, max_height;
   
+  Window transient; //parent window
   Window frame, body, innerframe, titlebar, close_button, mode_pulldown, selection_indicator;
   Window mode_hotspot, close_hotspot;
   Window backing;   //backing is the same dimensions as the framed window.  
@@ -219,16 +239,19 @@ struct Hint_atoms {
   , number_of_desktops       // "_NET_NUMBER_OF_DESKTOPS" //always 1
   , desktop_geometry         // "_NET_DESKTOP_GEOMETRY" //this is currently the same size as the screen
   
-  , wm_full_placement        // "_NET_WM_FULL_PLACEMENT"
-  , frame_extents            // "_NET_FRAME_EXTENTS"
-  , wm_window_type           // "_NET_WM_WINDOW_TYPE"
-  , wm_window_type_normal    // "_NET_WM_WINDOW_TYPE_NORMAL"
-  , wm_window_type_dock      // "_NET_WM_WINDOW_TYPE_DOCK"
-  , wm_window_type_splash    // "_NET_WM_WINDOW_TYPE_SPLASH"  //no frame
-  , wm_window_type_dialog    // "_NET_WM_WINDOW_TYPE_DIALOG"  //can be transient
-  , wm_window_type_utility   // "_NET_WM_WINDOW_TYPE_UTILITY" //can be transient
-  , wm_state                 // "_NET_WM_STATE"
-  , wm_state_fullscreen;     // "_NET_WM_STATE_FULLSCREEN"
+  , wm_full_placement          // "_NET_WM_FULL_PLACEMENT"
+  , frame_extents              // "_NET_FRAME_EXTENTS"
+  , wm_window_type             // "_NET_WM_WINDOW_TYPE"
+  , wm_window_type_normal      // "_NET_WM_WINDOW_TYPE_NORMAL"
+  , wm_window_type_dock        // "_NET_WM_WINDOW_TYPE_DOCK"
+  , wm_window_type_desktop     // "_NET_WM_WINDOW_TYPE_DESKTOP"  //no frame
+  , wm_window_type_splash      // "_NET_WM_WINDOW_TYPE_SPLASH"  //no frame
+  , wm_window_type_dialog      // "_NET_WM_WINDOW_TYPE_DIALOG"  //can be transient
+  , wm_window_type_utility     // "_NET_WM_WINDOW_TYPE_UTILITY" //can be transient
+  , wm_state                   // "_NET_WM_STATE"
+  , wm_state_demands_attention // "_NET_WM_STATE_DEMANDS_ATTENTION"
+  , wm_state_modal             // "_NET_WM_STATE_MODAL"  //can be transient - for the specified window
+  , wm_state_fullscreen;       // "_NET_WM_STATE_FULLSCREEN"
 
   //make sure this comes last  
 };
