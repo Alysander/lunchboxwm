@@ -229,7 +229,7 @@ struct Pixmaps {
   ,selection_p, arrow_normal_p, arrow_pressed_p, arrow_deactivated_p;
 };
 
-struct Hint_atoms {    
+struct Atoms {    
   Atom name                  // "WM_NAME"
   , normal_hints             // "WM_NORMAL_HINTS"
 

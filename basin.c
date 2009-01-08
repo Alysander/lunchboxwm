@@ -41,9 +41,10 @@ It can be annoying when restarting the window manager as it resets the position.
 int supress_xerror (Display *display, XErrorEvent *event);
 void list_properties (Display *display, Window window);
 //int main 
+void create_seperators(Display *display, Window *sinking_seperator, Window *tiling_seperator, Window *floating_seperator);
 void load_pixmaps  (Display *display, struct Pixmaps *pixmaps);
 void load_cursors  (Display *display, struct Cursors *cursors);
-void load_hints    (Display *display, struct Hint_atoms *atoms);
+void load_hints    (Display *display, struct Atoms *atoms);
 void free_pixmaps  (Display *display, struct Pixmaps *pixmaps);
 void free_cursors  (Display *display, struct Cursors *cursors);
 
@@ -66,22 +67,22 @@ extern Pixmap create_title_pixmap(Display* display, const char* title, enum Titl
 
 /*** frame.c ***/
 extern int create_frame            (Display *display, struct Frame_list* frames
-, Window framed_window, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Hint_atoms *atoms);
+, Window framed_window, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Atoms *atoms);
 extern void remove_frame           (Display *display, struct Frame_list* frames, int index);
 extern void resize_tiling_frame    (Display *display, struct Frame_list* frames, int index, char axis, int position, int size);
 extern void stack_frame            (Display *display, struct Frame *frame
-, Window sinking_seperator, Window tiling_seperator);
+, Window sinking_seperator, Window tiling_seperator, Window floating_seperator);
 extern void move_frame             (Display *display, struct Frame *frame);
 extern void close_window           (Display *display, Window framed_window);
-extern char* get_frame_program_name(Display *display, struct Frame *frame); //must use XFree
 extern void free_frame_name        (Display *display, struct Frame *frame);
-extern void load_frame_name        (Display *display, struct Frame *frame); //must use XFree
+extern void load_frame_name        (Display *display, struct Frame *frame);
 extern void get_frame_hints        (Display *display, struct Frame *frame);
 extern void show_frame_state       (Display *display, struct Frame *frame, struct Pixmaps *pixmaps);
 extern void resize_frame           (Display *display, struct Frame *frame);
 extern int replace_frame           (Display *display, struct Frame *target
-, struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, struct Pixmaps *pixmaps);  
-extern void get_frame_type        (Display *display, struct Frame *frame, struct Hint_atoms *atoms);
+, struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, Window floating_seperator, struct Pixmaps *pixmaps);  
+extern void get_frame_type        (Display *display, struct Frame *frame, struct Atoms *atoms);
+extern void get_frame_state(Display *display, struct Frame *frame, struct Atoms *atoms);
 
 /*** space.c ***/
 extern void add_rectangle                             (struct Rectangle_list *list, struct Rectangle new);
@@ -106,9 +107,9 @@ extern void add_focus   (Window new, struct Focus_list *focus);
 /*** workspaces.c ***/
 extern int create_frame_list        (Display *display, struct Workspace_list* workspaces, char *workspace_name, struct Pixmaps *pixmaps, struct Cursors *cursors);
 extern void remove_frame_list       (Display *display, struct Workspace_list* workspaces, int index);
-extern int create_startup_workspaces(Display *display, struct Workspace_list *workspaces, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Hint_atoms *atoms);
-extern int add_frame_to_workspace   (Display *display, struct Workspace_list *workspaces, Window window, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Hint_atoms *atoms);
-extern void change_to_workspace     (Display *display, struct Workspace_list *workspaces, int index,  Window sinking_seperator, Window tiling_seperator);
+extern int create_startup_workspaces(Display *display, struct Workspace_list *workspaces, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Atoms *atoms);
+extern int add_frame_to_workspace   (Display *display, struct Workspace_list *workspaces, Window window, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Atoms *atoms);
+extern void change_to_workspace     (Display *display, struct Workspace_list *workspaces, int index,  Window sinking_seperator, Window tiling_seperator, Window floating_seperator);
 
 #include "draw.c"
 #include "frame.c"
@@ -141,11 +142,7 @@ int supress_xerror(Display *display, XErrorEvent *event) {
 }
 
 int main (int argc, char* argv[]) {
-  Display* display = NULL; 
-  Screen* screen;  
-  int screen_number;
-  int black;
-
+  Display* display = NULL;
   XEvent event;
   Window root;
 
@@ -154,13 +151,14 @@ int main (int argc, char* argv[]) {
                    //this reduces state and allows the currently open pop-up to be removed
                    //from the screen.
   Window sinking_seperator; //this window is always above sunk windows.
-  Window tiling_seperator;  //this window is always below tiled windows.
-
+  Window tiling_seperator;  //this window is always above tiled windows.
+  Window floating_seperator; //this window is always above floating windows.
+  
   struct Menubar menubar;  
   struct Pixmaps pixmaps;
   struct Cursors cursors;
   struct Workspace_list workspaces= {0, 16, NULL};
-  struct Hint_atoms atoms;
+  struct Atoms atoms;
 
   struct Mode_menu mode_menu; //this window is created and reused.
   
@@ -210,9 +208,7 @@ int main (int argc, char* argv[]) {
   #endif
     
   root = DefaultRootWindow(display);
-  screen = DefaultScreenOfDisplay(display);
-  screen_number = DefaultScreen (display);
-  black = BlackPixelOfScreen(screen);
+
   pulldown = root;
   clicked_widget = root;
   
@@ -222,22 +218,14 @@ int main (int argc, char* argv[]) {
   load_pixmaps (display, &pixmaps);
   load_cursors (display, &cursors);
   load_hints(display, &atoms);
-
-  tiling_seperator = XCreateWindow(display, root, 0, 0
-  , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
-  sinking_seperator = XCreateWindow(display, root, 0, 0
-  , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
-  XLowerWindow(display, tiling_seperator);  
-  XLowerWindow(display, sinking_seperator);
-
-  XFlush(display);
-
+  
+  create_seperators(display, &sinking_seperator, &tiling_seperator, &floating_seperator);
   create_menubar(display, &menubar, &pixmaps, &cursors);
   create_mode_menu(display, &mode_menu, &pixmaps, &cursors);
   create_startup_workspaces(display, &workspaces, &pixmaps, &cursors, &atoms);
   
   current_workspace = workspaces.used - 1;
-  change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator);  
+  change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator, floating_seperator);  
   
   /* Passive alt+click grab for moving windows */
   XGrabButton(display, Button1, Mod1Mask, root, False, ButtonPressMask | ButtonMotionMask
@@ -296,7 +284,7 @@ int main (int argc, char* argv[]) {
                 //TODO change workspace
                 if(workspaces.used != 0) {
                   current_workspace = 0;
-                  change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator);
+                  change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator, floating_seperator);
                 }
                 else current_workspace = -1;
               }
@@ -326,7 +314,7 @@ int main (int argc, char* argv[]) {
             new_workspace = add_frame_to_workspace(display, &workspaces, event.xmaprequest.window, &pixmaps, &cursors, &atoms);
             if(new_workspace == workspaces.used - 1) { //if it is a newly created workspace
               current_workspace = new_workspace;
-              change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator);
+              change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator, floating_seperator);
             }
             //don't bring into the wrong workspace!
             else if(new_workspace != current_workspace) XLowerWindow(display, event.xmaprequest.window); 
@@ -413,7 +401,7 @@ int main (int argc, char* argv[]) {
             || event.xbutton.window == frames->list[i].b_grip
             || (event.xbutton.window == frames->list[i].backing && do_click_to_focus)) {
             
-              stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator);
+              stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator, floating_seperator);
 
               if(do_click_to_focus) { //EnterNotify on the framed window and has now been clicked.
                 #ifdef SHOW_BUTTON_PRESS_EVENT
@@ -778,7 +766,7 @@ int main (int argc, char* argv[]) {
 
         if(was_sunk &&  clicked_frame != -1  &&  current_workspace != -1) {
           struct Frame_list *frames = &workspaces.list[current_workspace];
-          stack_frame(display, &frames->list[clicked_frame], sinking_seperator, tiling_seperator); //TODO
+          stack_frame(display, &frames->list[clicked_frame], sinking_seperator, tiling_seperator, floating_seperator); //TODO
         }
         was_sunk = 0;
 
@@ -808,7 +796,7 @@ int main (int argc, char* argv[]) {
                   handle_frame_drop(display, frames, i);
                   show_frame_state(display, &frames->list[i], &pixmaps); //Redrawing mode pulldown
                 }
-                stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator);
+                stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator, floating_seperator);
                 break;
               }
               if(i != frames->used) break;
@@ -828,7 +816,7 @@ int main (int argc, char* argv[]) {
                 printf("Changing to workspace %s\n", workspaces.list[k].workspace_name);
                 #endif
                 current_workspace = k;                
-                change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator);
+                change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator, floating_seperator);
                 break;
               }
             }
@@ -845,7 +833,7 @@ int main (int argc, char* argv[]) {
                   #endif
                   handle_frame_drop(display, frames, clicked_frame);
                 }
-                stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator);
+                stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator, floating_seperator);
                 show_frame_state(display, &frames->list[i], &pixmaps); //Redrawing mode pulldown
                 break;
               }
@@ -855,7 +843,7 @@ int main (int argc, char* argv[]) {
                 //Now we need to identify which window to put here.
                 for(int j = 0; j < frames->used; j++) {
                   if(event.xbutton.window == frames->list[j].title_menu.entry) {
-                    replace_frame(display, &frames->list[i], &frames->list[j], sinking_seperator, tiling_seperator, &pixmaps);
+                    replace_frame(display, &frames->list[i], &frames->list[j], sinking_seperator, tiling_seperator, floating_seperator, &pixmaps);
                     break;
                   }
                 }
@@ -1044,7 +1032,6 @@ int main (int argc, char* argv[]) {
           for(i = 0; i < frames->used; i++) {
             if(event.xproperty.window == frames->list[i].window) {
               if( event.xproperty.atom == XA_WM_NAME) {
-                free_frame_name(display, &frames->list[i]);
                 load_frame_name(display, &frames->list[i]);
                 resize_frame(display, &frames->list[i]);
               }
@@ -1111,7 +1098,7 @@ int main (int argc, char* argv[]) {
                   frames->list[i].mode = FLOATING;
                   show_frame_state(display, &frames->list[i], &pixmaps);
                 }
-                stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator);
+                stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator, floating_seperator);
               }
               resize_frame(display, &frames->list[i]);
               break;
@@ -1194,6 +1181,28 @@ int main (int argc, char* argv[]) {
   
   printf(".......... \n");
   return 1;
+}
+
+void create_seperators(Display *display, Window *sinking_seperator, Window *tiling_seperator, Window *floating_seperator) {
+  XSetWindowAttributes set_attributes;
+  Window root = DefaultRootWindow(display);
+  Screen *screen = DefaultScreenOfDisplay(display);
+
+  *tiling_seperator = XCreateWindow(display, root, 0, 0
+  , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+  *sinking_seperator = XCreateWindow(display, root, 0, 0
+  , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+  *floating_seperator = XCreateWindow(display, root, 0, 0
+  , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+
+  set_attributes.override_redirect = True;
+  XChangeWindowAttributes(display, *sinking_seperator, CWOverrideRedirect, &set_attributes);
+  XChangeWindowAttributes(display, *tiling_seperator, CWOverrideRedirect, &set_attributes);
+  XChangeWindowAttributes(display, *floating_seperator, CWOverrideRedirect, &set_attributes);
+  XLowerWindow(display, *floating_seperator);
+  XLowerWindow(display, *tiling_seperator);
+  XLowerWindow(display, *sinking_seperator);
+  XFlush(display);
 }
 
 void load_pixmaps (Display *display, struct Pixmaps *pixmaps) {
@@ -1335,7 +1344,7 @@ void list_properties(Display *display, Window window) {
   XFree(list);
 }
 
-void load_hints (Display *display, struct Hint_atoms *atoms) {
+void load_hints (Display *display, struct Atoms *atoms) {
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
 
@@ -1343,6 +1352,7 @@ void load_hints (Display *display, struct Hint_atoms *atoms) {
   int number_of_atoms = 0;
   static int desktops = 1;
   //this window is closed automatically by X11 when the connection is closed.
+  //this is supposed to be used to save the required flags. TODO review this
   Window program_instance = XCreateSimpleWindow(display, root, 0, 0, 1, 1, 0, BlackPixelOfScreen(screen), BlackPixelOfScreen(screen));
   
   number_of_atoms++; atoms->supported                  = XInternAtom(display, "_NET_SUPPORTED", False);

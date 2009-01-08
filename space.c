@@ -88,7 +88,7 @@ struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spac
         }
       }
       if(INTERSECTS(free_spaces.list[j].x, free_spaces.list[j].w, used_spaces->list[i].x, used_spaces->list[i].w) ) {
-        printf("i %d intersects j %d in x\n", i, j);
+        //printf("i %d intersects j %d in x\n", i, j);
         if(INTERSECTS_BEFORE(free_spaces.list[j].y, free_spaces.list[j].h, used_spaces->list[i].y, used_spaces->list[i].h) ) {
           //the free space comes before the placed rectangle, modify it's Top
           new = free_spaces.list[j];

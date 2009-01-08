@@ -69,15 +69,13 @@ void close_window(Display* display, Window framed_window) {
 }
 
 /*returns the frame index of the newly created window or -1 if out of memory */
-int create_frame(Display* display, struct Frame_list* frames, Window framed_window, struct Pixmaps *pixmaps, struct Cursors *cursors) {
+int create_frame(Display *display, struct Frame_list* frames
+, Window framed_window, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Atoms *atoms) {
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
-  
-  XWindowAttributes attributes;
+  XWindowAttributes get_attributes;
   struct Frame frame;
-   
-  Window transient; //this window is actually used to store a return value
   
   if(frames->used == frames->max) {
     printf("reallocating, used %d, max%d\n", frames->used, frames->max);
@@ -88,23 +86,28 @@ int create_frame(Display* display, struct Frame_list* frames, Window framed_wind
     frames->max *= 2;
   }
   printf("Creating frames->list[%d] with window %lu, connection %lu\n", frames->used, (unsigned long)framed_window, (unsigned long)display);
-  XAddToSaveSet(display, framed_window); //add this window to the save set as soon as possible so that if an error occurs it is still available
-  XSync(display, False);
-  XGetWindowAttributes(display, framed_window, &attributes);
+  //add this window to the save set as soon as possible so that if an error occurs it is still available
 
+  XAddToSaveSet(display, framed_window); 
+  XSync(display, False);
+  XGetWindowAttributes(display, framed_window, &get_attributes);
+  XGetTransientForHint(display, framed_window, &frame.transient);
+  
   /*** Set up defaults ***/
   frame.selected = 0;
   frame.window_name = NULL;
   frame.window = framed_window;
   frame.mode = FLOATING;     
   frame.title_menu.entry = root;
-  frame.x = attributes.x;
-  frame.y = attributes.y;
-  frame.w = attributes.width;  
-  frame.h = attributes.height;  
-  get_frame_hints(display, &frame);  
-  
+  frame.x = get_attributes.x;
+  frame.y = get_attributes.y;
+  frame.w = get_attributes.width;  
+  frame.h = get_attributes.height;
+
+  get_frame_hints(display, &frame);
   get_frame_type (display, &frame, atoms);
+  get_frame_state(display, &frame, atoms);
+  
   if(frame.type == desktop) {
     XReparentWindow(display, frame.window, frames->virtual_desktop, 0, 0);
     XResizeWindow(display, frame.window
@@ -192,19 +195,16 @@ int create_frame(Display* display, struct Frame_list* frames, Window framed_wind
   //same y as body, with a constant width as the sides so H_SPACING
   frame.title_menu.entry = XCreateSimpleWindow(display, frames->title_menu, 10, 10
   , XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black); 
-
-  //get_frame_program_name(display, &frame);
+  
   load_frame_name(display, &frame);
   
   resize_frame(display, &frame); //resize the title menu if it isn't at it's minimum
   show_frame_state(display, &frame, pixmaps);
   
-  XMoveWindow(display, frame.window, 0, 0);    
-  XReparentWindow(display, frame.window, frame.backing, 0, 0);
-  XFlush(display);
-      
-  XSetWindowBorderWidth(display, frame.window, 0);  
+  XMoveWindow(display, frame.window, 0, 0);
   XResizeWindow(display, frame.window, frame.w - FRAME_HSPACE, frame.h - FRAME_VSPACE);
+  XSetWindowBorderWidth(display, frame.window, 0);
+  XReparentWindow(display, frame.window, frame.backing, 0, 0);
   
   XSetWindowBackgroundPixmap(display, frame.frame, pixmaps->border_p );
   XSetWindowBackgroundPixmap(display, frame.title_menu.frame, pixmaps->border_p );
@@ -214,6 +214,7 @@ int create_frame(Display* display, struct Frame_list* frames, Window framed_wind
   XSetWindowBackgroundPixmap(display, frame.titlebar,  pixmaps->titlebar_background_p );
 
   XSync(display, False);  //this prevents the Reparent unmap being reported.
+  
   XSelectInput(display, frame.frame,   Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.close_hotspot,  ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
   XSelectInput(display, frame.mode_hotspot, ButtonPressMask | ButtonReleaseMask);
@@ -223,7 +224,7 @@ int create_frame(Display* display, struct Frame_list* frames, Window framed_wind
   XSelectInput(display, frame.b_grip,  ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.br_grip, ButtonPressMask | ButtonReleaseMask);
   XSelectInput(display, frame.r_grip,  ButtonPressMask | ButtonReleaseMask);    
-  XSelectInput(display, frame.window,  StructureNotifyMask |PropertyChangeMask);  
+  XSelectInput(display, frame.window,  StructureNotifyMask | PropertyChangeMask);
   //Property notify is used to update titles, structureNotify for destroyNotify events
 
   XSelectInput(display, frame.backing, SubstructureRedirectMask | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
@@ -246,7 +247,7 @@ int create_frame(Display* display, struct Frame_list* frames, Window framed_wind
   XDefineCursor(display, frame.br_grip, cursors->resize_tl_br);
   XDefineCursor(display, frame.r_grip, cursors->resize_h);
   XDefineCursor(display, frame.title_menu.entry, cursors->normal);
-  
+
   XMapWindow(display, frame.titlebar);
   XMapWindow(display, frame.body);
   XMapWindow(display, frame.close_button);
@@ -266,20 +267,12 @@ int create_frame(Display* display, struct Frame_list* frames, Window framed_wind
   XMapWindow(display, frame.br_grip);
   XMapWindow(display, frame.r_grip);
   XMapWindow(display, frame.title_menu.entry);
-  
   XMapWindow(display, frame.backing );  
   XMapWindow(display, frame.frame);
 
   //Intercept clicks so we can set the focus and possibly raise floating windows
   XGrabButton(display, Button1, 0, frame.backing, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
   // printf("Passive click grab reported: %d\n", );
-     
-  XGetTransientForHint(display, framed_window, &transient);
-  if(transient != 0) {
-    printf("Transient window detected\n");
-    //set pop-windows to have focus
-    XSetInputFocus(display, frame.window, RevertToPointerRoot, CurrentTime);
-  }
   
   frames->list[frames->used] = frame;
   frames->used++;
@@ -313,7 +306,8 @@ void show_frame_state(Display *display, struct Frame *frame,  struct Pixmaps *pi
   }
 
   if(frame->selected != 0) XSetWindowBackgroundPixmap(display, frame->selection_indicator, pixmaps->selection_p);
-  else XSetWindowBackgroundPixmap(display, frame->selection_indicator, ParentRelative);  
+  else XSetWindowBackgroundPixmap(display, frame->selection_indicator, ParentRelative);
+  
   XMapWindow(display, frame->title_menu.frame);
   XMapWindow(display, frame->mode_pulldown);
   XMapWindow(display, frame->close_button);
@@ -370,14 +364,16 @@ void resize_frame(Display* display, struct Frame* frame) {
 }
 
 void free_frame_name(Display* display, struct Frame* frame) {
-  XFree(frame->window_name);
-  frame->window_name = NULL;  
+  if(frame->window_name != NULL) XFree(frame->window_name);
+  frame->window_name = NULL;
+  
   XFreePixmap(display, frame->title_menu.title_normal_p);
   XFreePixmap(display, frame->title_menu.title_pressed_p);    
   XFreePixmap(display, frame->title_menu.title_deactivated_p);
 
   XFreePixmap(display, frame->title_menu.item_title_p);
   XFreePixmap(display, frame->title_menu.item_title_hover_p);
+  XFlush(display);
 }
 
 /*** Update pixmaps with the specified name if it is available.  ***/
@@ -522,16 +518,14 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   , frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height, frame->x, frame->y);
   #endif         
   
-  if(frame->x + frame->w > XWidthOfScreen(screen)) 
-    frame->x -= (frame->x + frame->w) - XWidthOfScreen(screen);
-  if(frame->y + frame->h > XHeightOfScreen(screen) - MENUBAR_HEIGHT)
-    frame->y -= (frame->y + frame->h) - (XHeightOfScreen(screen)  - MENUBAR_HEIGHT);
+  if(frame->x + frame->w > XWidthOfScreen(screen)) frame->x = XWidthOfScreen(screen) - frame->w;
+  if(frame->y + frame->h > XHeightOfScreen(screen) - MENUBAR_HEIGHT) frame->y = XHeightOfScreen(screen)- frame->h - MENUBAR_HEIGHT;
   if(frame->x < 0) frame->x = 0;
   if(frame->y < 0) frame->y = 0;
   
 }
 
-int replace_frame(Display *display, struct Frame *target, struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, struct Pixmaps *pixmaps) {
+int replace_frame(Display *display, struct Frame *target, struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, Window floating_seperator, struct Pixmaps *pixmaps) {
   XWindowChanges changes;
   unsigned int mask = CWX | CWY | CWWidth | CWHeight;
 
@@ -563,36 +557,26 @@ int replace_frame(Display *display, struct Frame *target, struct Frame *replacem
   resize_frame(display, replacement);
   show_frame_state(display, target, pixmaps);
   show_frame_state(display, replacement, pixmaps);
-  stack_frame(display, target, sinking_seperator, tiling_seperator);
-  stack_frame(display, replacement, sinking_seperator, tiling_seperator);  
+  stack_frame(display, target, sinking_seperator, tiling_seperator, floating_seperator);
+  stack_frame(display, replacement, sinking_seperator, tiling_seperator, floating_seperator);  
   
   return 1;
 }
 
 /* Implements stacking and focus policy */
-void stack_frame(Display *display, struct Frame *frame, Window sinking_seperator, Window tiling_seperator) {
+void stack_frame(Display *display, struct Frame *frame, Window sinking_seperator, Window tiling_seperator, Window floating_seperator) {
   XWindowChanges changes;
   
   unsigned int mask = CWSibling | CWStackMode;  
   changes.stack_mode = Below;
-  
-  if(frame->mode == TILING) {
-    changes.sibling = tiling_seperator;
-    XConfigureWindow(display, frame->frame, mask, &changes);
-    XSetInputFocus (display, frame->window, RevertToPointerRoot, CurrentTime);
-  }
-  else if(frame->mode == SINKING) {
-    changes.sibling = sinking_seperator;
-    //TODO revert to previously focussed window 
-    XConfigureWindow(display, frame->frame, mask, &changes);
-  }  
-  else if(frame->mode == FLOATING) {
-    XRaiseWindow(display, frame->frame);
-    XSetInputFocus(display, frame->window, RevertToPointerRoot, CurrentTime);   
-  }
-  
+    
+  if(frame->mode == TILING)        changes.sibling = tiling_seperator;
+  else if(frame->mode == SINKING)  changes.sibling = sinking_seperator;
+  else if(frame->mode == FLOATING) changes.sibling = floating_seperator;  
+
+  XSetInputFocus(display, frame->window, RevertToPointerRoot, CurrentTime);   //TODO
+  XConfigureWindow(display, frame->frame, mask, &changes);
   XFlush(display);
- 
 }
 
 //maybe remove overlap variable and instead simply set the indirect resize parameters and just reset them is something goes wrong?
@@ -890,7 +874,7 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
   return;
 }
 
-void get_frame_type(Display *display, struct Frame *frame, struct Hint_atoms *atoms) {
+void get_frame_type(Display *display, struct Frame *frame, struct Atoms *atoms) {
   unsigned char *contents = NULL;
   Atom return_type;
   int return_format;
@@ -948,7 +932,7 @@ void get_frame_type(Display *display, struct Frame *frame, struct Hint_atoms *at
   if(contents != NULL) XFree(contents);
 }
 
-void get_frame_state(Display *display, struct Frame *frame, struct Hint_atoms *atoms) {
+void get_frame_state(Display *display, struct Frame *frame, struct Atoms *atoms) {
   unsigned char *contents = NULL;
   Atom return_type;
   int return_format;
@@ -956,7 +940,8 @@ void get_frame_state(Display *display, struct Frame *frame, struct Hint_atoms *a
   unsigned long bytes;
   XGetWindowProperty(display, frame->window, atoms->wm_state, 0, 1 //long long_length?
   , False, AnyPropertyType, &return_type, &return_format,  &items, &bytes, &contents);
-
+  
+  printf("loading state\n");
   frame->state = unstated; 
   if(return_type == XA_ATOM  && contents != NULL) {
     Atom *window_state = (Atom*)contents;

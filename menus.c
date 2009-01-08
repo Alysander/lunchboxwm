@@ -1,4 +1,5 @@
 void create_menubar(Display *display, struct Menubar *menubar, struct Pixmaps *pixmaps, struct Cursors *cursors) {
+  XSetWindowAttributes set_attributes;
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
@@ -32,19 +33,23 @@ void create_menubar(Display *display, struct Menubar *menubar, struct Pixmaps *p
   XSetWindowBackgroundPixmap(display, menubar->options_menu, pixmaps->options_menu_normal_p );
   XSetWindowBackgroundPixmap(display, menubar->links_menu, pixmaps->links_menu_normal_p );
   XSetWindowBackgroundPixmap(display, menubar->tool_menu, pixmaps->tool_menu_normal_p );
-  
+
+  set_attributes.override_redirect = True; 
+  XChangeWindowAttributes(display, menubar->border, CWOverrideRedirect, &set_attributes);
+
   XMapWindow(display, menubar->body);
   XMapWindow(display, menubar->border);
   XMapWindow(display, menubar->program_menu);
-  XMapWindow(display, menubar->window_menu);  
-  XMapWindow(display, menubar->options_menu);  
-  XMapWindow(display, menubar->links_menu);  
-  XMapWindow(display, menubar->tool_menu);  
+  XMapWindow(display, menubar->window_menu);
+  XMapWindow(display, menubar->options_menu);
+  XMapWindow(display, menubar->links_menu);
+  XMapWindow(display, menubar->tool_menu);
 }
 
 void create_mode_menu(Display *display, struct Mode_menu *mode_menu
 , struct Pixmaps *pixmaps, struct Cursors *cursors) {
- 
+  XSetWindowAttributes set_attributes;
+   
   Window root = DefaultRootWindow(display);
   Screen* screen =  DefaultScreenOfDisplay(display);  
   int black = BlackPixelOfScreen(screen);
@@ -80,6 +85,12 @@ void create_mode_menu(Display *display, struct Mode_menu *mode_menu
   XSelectInput(display, mode_menu->sinking
   , ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
 
+  set_attributes.override_redirect = True; 
+  XChangeWindowAttributes(display, mode_menu->frame, CWOverrideRedirect, &set_attributes);
+  XChangeWindowAttributes(display, mode_menu->floating, CWOverrideRedirect, &set_attributes);
+  XChangeWindowAttributes(display, mode_menu->tiling, CWOverrideRedirect, &set_attributes);
+  XChangeWindowAttributes(display, mode_menu->sinking, CWOverrideRedirect, &set_attributes);
+  
   XMapWindow(display, mode_menu->floating);
   XMapWindow(display, mode_menu->tiling);
   XMapWindow(display, mode_menu->sinking);
@@ -89,20 +100,26 @@ void create_workspaces_menu(Display *display, struct Workspace_list *workspaces,
   Window root = DefaultRootWindow(display);
   Screen* screen =  DefaultScreenOfDisplay(display);  
   int black = BlackPixelOfScreen(screen);
-  
+  XSetWindowAttributes set_attributes;
+
+  set_attributes.override_redirect = True;     
   workspaces->workspace_menu = XCreateSimpleWindow(display, root, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
   XSetWindowBackgroundPixmap (display, workspaces->workspace_menu, pixmaps->border_p );
   XDefineCursor(display, workspaces->workspace_menu, cursors->normal);
+  XChangeWindowAttributes(display, workspaces->workspace_menu, CWOverrideRedirect, &set_attributes);
 }
 
 void create_title_menu(Display *display, struct Frame_list *frames, struct Pixmaps *pixmaps, struct Cursors *cursors) {
   Window root = DefaultRootWindow(display);
   Screen* screen =  DefaultScreenOfDisplay(display);  
   int black = BlackPixelOfScreen(screen);
+  XSetWindowAttributes set_attributes;
   
+  set_attributes.override_redirect = True; 
   frames->title_menu = XCreateSimpleWindow(display, root, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
   XSetWindowBackgroundPixmap (display, frames->title_menu, pixmaps->border_p );
   XDefineCursor(display, frames->title_menu, cursors->normal);
+  XChangeWindowAttributes(display, frames->title_menu, CWOverrideRedirect, &set_attributes);
 }
 
 void show_workspace_menu(Display *display, Window calling_widget, struct Workspace_list* workspaces, int index, int x, int y) {
@@ -204,9 +221,6 @@ void place_popup_menu(Display *display, Window calling_widget, Window popup_menu
 
 void place_popup_menu(Display *display, Window calling_widget, Window popup_menu, int x, int y, int width, int height) {
   Screen* screen = DefaultScreenOfDisplay(display);
-  //calling widget is currently not being used, but an XGetWindowAttributes could be used to get its size
-  //and position and then ensure that the popup is not overlapping it.
-  //however, since this code is currently simpler and a bit faster to use, I prefer it.
   XWindowAttributes details;
   
   XGetWindowAttributes(display, calling_widget, &details);
