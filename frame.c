@@ -364,57 +364,70 @@ void resize_frame(Display* display, struct Frame* frame) {
 }
 
 void free_frame_name(Display* display, struct Frame* frame) {
-  if(frame->window_name != NULL) XFree(frame->window_name);
-  frame->window_name = NULL;
-  
-  XFreePixmap(display, frame->title_menu.title_normal_p);
-  XFreePixmap(display, frame->title_menu.title_pressed_p);    
-  XFreePixmap(display, frame->title_menu.title_deactivated_p);
+  if(frame->window_name != NULL) {
+    XFree(frame->window_name);
+    frame->window_name = NULL;
+    
+    XFreePixmap(display, frame->title_menu.title_normal_p);
+    XFreePixmap(display, frame->title_menu.title_pressed_p);    
+    XFreePixmap(display, frame->title_menu.title_deactivated_p);
 
-  XFreePixmap(display, frame->title_menu.item_title_p);
-  XFreePixmap(display, frame->title_menu.item_title_hover_p);
-  XFlush(display);
+    XFreePixmap(display, frame->title_menu.item_title_p);
+    XFreePixmap(display, frame->title_menu.item_title_hover_p);
+    XFlush(display);
+  }
 }
 
 /*** Update pixmaps with the specified name if it is available.  ***/
 void load_frame_name(Display* display, struct Frame* frame) {
-  char untitled[10] = "untitled";
+  char untitled[10] = "noname";
   
-  if(frame->window_name != NULL) free_frame_name(display, frame); 
+  struct Frame temp = *frame; 
+  //Only make changes if required and only unmap after pixmaps have been created.
   
-  XFetchName(display, frame->window, &frame->window_name);
+  XFetchName(display, temp.window, &temp.window_name);
 
-  if(frame->window_name == NULL) {
+  if(temp.window_name == NULL) {
     printf("Warning: unnamed window\n");
-    frame->window_name = untitled;
+    XStoreName(display, temp.window, untitled);
+    XFlush(display);
+    XFetchName(display, temp.window, &temp.window_name);
   }
-  
+  else 
+  if(frame->window_name != NULL
+  && strcmp(temp.window_name, frame->window_name) == 0) {
+    XFree(temp.window_name);
+    //skip this if the name hasn't changed
+    return;
+  }
+
+  temp.title_menu.title_normal_p = create_title_pixmap(display, temp.window_name, title_normal);
+  temp.title_menu.title_pressed_p = create_title_pixmap(display, temp.window_name, title_pressed);
+  temp.title_menu.title_deactivated_p = create_title_pixmap(display, temp.window_name, title_deactivated);
+
+  temp.title_menu.item_title_p = create_title_pixmap(display, temp.window_name, item_title);
+  temp.title_menu.item_title_active_p = create_title_pixmap(display, temp.window_name, item_title_active);
+
+  temp.title_menu.item_title_deactivated_p = create_title_pixmap(display, temp.window_name, item_title_deactivated);
+  temp.title_menu.item_title_hover_p = create_title_pixmap(display, temp.window_name, item_title_hover);
+  temp.title_menu.item_title_active_hover_p = create_title_pixmap(display, temp.window_name, item_title_active_hover);
+  temp.title_menu.item_title_deactivated_hover_p = create_title_pixmap(display, temp.window_name, item_title_deactivated_hover);
+   
   XUnmapWindow(display, frame->title_menu.title);
-  XFlush(display);
-
-  frame->title_menu.title_normal_p = create_title_pixmap(display, frame->window_name, title_normal);
-  frame->title_menu.title_pressed_p = create_title_pixmap(display,frame->window_name, title_pressed);
-  frame->title_menu.title_deactivated_p = create_title_pixmap(display, frame->window_name, title_deactivated);
-
-  frame->title_menu.item_title_p = create_title_pixmap(display, frame->window_name, item_title);
-  frame->title_menu.item_title_active_p = create_title_pixmap(display, frame->window_name, item_title_active);
-
-  frame->title_menu.item_title_deactivated_p = create_title_pixmap(display, frame->window_name, item_title_deactivated);
-  frame->title_menu.item_title_hover_p = create_title_pixmap(display, frame->window_name, item_title_hover);
-  frame->title_menu.item_title_active_hover_p = create_title_pixmap(display, frame->window_name, item_title_active_hover);
-  frame->title_menu.item_title_deactivated_hover_p = create_title_pixmap(display, frame->window_name, item_title_deactivated_hover);
-  
-  if(frame->mode == SINKING) XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_deactivated_p);
-  else XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_normal_p);  
-  
   XUnmapWindow(display, frame->title_menu.entry);
   XFlush(display);
+  free_frame_name(display, frame);
+  *frame = temp;
+  
+  if(frame->mode == SINKING) XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_deactivated_p);
+  else XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_normal_p);    
   XSetWindowBackgroundPixmap(display, frame->title_menu.entry, frame->title_menu.item_title_p);
   XMapWindow(display, frame->title_menu.entry);  
-  
+  XMapWindow(display, frame->title_menu.title);
+    
   frame->title_menu.width = get_title_width(display, frame->window_name);
   if(frame->window_name == untitled) frame->window_name = NULL;
-  XMapWindow(display, frame->title_menu.title);
+
   XFlush(display);
 }
 
