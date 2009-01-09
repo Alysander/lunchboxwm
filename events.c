@@ -13,24 +13,28 @@ void handle_frame_unsink (Display *display, struct Frame_list *frames, int index
 This function handles responding to the users click and drag on the resize grips of the window.
 */
 void handle_frame_resize (Display *display, struct Frame_list *frames, int clicked_frame
-, int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y, Window clicked_widget) {
+, int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y
+, int r_edge_dx, int b_edge_dy, Window clicked_widget) {
   
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
 
-  int new_width = 0;
-  int new_height = 0;
-  int new_x = mouse_root_x - pointer_start_x;
-  int new_y = mouse_root_y - pointer_start_y;
-
   struct Frame *frame = &frames->list[clicked_frame];  
-
+  
+  int new_width = frame->w;
+  int new_height = frame->h;
+  int new_x = mouse_root_x - pointer_start_x;
+  int new_y = frame->y; 
+  //int new_y = mouse_root_y - pointer_start_y; //no top grip
+  
+  if(new_x < 0) new_x = 0;
+  if(new_y < 0) new_y = 0;
 
   if(clicked_widget == frame->l_grip) {
     new_width = frame->w + (frame->x - new_x);
   }
   else if(clicked_widget == frame->r_grip) {
-    new_width = mouse_root_x - frame->x ;
+    new_width = mouse_root_x - frame->x + r_edge_dx;
     new_x = frame->x;
   }
   else if(clicked_widget == frame->bl_grip) {
@@ -38,49 +42,36 @@ void handle_frame_resize (Display *display, struct Frame_list *frames, int click
     new_height = mouse_root_y - frame->y;
   }
   else if(clicked_widget == frame->br_grip) {
-    new_width = mouse_root_x - frame->x;
-    new_height = mouse_root_y - frame->y;
+    new_width = mouse_root_x - frame->x + r_edge_dx;
+    new_height = mouse_root_y - frame->y + b_edge_dy;
     new_x = frame->x;
   }
   else if(clicked_widget == frame->b_grip) {
-    new_height = mouse_root_y - frame->y;
+    new_height = mouse_root_y - frame->y + b_edge_dy;
     new_x = frame->x;
   }
   
-  //adjust for the toolbar
-  new_y = frame->y;
-  if(new_height + new_y > XHeightOfScreen(screen) - MENUBAR_HEIGHT) {
-    #ifdef SHOW_EDGE_RESIZE
-    printf("Adjusted for toolbar height %d ,", new_height);
-    #endif
-    new_height = XHeightOfScreen(screen) - new_y - MENUBAR_HEIGHT;
-    #ifdef SHOW_EDGE_RESIZE
-    printf("%d \n", new_height);
-    #endif
-  }
+  if(new_height < frame->min_height) new_height = frame->min_height;
+  if(new_height > frame->max_height) new_height = frame->max_height;
+  if(new_width < frame->min_width) new_width = frame->min_width;
+  if(new_width > frame->max_width) new_width = frame->max_width;
+  if(new_x + new_width > XWidthOfScreen(screen))
+    new_width = XWidthOfScreen(screen) - new_x;
+  if(new_y + new_height > XHeightOfScreen(screen) - MENUBAR_HEIGHT)
+    new_height = XHeightOfScreen(screen)- new_y - MENUBAR_HEIGHT;
   
   //commit height changes
   if(frame->mode == TILING) {
-    resize_tiling_frame(display, frames, clicked_frame, 'y', frame->y, new_height);
+    if(new_height != frame->h) resize_tiling_frame(display, frames, clicked_frame, 'y', new_y, new_height);
+    if(new_width != frame->w)  resize_tiling_frame(display, frames, clicked_frame, 'x', new_x, new_width);
   }
-  else 
-  if(new_height >= frame->min_height
-  && new_height <= frame->max_height) {
-    frame->h = new_height;              
-  }
-
-  //commit width and x position changes                             
-  if(frame->mode == TILING) {
-    resize_tiling_frame(display, frames, clicked_frame, 'x', new_x, new_width);
-  }
-  else 
-  if(new_width >= frame->min_width
-  && new_width <= frame->max_width) {
+  else {  
     frame->x = new_x;  //for l_grip and bl_grip
+    frame->y = new_y;  //in case top grip is added later
     frame->w = new_width;
-  }            
-  
-  if(frame->mode != TILING) resize_frame(display, frame);
+    frame->h = new_height;    
+  } 
+  resize_frame(display, frame);
   XFlush(display);
 }
 
@@ -154,8 +145,8 @@ void handle_frame_drop (Display *display, struct Frame_list *frames, int clicked
       }
       w_proportion = (double)frame->w / free_spaces.list[k].w;
       h_proportion = (double)frame->h / free_spaces.list[k].h;
-      if(w_proportion > 1) free_spaces.list[k].w / frame->w;
-      if(h_proportion > 1) free_spaces.list[k].h / frame->h;
+      if(w_proportion > 1) w_proportion = 1;
+      if(h_proportion > 1) h_proportion = 1;
       current_fit = w_proportion * h_proportion;
       if(current_fit > best_fit
       && free_spaces.list[k].w >= frame->min_width
@@ -169,8 +160,8 @@ void handle_frame_drop (Display *display, struct Frame_list *frames, int clicked
       frame->mode = TILING;    
       frame->x = free_spaces.list[best_space].x;
       frame->y = free_spaces.list[best_space].y;
-      frame->w = free_spaces.list[best_space].w;
-      frame->h = free_spaces.list[best_space].h;
+      if(free_spaces.list[best_space].w < frame->w) frame->w = free_spaces.list[best_space].w;
+      if(free_spaces.list[best_space].h < frame->h) frame->h = free_spaces.list[best_space].h;
       
       if(frame->w > frame->max_width) frame->w = frame->max_width;
       if(frame->h > frame->max_height) frame->h = frame->max_height;

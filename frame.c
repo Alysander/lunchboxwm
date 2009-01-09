@@ -434,14 +434,11 @@ void load_frame_name(Display* display, struct Frame* frame) {
 /*** Update with specified values if they are available.  
 These values are for the framed_window and do not include the frame ***/
 void get_frame_hints(Display* display, struct Frame* frame) {
-  Screen* screen;
-  Window root;
+  Screen* screen = DefaultScreenOfDisplay(display);
+  Window root = DefaultRootWindow(display);
   
   XSizeHints specified;
   long pre_ICCCM; //pre ICCCM recovered values which are ignored.
-  
-  root = DefaultRootWindow(display);
-  screen = DefaultScreenOfDisplay(display);
 
   printf("BEFORE: width %d, height %d, x %d, y %d\n", 
         frame->w, frame->h, frame->x, frame->y);
@@ -508,11 +505,6 @@ void get_frame_hints(Display* display, struct Frame* frame) {
       frame->max_height = specified.max_height;
     }
   }
-    
-  if(frame->w < frame->min_width)  frame->w = frame->min_width;
-  if(frame->h < frame->min_height) frame->h = frame->min_height;
-  if(frame->w > frame->max_width)  frame->w = frame->max_width;
-  if(frame->h > frame->max_height) frame->h = frame->max_height;
 
   //all of the initial values are sans the frame 
   //increase the size of the window for the frame to be drawn in 
@@ -529,13 +521,8 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   #ifdef SHOW_FRAME_HINTS      
   printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n"
   , frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height, frame->x, frame->y);
-  #endif         
-  
-  if(frame->x + frame->w > XWidthOfScreen(screen)) frame->x = XWidthOfScreen(screen) - frame->w;
-  if(frame->y + frame->h > XHeightOfScreen(screen) - MENUBAR_HEIGHT) frame->y = XHeightOfScreen(screen)- frame->h - MENUBAR_HEIGHT;
-  if(frame->x < 0) frame->x = 0;
-  if(frame->y < 0) frame->y = 0;
-  
+  #endif
+  check_frame_limits(display, frame);
 }
 
 int replace_frame(Display *display, struct Frame *target, struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, Window floating_seperator, struct Pixmaps *pixmaps) {
@@ -983,4 +970,21 @@ void get_frame_state(Display *display, struct Frame *frame, struct Atoms *atoms)
     }
   }
   if(contents != NULL) XFree(contents);
+}
+
+void check_frame_limits(Display *display, struct Frame *frame) {
+  Screen* screen = DefaultScreenOfDisplay(display);  
+  if(frame->w < frame->min_width)  frame->w = frame->min_width;
+  else if(frame->w > frame->max_width) frame->w = frame->max_width;
+
+  if(frame->h < frame->min_height) frame->h = frame->min_height;
+  else if(frame->h > frame->max_height) frame->h = frame->max_height;
+
+  if(frame->x + frame->w > XWidthOfScreen(screen)) 
+    frame->x = XWidthOfScreen(screen) - frame->w;
+  if(frame->y + frame->h > XHeightOfScreen(screen) - MENUBAR_HEIGHT) 
+    frame->y = XHeightOfScreen(screen)- frame->h - MENUBAR_HEIGHT;
+  if(frame->x < 0) frame->x = 0;
+  if(frame->y < 0) frame->y = 0;
+
 }

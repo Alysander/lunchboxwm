@@ -52,7 +52,8 @@ void free_cursors  (Display *display, struct Cursors *cursors);
 extern void handle_frame_unsink (Display *display, struct Frame_list *frames, int index, struct Pixmaps *pixmaps);
 
 extern void handle_frame_resize (Display *display, struct Frame_list *frames, int clicked_frame
-, int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y, Window clicked_widget);
+, int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y
+, int r_edge_dx, int b_edge_dy, Window clicked_widget);
 
 extern void handle_frame_move (Display *display, struct Frame *frame
 , int *pointer_start_x, int *pointer_start_y, int mouse_root_x, int mouse_root_y
@@ -81,8 +82,9 @@ extern void show_frame_state       (Display *display, struct Frame *frame, struc
 extern void resize_frame           (Display *display, struct Frame *frame);
 extern int replace_frame           (Display *display, struct Frame *target
 , struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, Window floating_seperator, struct Pixmaps *pixmaps);  
-extern void get_frame_type        (Display *display, struct Frame *frame, struct Atoms *atoms);
-extern void get_frame_state(Display *display, struct Frame *frame, struct Atoms *atoms);
+extern void get_frame_type         (Display *display, struct Frame *frame, struct Atoms *atoms);
+extern void get_frame_state        (Display *display, struct Frame *frame, struct Atoms *atoms);
+extern void check_frame_limits(Display *display, struct Frame *frame);
 
 /*** space.c ***/
 extern void add_rectangle                             (struct Rectangle_list *list, struct Rectangle new);
@@ -128,7 +130,7 @@ void end_event_loop(int sig) {
   done = True;
   if(display != NULL) {
     XSetInputFocus(display, DefaultRootWindow(display), RevertToPointerRoot, CurrentTime);
-    XSync(display, False);  
+    XFlush(display); 
   }
 }
 
@@ -168,6 +170,8 @@ int main (int argc, char* argv[]) {
   int grab_move = 0; //used by EnterNotfy, LeaveNotify and ButtonPress to allow alt+click moves of windows
 
   int pointer_start_x, pointer_start_y; //used by ButtonPress and motionNotify for window movement arithmetic
+  int r_edge_dx, b_edge_dy;         //used by handle_frame_resize for maintaining cursor distance from RHS and bottom edges.
+  
   int was_sunk = 0; //for showing and cancelling sinking state on extreme squish
   
   int clicked_frame = -1;      //identifies the window being moved/resized by frame index and the frame the title menu was opened on.
@@ -311,20 +315,32 @@ int main (int argc, char* argv[]) {
           XWindowAttributes attributes;
           XGetWindowAttributes(display, event.xmaprequest.window, &attributes);
           if(attributes.override_redirect == False) {
+            int used = workspaces.used;
             new_workspace = add_frame_to_workspace(display, &workspaces, event.xmaprequest.window, &pixmaps, &cursors, &atoms);
-            if(new_workspace == workspaces.used - 1) { //if it is a newly created workspace
+            printf("new workspace %d\n", new_workspace);
+            if(used < workspaces.used) { //if it is a newly created workspace
+              printf("going to new workspace\n");
               current_workspace = new_workspace;
               change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator, floating_seperator);
             }
             //don't bring into the wrong workspace!
-            else if(new_workspace != current_workspace) XLowerWindow(display, event.xmaprequest.window); 
+            else if(new_workspace != current_workspace) {
+              printf("Opening new window in background\n");
+              struct Frame_list *frames = &workspaces.list[new_workspace];
+              //XLowerWindow(display, frames->list[frames->used - 1].frame);
+              for(int k = 0; k < frames->used; k++) 
+              if(frames->list[k].window == event.xmaprequest.window) {
+                XLowerWindow(display, frames->list[k].frame);
+                break;
+              }
+            }
           }          
           XMapWindow(display, event.xmaprequest.window);
           XFlush(display);
           
         }
       break;
-      
+            
       /* uses grab_move, pointer_start_x, pointer_start_y, resize_x_direction,
          resize_y_direction and do_click_to_focus. */
       case ButtonPress:
@@ -440,7 +456,6 @@ int main (int argc, char* argv[]) {
               pointer_start_x = event.xbutton.x;
               pointer_start_y = event.xbutton.y;
               clicked_frame = i;
-              //current_workspace = k;
               
               if(event.xbutton.window == frames->list[i].mode_hotspot
               || event.xbutton.window == frames->list[i].title_menu.hotspot) {
@@ -517,6 +532,8 @@ int main (int argc, char* argv[]) {
               //these are for when the mouse moves.
               pointer_start_x = event.xbutton.x;
               pointer_start_y = event.xbutton.y;
+              r_edge_dx = frames->list[i].x + frames->list[i].w - event.xbutton.x_root;
+              b_edge_dy = frames->list[i].y + frames->list[i].h - event.xbutton.y_root;
               clicked_frame = i;
               //current_workspace = k;
               
@@ -1012,7 +1029,6 @@ int main (int argc, char* argv[]) {
           while(XCheckTypedEvent(display, MotionNotify, &event)); //skip foward to the latest move event
 
           XQueryPointer(display, root, &mouse_root, &mouse_child, &mouse_root_x, &mouse_root_y, &mouse_child_x, &mouse_child_y, &mask);
-
           if(clicked_widget == root) { /*** Move/Squish ***/
             handle_frame_move(display, &frames->list[clicked_frame]
             , &pointer_start_x, &pointer_start_y, mouse_root_x, mouse_root_y
@@ -1021,7 +1037,8 @@ int main (int argc, char* argv[]) {
           else {  /*** Resize grips are being dragged ***/
             //clicked_widget is set to one of the grips.
             handle_frame_resize(display, frames, clicked_frame
-            , pointer_start_x, pointer_start_y, mouse_root_x, mouse_root_y, clicked_widget);
+            , pointer_start_x, pointer_start_y, mouse_root_x, mouse_root_y
+            , r_edge_dx, b_edge_dy, clicked_widget);
           }
         }
       break;
@@ -1072,21 +1089,13 @@ int main (int argc, char* argv[]) {
 
               frames->list[i].w = event.xconfigurerequest.width + FRAME_HSPACE;
               frames->list[i].h = event.xconfigurerequest.height + FRAME_VSPACE;
-              if(frames->list[i].w < frames->list[i].min_width)
-                frames->list[i].w = frames->list[i].min_width;
-              else if(frames->list[i].w > frames->list[i].max_width) 
-                frames->list[i].w = frames->list[i].max_width;
-              
-              if(frames->list[i].h < frames->list[i].min_height)
-                frames->list[i].h = frames->list[i].min_height;
-              else if(frames->list[i].h > frames->list[i].max_height)
-                frames->list[i].h = frames->list[i].max_height;
-
-                
+              check_frame_limits(display, &frames->list[i]);
+                                            
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
               printf("new width %d, new height %d\n", frames->list[i].w, frames->list[i].h);
               #endif
               if(frames->list[i].mode != TILING  
+              && k == current_workspace              
               && (event.xconfigurerequest.detail == Above  
                  ||  event.xconfigurerequest.detail == TopIf)) {
                 #ifdef SHOW_CONFIGURE_REQUEST_EVENT
