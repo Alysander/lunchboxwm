@@ -268,7 +268,7 @@ int create_frame(Display *display, struct Frame_list* frames
   XMapWindow(display, frame.r_grip);
   XMapWindow(display, frame.title_menu.entry);
   XMapWindow(display, frame.backing );  
-  XMapWindow(display, frame.frame);
+  //XMapWindow(display, frame.frame); //This window is now mapped in add_frame_to_workspace if required.
 
   //Intercept clicks so we can set the focus and possibly raise floating windows
   XGrabButton(display, Button1, 0, frame.backing, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
@@ -387,6 +387,13 @@ void load_frame_name(Display* display, struct Frame* frame) {
   
   XFetchName(display, temp.window, &temp.window_name);
 
+  if(temp.window_name == NULL 
+  && frame->window_name != NULL
+  && strcmp(frame->window_name, untitled) == 0) {
+    //it was null and already has the name from untitled above.
+    return;
+  }
+  else 
   if(temp.window_name == NULL) {
     printf("Warning: unnamed window\n");
     XStoreName(display, temp.window, untitled);
@@ -400,7 +407,8 @@ void load_frame_name(Display* display, struct Frame* frame) {
     //skip this if the name hasn't changed
     return;
   }
-
+  if(frame->window_name != NULL) free_frame_name(display, frame);
+  
   temp.title_menu.title_normal_p = create_title_pixmap(display, temp.window_name, title_normal);
   temp.title_menu.title_pressed_p = create_title_pixmap(display, temp.window_name, title_pressed);
   temp.title_menu.title_deactivated_p = create_title_pixmap(display, temp.window_name, title_deactivated);
@@ -416,7 +424,6 @@ void load_frame_name(Display* display, struct Frame* frame) {
   XUnmapWindow(display, frame->title_menu.title);
   XUnmapWindow(display, frame->title_menu.entry);
   XFlush(display);
-  free_frame_name(display, frame);
   *frame = temp;
   
   if(frame->mode == SINKING) XSetWindowBackgroundPixmap(display, frame->title_menu.title, frame->title_menu.title_deactivated_p);
@@ -426,8 +433,6 @@ void load_frame_name(Display* display, struct Frame* frame) {
   XMapWindow(display, frame->title_menu.title);
     
   frame->title_menu.width = get_title_width(display, frame->window_name);
-  if(frame->window_name == untitled) frame->window_name = NULL;
-
   XFlush(display);
 }
 
@@ -574,7 +579,6 @@ void stack_frame(Display *display, struct Frame *frame, Window sinking_seperator
   else if(frame->mode == SINKING)  changes.sibling = sinking_seperator;
   else if(frame->mode == FLOATING) changes.sibling = floating_seperator;  
 
-  XSetInputFocus(display, frame->window, RevertToPointerRoot, CurrentTime);   //TODO
   XConfigureWindow(display, frame->frame, mask, &changes);
   XFlush(display);
 }

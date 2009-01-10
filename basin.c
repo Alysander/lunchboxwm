@@ -8,7 +8,7 @@
 //#define SHOW_STARTUP                  
 //#define SHOW_DESTROY_NOTIFY_EVENT     
 //#define SHOW_UNMAP_NOTIFY_EVENT       
-//#define SHOW_MAP_REQUEST_EVENT       
+#define SHOW_MAP_REQUEST_EVENT       
 //#define SHOW_FRAME_HINTS 
 //#define SHOW_CONFIGURE_REQUEST_EVENT  
 //#define SHOW_BUTTON_PRESS_EVENT       
@@ -16,6 +16,7 @@
 //#define SHOW_LEAVE_NOTIFY_EVENTS      
 //#define SHOW_FRAME_DROP  
 //#define SHOW_EDGE_RESIZE
+//#define SHOW_FOCUS_EVENT
 //#define SHOW_BUTTON_RELEASE_EVENT     
 #define SHOW_PROPERTIES
 
@@ -103,35 +104,37 @@ extern void show_mode_menu      (Display *display, Window calling_widget, struct
 extern void place_popup_menu    (Display *display, Window calling_widget, Window popup_menu, int x, int y, int width, int height);
 
 /*** focus.c ***/
-extern void remove_focus(Window old, struct Focus_list *focus);
 extern void add_focus   (Window new, struct Focus_list *focus);
+extern void remove_focus(Window old, struct Focus_list *focus);
+extern void check_new_frame_focus (Display *display, struct Frame_list *frames, int index, struct Pixmaps *pixmaps);
+extern void unfocus_frames(Display *display, struct Frame_list *frames, struct Pixmaps *pixmaps);
+extern void recover_focus(Display *display, struct Frame_list *frames, struct Pixmaps *pixmaps);
 
 /*** workspaces.c ***/
 extern int create_frame_list        (Display *display, struct Workspace_list* workspaces, char *workspace_name, struct Pixmaps *pixmaps, struct Cursors *cursors);
 extern void remove_frame_list       (Display *display, struct Workspace_list* workspaces, int index);
-extern int create_startup_workspaces(Display *display, struct Workspace_list *workspaces, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Atoms *atoms);
-extern int add_frame_to_workspace   (Display *display, struct Workspace_list *workspaces, Window window, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Atoms *atoms);
-extern void change_to_workspace     (Display *display, struct Workspace_list *workspaces, int index,  Window sinking_seperator, Window tiling_seperator, Window floating_seperator);
+extern int create_startup_workspaces(Display *display, struct Workspace_list *workspaces
+, Window sinking_seperator, Window tiling_seperator, Window floating_seperator
+, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Atoms *atoms);
+
+extern int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window window, int current_workspace
+, Window sinking_seperator, Window tiling_seperator, Window floating_seperator
+, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Atoms *atoms);
+
+extern void change_to_workspace     (Display *display, struct Workspace_list *workspaces, int *current_workspace, int index, struct Pixmaps *pixmaps);
 
 #include "draw.c"
 #include "frame.c"
 #include "space.c"
 #include "menus.c"
 #include "events.c"
+#include "focus.c"
 #include "workspace.c"
 
-/*this variable is only to be accessed from the following function
-  this is because doing XOpenDisplay(NULL) twice causes a memory leak in the X Server */
-Display *secret_connection = NULL;
-int done = False;
+int done = 0;
 
 void end_event_loop(int sig) {
-  Display *display = secret_connection;
-  done = True;
-  if(display != NULL) {
-    XSetInputFocus(display, DefaultRootWindow(display), RevertToPointerRoot, CurrentTime);
-    XFlush(display); 
-  }
+  done = 1;
 }
 
 /* Sometimes a client window is killed before it gets unmapped, we only get the unmapnotify event,
@@ -196,7 +199,6 @@ int main (int argc, char* argv[]) {
   #endif
 
   display = XOpenDisplay(NULL);
-  secret_connection = display;
   if(display == NULL)  {
     #ifdef SHOW_STARTUP
     printf("Error: Could not open display.\n\n");
@@ -206,7 +208,7 @@ int main (int argc, char* argv[]) {
     #endif
     return -1;
   }
-
+  
   #ifdef ALLOW_XLIB_DEBUG
   XSynchronize(display, True);
   #endif
@@ -215,7 +217,7 @@ int main (int argc, char* argv[]) {
 
   pulldown = root;
   clicked_widget = root;
-  
+   
   XSelectInput(display, root, SubstructureRedirectMask | ButtonMotionMask 
   | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask | FocusChangeMask);
   
@@ -226,17 +228,16 @@ int main (int argc, char* argv[]) {
   create_seperators(display, &sinking_seperator, &tiling_seperator, &floating_seperator);
   create_menubar(display, &menubar, &pixmaps, &cursors);
   create_mode_menu(display, &mode_menu, &pixmaps, &cursors);
-  create_startup_workspaces(display, &workspaces, &pixmaps, &cursors, &atoms);
+  create_startup_workspaces(display, &workspaces, sinking_seperator, tiling_seperator, floating_seperator, &pixmaps, &cursors, &atoms);
   
-  current_workspace = workspaces.used - 1;
-  change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator, floating_seperator);  
+  change_to_workspace(display, &workspaces, &current_workspace, 0, &pixmaps);
   
-  /* Passive alt+click grab for moving windows */
+  /* Passive grab for alt+click moving windows */
   XGrabButton(display, Button1, Mod1Mask, root, False, ButtonPressMask | ButtonMotionMask
   , GrabModeAsync, GrabModeAsync, None, cursors.grab);
   
   XFlush(display);
-  
+
   while(!done) {
     //always look for windows that have been destroyed first
     if(XCheckTypedEvent(display, DestroyNotify, &event)) ;
@@ -281,16 +282,23 @@ int main (int argc, char* argv[]) {
               #ifdef SHOW_UNMAP_NOTIFY_EVENT
               printf("Removed frame i:%d, framed_window %lu\n", i, (unsigned long)event.xany.window);
               #endif
+              if(frames->focus.used > 0  
+              && frames->focus.list[frames->focus.used -1] == frames->list[i].window) { 
+                remove_focus(frames->list[i].window, &frames->focus);
+                unfocus_frames(display, frames, &pixmaps);
+                if(k == current_workspace) recover_focus(display, frames, &pixmaps);
+              }
+              //don't bother the focussed window if it wasn't the window being unmapped
+              else if(frames->focus.used > 0) remove_focus(frames->list[i].window, &frames->focus);
+              
               remove_frame(display, frames, i);
               if(frames->used == 0) {
+                #ifdef SHOW_UNMAP_NOTIFY_EVENT
                 printf("Removed workspace %d, name %s\n", k, workspaces.list[k].workspace_name);
+                #endif
                 remove_frame_list(display, &workspaces, k);
-                //TODO change workspace
-                if(workspaces.used != 0) {
-                  current_workspace = 0;
-                  change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator, floating_seperator);
-                }
-                else current_workspace = -1;
+                if(workspaces.used != 0) change_to_workspace(display, &workspaces, &current_workspace, 0, &pixmaps);
+                else change_to_workspace(display, &workspaces, &current_workspace, -1, &pixmaps);
               }
               break;
             }
@@ -316,28 +324,18 @@ int main (int argc, char* argv[]) {
           XGetWindowAttributes(display, event.xmaprequest.window, &attributes);
           if(attributes.override_redirect == False) {
             int used = workspaces.used;
-            new_workspace = add_frame_to_workspace(display, &workspaces, event.xmaprequest.window, &pixmaps, &cursors, &atoms);
+            new_workspace = add_frame_to_workspace(display, &workspaces, event.xmaprequest.window, current_workspace
+            , sinking_seperator, tiling_seperator, floating_seperator, &pixmaps, &cursors, &atoms);
+            #ifdef SHOW_MAP_REQUEST_EVENT
             printf("new workspace %d\n", new_workspace);
+            #endif
             if(used < workspaces.used) { //if it is a newly created workspace
+              #ifdef SHOW_MAP_REQUEST_EVENT
               printf("going to new workspace\n");
-              current_workspace = new_workspace;
-              change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator, floating_seperator);
+              #endif
+              change_to_workspace(display, &workspaces, &current_workspace, new_workspace, &pixmaps);
             }
-            //don't bring into the wrong workspace!
-            else if(new_workspace != current_workspace) {
-              printf("Opening new window in background\n");
-              struct Frame_list *frames = &workspaces.list[new_workspace];
-              //XLowerWindow(display, frames->list[frames->used - 1].frame);
-              for(int k = 0; k < frames->used; k++) 
-              if(frames->list[k].window == event.xmaprequest.window) {
-                XLowerWindow(display, frames->list[k].frame);
-                break;
-              }
-            }
-          }          
-          XMapWindow(display, event.xmaprequest.window);
-          XFlush(display);
-          
+          }
         }
       break;
             
@@ -419,10 +417,12 @@ int main (int argc, char* argv[]) {
             
               stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator, floating_seperator);
 
-              if(do_click_to_focus) { //EnterNotify on the framed window and has now been clicked.
+              if(do_click_to_focus) { 
                 #ifdef SHOW_BUTTON_PRESS_EVENT
                 printf("clicked inside framed window %d - now focussed\n", i);
                 #endif
+                //EnterNotify on the framed window triggered a grab which has now intercepted a click.
+                //pass on the event
                 XAllowEvents(display, ReplayPointer, event.xbutton.time);
                 do_click_to_focus = 0;
               }
@@ -436,7 +436,13 @@ int main (int argc, char* argv[]) {
                 i = frames->used;
                 clicked_frame = -1;
               }
-
+              
+              if(frames->list[i].mode != SINKING) { //above code may not have been able to tile the window
+                //FOCUS
+                add_focus(frames->list[i].window, &frames->focus);
+                unfocus_frames(display, frames, &pixmaps);
+                recover_focus(display, frames, &pixmaps);
+              }
               break;
             }
           }
@@ -832,18 +838,24 @@ int main (int argc, char* argv[]) {
                 #ifdef SHOW_BUTTON_RELEASE_EVENT
                 printf("Changing to workspace %s\n", workspaces.list[k].workspace_name);
                 #endif
-                current_workspace = k;                
-                change_to_workspace(display, &workspaces, current_workspace, sinking_seperator, tiling_seperator, floating_seperator);
+                change_to_workspace(display, &workspaces, &current_workspace, k, &pixmaps);
                 break;
               }
             }
           }
+          //This crashes the WM if the loop isn't included (and frame list is assumed to be current workspace)
           else for(int k = 0; k < workspaces.used; k++) {
             struct Frame_list *frames = &workspaces.list[k];
             for(i = 0; i < frames->used; i++) {
               if(clicked_widget == frames->list[i].mode_hotspot) {
                 if(event.xbutton.window == mode_menu.floating) frames->list[i].mode = FLOATING;
-                else if(event.xbutton.window == mode_menu.sinking) frames->list[i].mode = SINKING;
+                else if(event.xbutton.window == mode_menu.sinking) {
+                  frames->list[i].mode = SINKING;         
+                  //FOCUS    
+                  remove_focus(frames->list[i].window, &frames->focus);
+                  unfocus_frames(display, frames, &pixmaps);
+                  recover_focus(display, frames, &pixmaps);
+                }
                 else if(event.xbutton.window == mode_menu.tiling) {
                   #ifdef SHOW_BUTTON_RELEASE_EVENT
                   printf("retiling frame\n");
@@ -860,7 +872,12 @@ int main (int argc, char* argv[]) {
                 //Now we need to identify which window to put here.
                 for(int j = 0; j < frames->used; j++) {
                   if(event.xbutton.window == frames->list[j].title_menu.entry) {
+                    //FOCUS
                     replace_frame(display, &frames->list[i], &frames->list[j], sinking_seperator, tiling_seperator, floating_seperator, &pixmaps);
+                    remove_focus(frames->list[i].window, &frames->focus);
+                    add_focus(frames->list[j].window, &frames->focus);
+                    unfocus_frames(display, frames, &pixmaps);
+                    if(k = current_workspace) recover_focus(display, frames, &pixmaps);
                     break;
                   }
                 }
@@ -1154,10 +1171,14 @@ int main (int argc, char* argv[]) {
         }
       break;
       case FocusIn:
+        #ifdef SHOW_FOCUS_EVENT
         printf("Warning: Unhandled FocusIn event\n");    	
+        #endif
     	break;
     	case FocusOut:
+    	  #ifdef SHOW_FOCUS_EVENT
         printf("Warning: Unhandled FocusOut event\n");    	
+        #endif
     	break;
       case MappingNotify:
       
@@ -1178,13 +1199,18 @@ int main (int argc, char* argv[]) {
     }
   }
 
+  printf("attempting to exit\n");  
   if(pulldown != root) XUnmapWindow(display, pulldown);
+
+  for(int k = 0; k < workspaces.used; k++) remove_frame_list(display, &workspaces, k);
+    
   XDestroyWindow(display, mode_menu.frame);
+  XDestroyWindow(display, menubar.border);
+  XDestroyWindow(display, workspaces.workspace_menu);
   
   free_pixmaps(display, &pixmaps);
   free_cursors(display, &cursors);
   
-  for(int k = 0; k < workspaces.used; k++) remove_frame_list(display, &workspaces, k);
     
   XCloseDisplay(display);
   
@@ -1208,9 +1234,9 @@ void create_seperators(Display *display, Window *sinking_seperator, Window *tili
   XChangeWindowAttributes(display, *sinking_seperator, CWOverrideRedirect, &set_attributes);
   XChangeWindowAttributes(display, *tiling_seperator, CWOverrideRedirect, &set_attributes);
   XChangeWindowAttributes(display, *floating_seperator, CWOverrideRedirect, &set_attributes);
-  XLowerWindow(display, *floating_seperator);
-  XLowerWindow(display, *tiling_seperator);
-  XLowerWindow(display, *sinking_seperator);
+  XRaiseWindow(display, *sinking_seperator);
+  XRaiseWindow(display, *tiling_seperator);
+  XRaiseWindow(display, *floating_seperator);
   XFlush(display);
 }
 

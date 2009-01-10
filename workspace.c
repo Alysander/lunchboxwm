@@ -39,7 +39,6 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
   XChangeWindowAttributes(display, frames->virtual_desktop 
   , CWOverrideRedirect | CWBackPixmap | CWCursor , &attributes);
   XLowerWindow(display, frames->virtual_desktop);
-  XMapWindow(display, frames->virtual_desktop);
 
   frames->workspace_menu.entry = XCreateSimpleWindow(display, workspaces->workspace_menu, 10, 10
   , XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black);
@@ -71,7 +70,10 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
     return -1;
   }
   
-  //TODO create the focus list
+  frames->focus.used = 0;
+  frames->focus.max = 8; //must be divisible by 2
+  frames->focus.list = NULL;
+  frames->focus.list = malloc(sizeof(struct Focus_list) * frames->focus.max); //ok if it fails.
   #ifdef SHOW_STARTUP
   printf("Created workspace %d\n", workspaces->used);
   #endif
@@ -83,7 +85,7 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
 
 /*  This is called when the wm is exiting, it doesn't close the open windows. */
 void remove_frame_list(Display *display, struct Workspace_list* workspaces, int index) {
-  int i = index;
+
   if(index >= workspaces->used) return;
   struct Frame_list *frames = &workspaces->list[index];
   
@@ -107,7 +109,7 @@ void remove_frame_list(Display *display, struct Workspace_list* workspaces, int 
   XDestroyWindow(display, frames->title_menu);
   XDestroyWindow(display, frames->workspace_menu.entry);
 
-  for( ; i < workspaces->used; i++) workspaces->list[i] = workspaces->list[i + 1];
+  for(int i = index ; i < workspaces->used; i++) workspaces->list[i] = workspaces->list[i + 1];
 }
 
 //returned pointer must be freed with XFree.
@@ -116,8 +118,7 @@ char* load_program_name(Display* display, Window window) {
   if(XGetClassHint(display, window, &program_hint)) {
     printf("res_name %s, res_class %s\n", program_hint.res_name, program_hint.res_class);
     if(program_hint.res_name != NULL) XFree(program_hint.res_name);    
-    //frame->program_name = program_hint.res_class;    
-    if(program_hint.res_class != NULL) //XFree(program_hint.res_class);
+    if(program_hint.res_class != NULL)
       return program_hint.res_class;
   }
   return NULL;
@@ -131,15 +132,18 @@ char *make_default_program_name(Display *display, Window window, char *name) {
   XFlush(display);
 }
 
-int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window window, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Atoms *atoms) {
+/* creates the workspace */
+int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window window, int current_workspace
+, Window sinking_seperator, Window tiling_seperator, Window floating_seperator
+, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Atoms *atoms) {
   char *program_name = load_program_name(display, window);
   int k;
-    
+  int frame_index = -1;  
   if(program_name == NULL) {
-//    return -1;
-    //this is probably a good idea, but at the moment many of my windows are not override-redirect
+    #ifdef SHOW_MAP_REQUEST_EVENT
     printf("Error, could not load program name for window %lu\n", window);  
     printf("Creating default workspace\n");
+    #endif
     make_default_program_name(display, window, "Other Programs");
     program_name = load_program_name(display, window);
   }
@@ -153,16 +157,29 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
   if(k == workspaces->used) {
     k = create_frame_list(display, workspaces, program_name, pixmaps, cursors);
     if(k < 0) {
+      #ifdef SHOW_MAP_REQUEST_EVENT   
       printf("Error, could not create new workspace\n");
+      #endif
       return -1;
     }
   }
-  create_frame(display, &workspaces->list[k], window, pixmaps, cursors, atoms);
-
+  frame_index = create_frame(display, &workspaces->list[k], window, pixmaps, cursors, atoms);
+  if(frame_index != -1) {
+    check_new_frame_focus (display, &workspaces->list[k], frame_index, pixmaps);
+    stack_frame(display, &workspaces->list[k].list[frame_index], sinking_seperator, tiling_seperator, floating_seperator);
+    if(k == current_workspace) {
+      XMapWindow(display, workspaces->list[k].list[frame_index].frame);
+      if(workspaces->list[k].list[frame_index].selected)
+        XSetInputFocus(display, workspaces->list[k].list[frame_index].window, RevertToPointerRoot, CurrentTime);
+    }
+    XFlush(display);
+  }
   return k;
 }
 
-int create_startup_workspaces(Display *display, struct Workspace_list *workspaces, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Atoms *atoms) {
+int create_startup_workspaces(Display *display, struct Workspace_list *workspaces
+, Window sinking_seperator, Window tiling_seperator, Window floating_seperator
+, struct Pixmaps *pixmaps, struct Cursors *cursors, struct Atoms *atoms) {
   unsigned int windows_length;
   Window root, parent, children, *windows;
   XWindowAttributes attributes;
@@ -175,22 +192,30 @@ int create_startup_workspaces(Display *display, struct Workspace_list *workspace
   if(windows != NULL) for(int i = 0; i < windows_length; i++)  {
     XGetWindowAttributes(display, windows[i], &attributes);
     if(attributes.map_state == IsViewable && !attributes.override_redirect)  {
-      add_frame_to_workspace(display, workspaces, windows[i], pixmaps, cursors, atoms);
+      add_frame_to_workspace(display, workspaces, windows[i], -1
+      , sinking_seperator, tiling_seperator, floating_seperator, pixmaps, cursors, atoms);
     }
   }
   XFree(windows);
   return 1;
 }
 
-void change_to_workspace(Display *display, struct Workspace_list *workspaces, int index,  Window sinking_seperator, Window tiling_seperator, Window floating_seperator) {
-  if(index < workspaces->used) {
-    struct Frame_list *frames = &workspaces->list[index];
-    XRaiseWindow(display, workspaces->list[index].virtual_desktop);
-    XRaiseWindow(display, sinking_seperator);    
-    XRaiseWindow(display, tiling_seperator);
-    XRaiseWindow(display, floating_seperator);
+void change_to_workspace(Display *display, struct Workspace_list *workspaces, int *current_workspace, int index, struct Pixmaps *pixmaps) {
+  //Window sinking_seperator, Window tiling_seperator, Window floating_seperator
+  if(index < workspaces->used  &&  *current_workspace != index) {
+    struct Frame_list *frames;
+    if(*current_workspace < workspaces->used  &&  *current_workspace >= 0) {
+      frames = &workspaces->list[*current_workspace];
+      XUnmapWindow(display, frames->virtual_desktop);
+      for(int i = 0; i < frames->used; i++) XUnmapWindow(display, frames->list[i].frame);     
+    }
+    frames = &workspaces->list[index];
+    XMapWindow(display, frames->virtual_desktop);
+    for(int i = 0; i < frames->used; i++) XMapWindow(display, frames->list[i].frame); 
+    printf("changing focus to one in new workspace\n");
+    recover_focus(display, frames, pixmaps);
     XFlush(display);
-    for(int i = 0; i < frames->used; i++) stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator, floating_seperator);
+    *current_workspace = index;
   }
   else {
     printf("Error: change to non-existant workspace\n");
