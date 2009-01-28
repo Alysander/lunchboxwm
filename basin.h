@@ -6,7 +6,8 @@
 #include <cairo/cairo-xlib.h>
 #include <string.h>
 #include <X11/Xcursor/Xcursor.h>
-#include <X11/Xatom.h> //defines XA_ATOM, an atom that stores the text ATOM
+#include <X11/extensions/shape.h>
+#include <X11/Xatom.h>
 
 #define M_PI 3.14159265359
 
@@ -15,13 +16,10 @@
 #define MINWIDTH 240 
 #define MINHEIGHT 80
 
-#define FLOATING 1
-#define TILING 2
-#define SINKING 3
-
 /****THEME DERIVED CONSTANTS******/
 #define LIGHT_EDGE_HEIGHT 7
-#define PULLDOWN_WIDTH 100
+//#define PULLDOWN_WIDTH 100
+#define PULLDOWN_WIDTH 120
 
 #define BUTTON_SIZE 20
 #define V_SPACING 4
@@ -47,112 +45,133 @@
 #define MENUBAR_HEIGHT (TITLEBAR_HEIGHT - V_SPACING + EDGE_WIDTH)
 #define PUSH_PULL_RESIZE_MARGIN 1
 
-/***** Colours for cairo as rgba amounts between 0 and 1 *******/
-#define SPOT            0.235294118, 0.549019608, 0.99, 1
-#define SPOT_EDGE       0.235294118, 0.549019608, 0.99, 0.35
-#define BACKGROUND      0.4, 0.4, 0.4, 1
-#define TEXT            1.00, 1.00, 1.00, 1
-#define TEXT_DEACTIVATED   0.6, 0.6, 0.6, 1
-#define SHADOW          0.0, 0.0, 0.0, 1
-
-#define BORDER          0.13, 0.13, 0.13, 1
-#define LIGHT_EDGE      0.34, 0.34, 0.34, 1
-/* Medium gray body
-#define BODY            0.27, 0.27, 0.27, 1
-*/
-#define BODY            0.24, 0.24, 0.24, 1
-
-/*** Green theme at Fraser's suggestion ***/
-/*
-#define BORDER          0.01, 0.35, 0.0, 1
-#define LIGHT_EDGE      0.01, 0.78, 0.0, 1
-#define BODY            0.01, 0.6, 0.0, 1
-*/
-
 /*** Convenience Macros ***/
 #define INTERSECTS_BEFORE(x1, w1, x2, w2) (x1 + w1 > x2  &&  x1 <= x2)
 #define INTERSECTS_AFTER(x1, w1, x2, w2)  (x1 < x2 + w2  &&  x1 + w1 >= x2 + w2)
-#define INTERSECTS(x1, w1, x2, w2) (INTERSECTS_BEFORE(x1, w1, x2, w2) || INTERSECTS_AFTER(x1, w1, x2, w2))
+#define INTERSECTS(x1, w1, x2, w2)        (INTERSECTS_BEFORE(x1, w1, x2, w2) || INTERSECTS_AFTER(x1, w1, x2, w2))
 
-/****
-Workspaces
-   - status windows are "global windows". They simply remain on the screen across workspaces.
-   - file windows can be shared.  However, they are technically reopened in different workspaces.
-     -  how is the "opening program" determined?
-        - open in current program?
-
-Dialog boxes should not have a title menu - this could too easily result in them being lost.
-Splash screens should not have close button.
-
-Program/workspace can be a variable in frame.  
-(utility windows do and therefore can have the mode list too - but no close button)
-   
-****/
+enum Window_mode {
+  floating,
+  tiling,
+  desktop,
+  hidden,
+  unset //this is required for the first change_frame_mode
+};
 
 enum Window_type {
-  desktop,
-  normal,
-  dock,
+  unknown,
+  program,
   splash,
   dialog,
   modal_dialog,
+  file,
   utility,
-  status //NOT EWMH
+  status, 
+  system_program
 };
 
 enum Window_state {
   fullscreen,
   demands_attention,
-  unstated
+  lurking,       /* The lurking modes are used when the window attemps to tile and fails*/  
+  none
 };
 
 struct Frame {
-  Window window;
   char *window_name;
 
   int x,y,w,h;
-  int mode; //FLOATING || TILING || SINKING
-  enum Window_type type; //EWMH 
-  enum Window_state state; //EWMH 
+  enum Window_mode mode;
+  enum Window_type type; 
+  enum Window_state state;
   int selected;
   int min_width, max_width;
   int min_height, max_height;
+  Window transient; //the calling window of this dialog box - not structural
   
-  Window transient; //parent window
-  Window frame, body, innerframe, titlebar, close_button, mode_pulldown, selection_indicator;
-  Window mode_hotspot, close_hotspot;
+  
+  Window window;    //the reparented window 
+  Window frame, body, innerframe, titlebar;
+
+  t_edge,
+  l_edge,
+  b_edge,
+  r_edge,
+  tl_corner,
+  tr_corner,
+  bl_corner,
+  br_corner,
+  selection_indicator,
+  //start middle end to allow filling and changing of widgets width
+  //state windows are all children of a single parent window.
+  title_menu_lhs,
+  title_menu_middle, //fill
+  title_menu_rhs,    //includes arrow
+  mode_dropdown_lhs, //no fill needed because contents are constant.
+  mode_dropdown_rhs, //includes arrow
+    
+
   Window backing;   //backing is the same dimensions as the framed window.  
                     //It is used so that the resize grips can cover the innerframe but still be below the framed window.
 
+  /* InputOnly resize grips for the bottom left, top right etc. */
+  Window l_grip, bl_grip, b_grip, br_grip, r_grip;
+
+  /*The following structures are required because every widget has a window for each state */
+  struct {  
+    Window backing, close_hotspot;
+    Window close_button_normal, close_button_pressed;  
+  } close_button;
+  
   struct {
-    Window frame   //frame is the outline, 
+    Window backing, hide_hotspot;
+    Window hide_button_normal, hide_button_pressed;
+  } hide_button;  //this is used in minimal mode
+  
+  struct {
+    Window backing, mode_hotspot;
+    Window floating_normal, floating_pressed, floating_deactivated
+    ,tiling_normal,  tiling_pressed,   tiling_deactivated
+    ,desktop_normal, desktop_pressed,  desktop_deactivated //desktop is sometimes visible
+    ,hidden_normal,  hidden_pressed,   hidden_deactivated; //hidden won't be shown
+  } mode_dropdown;
+  
+  struct { //this is the selection indicator and it's different states
+    Window backing;
+    Window indicator_normal, indicator_active;
+  } selection_indicator;
+  
+  struct {
+    Window frame    //frame is the outline, 
     , body          //body is the inner border, 
-    , title         //title has the background pixmap and 
-    , arrow         //arrow is the pulldownarrow on the title menu
     , hotspot;      //hotspot is an input_only window to make the events easier to identify
 
-    //these pixmaps include the bevel, background and  text
-    Pixmap title_normal_p
-    , title_pressed_p
-    , title_deactivated_p
-    , item_title_p
-    , item_title_active_p
-    , item_title_deactivated_p
-    , item_title_hover_p
-    , item_title_active_hover_p
-    , item_title_deactivated_hover_p;
+    Window backing, title_normal, title_pressed, title_deactivated;
     
-    Window entry;
-    int width; //this is the width of the individual title
+    struct {
+      Window backing, arrow_normal, arrow_pressed, arrow_deactivated, no_arrow;
+    } arrow;
+        
+    int width;
   } title_menu;
  
   struct {
+    //these are the items for the menu
+    Window backing;
+    Window item_title, item_title_active, item_title_deactivated
+    , item_title_hover, item_title_active_hover, item_title_deactivated_hover;
+    
+    struct {
+      Window item_icon, item_icon_hover;
+    } icon;
+
+    int width;
+  } menu_item;
+  
+  struct { //these is used during tiling resize operations.
     int new_position;
     int new_size;
   } indirect_resize;
-  
-  //InputOnly resize grips for the bottom left, top right etc.  
-  Window l_grip, bl_grip, b_grip, br_grip, r_grip;
 };
 
 struct Focus_list {
@@ -168,13 +187,14 @@ struct Frame_list {
   char *workspace_name;
   
   struct {
-    Pixmap item_title_p
-    , item_title_active_p
-    , item_title_deactivated_p
-    , item_title_hover_p
-    , item_title_active_hover_p
-    , item_title_deactivated_hover_p;
-    Window entry;
+    Window item_title
+    , item_title_active
+    , item_title_deactivated
+    , item_title_hover
+    , item_title_active_hover
+    , item_title_deactivated_hover;
+    
+    Window backing;
     int width;
   } workspace_menu;
   
@@ -198,7 +218,12 @@ struct Rectangle_list {
 };
 
 struct Mode_menu {
-  Window frame, floating, tiling, sinking;
+  Window frame, floating, tiling, desktop, blank, hidden;
+  Window
+  item_floating, item_floating_hover, item_floating_active, item_floating_active_hover, item_floating_deactivated,
+  item_tiling,   item_tiling_hover,   item_tiling_active,   item_tiling_active_hover,   item_tiling_deactivated,
+  item_desktop,  item_desktop_hover,  item_desktop_active,  item_desktop_active_hover,  item_desktop_deactivated,
+  item_hidden,   item_hidden_hover,   item_hidden_active,   item_hidden_active_hover,   item_hidden_deactivated;
 };
 
 struct Cursors {
@@ -208,44 +233,34 @@ struct Cursors {
 
 struct Pixmaps {
   Pixmap border_p, light_border_p, body_p, titlebar_background_p
-  , close_button_normal_p, close_button_pressed_p, close_button_deactivated_p
-
-  , desktop_background_p
-  //these have a textured background
-  ,pulldown_floating_normal_p, pulldown_floating_pressed_p
-  ,pulldown_tiling_normal_p, pulldown_tiling_pressed_p
-
-  ,pulldown_deactivated_p
-
-  //these don't have a textured background
-  ,item_floating_p, item_floating_hover_p, item_floating_active_p, item_floating_active_hover_p
-  ,item_sinking_p, item_sinking_hover_p, item_sinking_active_p, item_sinking_active_hover_p
-  ,item_tiling_p, item_tiling_hover_p, item_tiling_active_p, item_tiling_active_hover_p
-  
-  //these have a textured background
-  ,program_menu_normal_p, window_menu_normal_p, options_menu_normal_p, links_menu_normal_p, tool_menu_normal_p
-  ,program_menu_pressed_p, window_menu_pressed_p, options_menu_pressed_p, links_menu_pressed_p, tool_menu_pressed_p
-
-  ,selection_p, arrow_normal_p, arrow_pressed_p, arrow_deactivated_p;
+  , selection_indicator_active_p, selection_indicator_normal_p
+  , arrow_normal_p,             arrow_pressed_p,             arrow_deactivated_p
+  , pulldown_floating_normal_p, pulldown_floating_pressed_p, pulldown_floating_deactivated_p
+  , pulldown_tiling_normal_p,   pulldown_tiling_pressed_p,   pulldown_tiling_deactivated_p
+  , pulldown_desktop_normal_p,  pulldown_desktop_pressed_p,  pulldown_desktop_deactivated_p
+  , hide_button_normal_p,       hide_button_pressed_p,       hide_button_deactivated_p
+  , close_button_normal_p,      close_button_pressed_p /*, close_button_deactivated_p*/ ;
+  //maybe make a close button deactivated mode (but still allow it to work) as a transitionary measure
+  //since dialog boxes and utility windows shouldn't need it (but might since compatibility isn't ensured)
 };
 
 struct Atoms {    
-  Atom name                  // "WM_NAME"
-  , normal_hints             // "WM_NORMAL_HINTS"
+  Atom name                    // "WM_NAME"
+  , normal_hints               // "WM_NORMAL_HINTS"
 
   //make sure this is the first Extended window manager hint
-  , supported                // "_NET_SUPPORTED"
-  , supporting_wm_check      // "_NET_SUPPORTING_WM_CHECK"    
-  , number_of_desktops       // "_NET_NUMBER_OF_DESKTOPS" //always 1
-  , desktop_geometry         // "_NET_DESKTOP_GEOMETRY" //this is currently the same size as the screen
+  , supported                  // "_NET_SUPPORTED"
+  , supporting_wm_check        // "_NET_SUPPORTING_WM_CHECK"    
+  , number_of_desktops         // "_NET_NUMBER_OF_DESKTOPS" //always 1
+  , desktop_geometry           // "_NET_DESKTOP_GEOMETRY" //this is currently the same size as the screen
   
   , wm_full_placement          // "_NET_WM_FULL_PLACEMENT"
   , frame_extents              // "_NET_FRAME_EXTENTS"
   , wm_window_type             // "_NET_WM_WINDOW_TYPE"
   , wm_window_type_normal      // "_NET_WM_WINDOW_TYPE_NORMAL"
   , wm_window_type_dock        // "_NET_WM_WINDOW_TYPE_DOCK"
-  , wm_window_type_desktop     // "_NET_WM_WINDOW_TYPE_DESKTOP"  //no frame
-  , wm_window_type_splash      // "_NET_WM_WINDOW_TYPE_SPLASH"  //no frame
+  , wm_window_type_desktop     // "_NET_WM_WINDOW_TYPE_DESKTOP"  
+  , wm_window_type_splash      // "_NET_WM_WINDOW_TYPE_SPLASH"  
   , wm_window_type_dialog      // "_NET_WM_WINDOW_TYPE_DIALOG"  //can be transient
   , wm_window_type_utility     // "_NET_WM_WINDOW_TYPE_UTILITY" //can be transient
   , wm_state                   // "_NET_WM_STATE"
@@ -259,47 +274,63 @@ struct Atoms {
   
 /** This enum is passed as an argument to create_pixmap to select which one to draw **/
 enum Main_pixmap {
-  background,
   body,
   border,
   light_border,
-  titlebar,
-  selection,
-  close_button_normal,       close_button_pressed,      close_button_deactivated,
-  pulldown_floating_normal,  pulldown_floating_pressed,  
-  pulldown_tiling_normal,    pulldown_tiling_pressed,   pulldown_tiling_deactivated,
-  pulldown_deactivated, 
-  //the pulldowns deactivated mode is when the sinking mode is pressed
-   
-  item_floating, item_floating_hover, item_floating_active, item_floating_active_hover,  
-  item_sinking,  item_sinking_hover, item_sinking_active,  item_sinking_active_hover,
-  item_tiling,   item_tiling_hover,  item_tiling_active,   item_tiling_active_hover,
-  
-  program_menu_normal, program_menu_pressed,
-  window_menu_normal,  window_menu_pressed, 
-  options_menu_normal, options_menu_pressed,
-  links_menu_normal,   links_menu_pressed,
-  tool_menu_normal,    tool_menu_pressed,
+  titlebar
+};
 
-  arrow_normal,
-  arrow_pressed,
-  arrow_deactivated
+enum Widget_pixmap {
+  selection_indicator,
+
+  arrow,
+
+  hide, 
+   
+  close_button,
+
+  pulldown_floating,
+  pulldown_tiling,
+  pulldown_desktop,
+
+  program_menu,
+  window_menu,
+  options_menu,
+  links_menu,
+  tool_menu,
+
+  item_floating,
+  item_tiling,
+  item_desktop,
+  item_hidden
+};
+
+enum Widget_state {
+  normal,
+  pressed,
+  deactivated,
+  hover,
+  active,
+  active_hover
 };
 
 enum Title_pixmap {
   title_normal, 
   title_pressed,
   title_deactivated,
-
+  
   item_title,
   item_title_active,
   item_title_deactivated,
   item_title_hover,
   item_title_active_hover,
-  item_title_deactivated_hover
-  //no inactive as all available choices in the menu are valid
+  item_title_deactivated_hover 
 };
 
 struct Menubar {
-  Window border, body, program_menu, window_menu, options_menu, links_menu, tool_menu;
+  Window border, body;
+  Window program_menu, window_menu, options_menu, links_menu, tool_menu; //these are the parents of their respective entries below:
+  Window program_menu_normal, window_menu_normal, options_menu_normal, links_menu_normal, tool_menu_normal
+  , program_menu_pressed, window_menu_pressed, options_menu_pressed, links_menu_pressed, tool_menu_pressed
+  , program_menu_deactivated, window_menu_deactivated, options_menu_deactivated, links_menu_deactivated, tool_menu_deactivated;  
 };

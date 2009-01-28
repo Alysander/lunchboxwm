@@ -16,7 +16,7 @@ struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_lis
   }
   
   for(int i = 0; i < frames->used; i++) {
-    if(frames->list[i].mode == TILING) {
+    if(frames->list[i].mode == tiling) {
       struct Rectangle current = 
         {frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h};
 

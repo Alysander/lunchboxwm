@@ -6,6 +6,14 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
   int black = BlackPixelOfScreen(screen);
   XSetWindowAttributes attributes; 
   struct Frame_list *frames;
+
+  Pixmap item_title_p
+  , item_title_active_p
+  , item_title_deactivated_p
+  , item_title_hover_p
+  , item_title_active_hover_p
+  , item_title_deactivated_hover_p;
+    
   
   if(workspaces->list == NULL) {
     workspaces->used = 0;
@@ -28,32 +36,67 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
   }
   //the frame list frames is the new workspace
   frames = &workspaces->list[workspaces->used];
-  
+  frames->workspace_name = workspace_name;
+    
   //Create the background window
   frames->virtual_desktop = XCreateSimpleWindow(display, root, 0, 0
   , XWidthOfScreen(screen), XHeightOfScreen(screen) - MENUBAR_HEIGHT, 0, black, black);
   attributes.cursor = cursors->normal;
   attributes.override_redirect = True;
-  //attributes.background_pixmap = pixmaps->desktop_background_p;
   attributes.background_pixmap = ParentRelative;
   XChangeWindowAttributes(display, frames->virtual_desktop 
   , CWOverrideRedirect | CWBackPixmap | CWCursor , &attributes);
   XLowerWindow(display, frames->virtual_desktop);
 
-  frames->workspace_menu.entry = XCreateSimpleWindow(display, workspaces->workspace_menu, 10, 10
+  frames->workspace_menu.backing = XCreateSimpleWindow(display, workspaces->workspace_menu, 10, 10
   , XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black);
-  XSelectInput(display, frames->workspace_menu.entry, ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-  XMapWindow(display, frames->workspace_menu.entry);
-  XFlush(display);
-    
-  //set the workspace name and create the pixmaps
-  frames->workspace_name = workspace_name;
-  frames->workspace_menu.item_title_p = create_title_pixmap(display, frames->workspace_name, item_title);
-  frames->workspace_menu.item_title_active_p = create_title_pixmap(display, frames->workspace_name, item_title_active);
-  frames->workspace_menu.item_title_deactivated_p = create_title_pixmap(display, frames->workspace_name, item_title_deactivated);
-  frames->workspace_menu.item_title_hover_p = create_title_pixmap(display, frames->workspace_name, item_title_hover);
-  frames->workspace_menu.item_title_active_hover_p = create_title_pixmap(display, frames->workspace_name, item_title_active_hover);
-  frames->workspace_menu.item_title_deactivated_hover_p = create_title_pixmap(display, frames->workspace_name, item_title_deactivated_hover);
+  XSelectInput(display, frames->workspace_menu.backing, ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  XMapWindow(display, frames->workspace_menu.backing);
+  
+  //create the pixmaps
+  item_title_p = create_title_pixmap(display, frames->workspace_name, item_title);
+  item_title_active_p = create_title_pixmap(display, frames->workspace_name, item_title_active);
+  item_title_deactivated_p = create_title_pixmap(display, frames->workspace_name, item_title_deactivated);
+  item_title_hover_p = create_title_pixmap(display, frames->workspace_name, item_title_hover);
+  item_title_active_hover_p = create_title_pixmap(display, frames->workspace_name, item_title_active_hover);
+  item_title_deactivated_hover_p = create_title_pixmap(display, frames->workspace_name, item_title_deactivated_hover);
+
+  //Create the windows for the different states of the menu item
+  frames->workspace_menu.item_title = 
+  XCreateSimpleWindow(display, frames->workspace_menu.backing, 0, 0, XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black);
+  frames->workspace_menu.item_title_active =
+  XCreateSimpleWindow(display, frames->workspace_menu.backing, 0, 0, XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black);
+  frames->workspace_menu.item_title_deactivated =
+  XCreateSimpleWindow(display, frames->workspace_menu.backing, 0, 0, XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black);
+  frames->workspace_menu.item_title_hover =
+  XCreateSimpleWindow(display, frames->workspace_menu.backing, 0, 0, XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black);
+  frames->workspace_menu.item_title_active_hover =
+  XCreateSimpleWindow(display, frames->workspace_menu.backing, 0, 0, XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black);
+  frames->workspace_menu.item_title_deactivated_hover =
+  XCreateSimpleWindow(display, frames->workspace_menu.backing, 0, 0, XWidthOfScreen(screen), MENU_ITEM_HEIGHT, 0, black, black);
+
+  XSetWindowBackgroundPixmap(display, frames->workspace_menu.item_title, item_title_p);
+  XSetWindowBackgroundPixmap(display, frames->workspace_menu.item_title_active, item_title_active_p);
+  XSetWindowBackgroundPixmap(display, frames->workspace_menu.item_title_deactivated, item_title_deactivated_p);
+  XSetWindowBackgroundPixmap(display, frames->workspace_menu.item_title_hover, item_title_hover_p);
+  XSetWindowBackgroundPixmap(display, frames->workspace_menu.item_title_active_hover, item_title_active_hover_p);
+  XSetWindowBackgroundPixmap(display, frames->workspace_menu.item_title_deactivated_hover, item_title_deactivated_hover_p);
+
+  XRaiseWindow(display,  frames->workspace_menu.item_title);
+  XMapWindow(display, frames->workspace_menu.item_title);
+  XMapWindow(display, frames->workspace_menu.item_title_active);
+  XMapWindow(display, frames->workspace_menu.item_title_deactivated);
+  XMapWindow(display, frames->workspace_menu.item_title_hover);
+  XMapWindow(display, frames->workspace_menu.item_title_active_hover);
+  XMapWindow(display, frames->workspace_menu.item_title_deactivated_hover);
+
+  XFreePixmap(display, item_title_p);
+  XFreePixmap(display, item_title_active_p);
+  XFreePixmap(display, item_title_deactivated_p);
+  XFreePixmap(display, item_title_hover_p);
+  XFreePixmap(display, item_title_active_hover_p);
+  XFreePixmap(display, item_title_deactivated_hover_p);
+
   frames->workspace_menu.width = get_title_width(display, frames->workspace_name);
   
   //Create the window menu for this workspace
@@ -94,12 +137,6 @@ void remove_frame_list(Display *display, struct Workspace_list* workspaces, int 
   free(frames->list);
   if(frames->workspace_name != NULL) {
     XFree(frames->workspace_name);
-    XFreePixmap(display, frames->workspace_menu.item_title_p);
-    XFreePixmap(display, frames->workspace_menu.item_title_active_p);
-    XFreePixmap(display, frames->workspace_menu.item_title_deactivated_p);
-    XFreePixmap(display, frames->workspace_menu.item_title_hover_p);
-    XFreePixmap(display, frames->workspace_menu.item_title_active_hover_p);
-    XFreePixmap(display, frames->workspace_menu.item_title_deactivated_hover_p);
   }
   //remove the focus list
   //close the background window
@@ -107,13 +144,13 @@ void remove_frame_list(Display *display, struct Workspace_list* workspaces, int 
   workspaces->used--;
   XDestroyWindow(display, frames->virtual_desktop);
   XDestroyWindow(display, frames->title_menu);
-  XDestroyWindow(display, frames->workspace_menu.entry);
+  XDestroyWindow(display, frames->workspace_menu.backing);
 
   for(int i = index ; i < workspaces->used; i++) workspaces->list[i] = workspaces->list[i + 1];
 }
 
 //returned pointer must be freed with XFree.
-char* load_program_name(Display* display, Window window) {
+char *load_program_name(Display* display, Window window) {
   XClassHint program_hint;
   if(XGetClassHint(display, window, &program_hint)) {
     printf("res_name %s, res_class %s\n", program_hint.res_name, program_hint.res_class);
@@ -165,12 +202,15 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
   }
   frame_index = create_frame(display, &workspaces->list[k], window, pixmaps, cursors, atoms);
   if(frame_index != -1) {
-    check_new_frame_focus (display, &workspaces->list[k], frame_index, pixmaps);
+    check_new_frame_focus (display, &workspaces->list[k], frame_index);
     stack_frame(display, &workspaces->list[k].list[frame_index], sinking_seperator, tiling_seperator, floating_seperator);
-    if(k == current_workspace) {
+    if(k == current_workspace  &&  current_workspace != -1) {
+      printf("Created and mapped window\n");
       XMapWindow(display, workspaces->list[k].list[frame_index].frame);
-      if(workspaces->list[k].list[frame_index].selected)
+      if(workspaces->list[k].list[frame_index].selected != 0) {
+        printf("Set focus to window %s\n", workspaces->list[k].list[frame_index].window_name);
         XSetInputFocus(display, workspaces->list[k].list[frame_index].window, RevertToPointerRoot, CurrentTime);
+      }
     }
     XFlush(display);
   }
@@ -202,22 +242,24 @@ int create_startup_workspaces(Display *display, struct Workspace_list *workspace
 
 void change_to_workspace(Display *display, struct Workspace_list *workspaces, int *current_workspace, int index, struct Pixmaps *pixmaps) {
   //Window sinking_seperator, Window tiling_seperator, Window floating_seperator
-  if(index < workspaces->used  &&  *current_workspace != index) {
+  if(index < workspaces->used) {
     struct Frame_list *frames;
     if(*current_workspace < workspaces->used  &&  *current_workspace >= 0) {
       frames = &workspaces->list[*current_workspace];
       XUnmapWindow(display, frames->virtual_desktop);
       for(int i = 0; i < frames->used; i++) XUnmapWindow(display, frames->list[i].frame);     
     }
+    //if index == -1, change to default workspace
+    if(index < 0  &&  workspaces->used >= 0) index = 0;
+    
     frames = &workspaces->list[index];
     XMapWindow(display, frames->virtual_desktop);
-    for(int i = 0; i < frames->used; i++) XMapWindow(display, frames->list[i].frame); 
+    for(int i = 0; i < frames->used; i++) 
+    if(frames->list[i].mode != hidden) XMapWindow(display, frames->list[i].frame); 
+    
     printf("changing focus to one in new workspace\n");
-    recover_focus(display, frames, pixmaps);
+    recover_focus(display, frames);
     XFlush(display);
     *current_workspace = index;
-  }
-  else {
-    printf("Error: change to non-existant workspace\n");
   }
 }

@@ -5,19 +5,20 @@ Give focus to new windows if
  1) It is the only window in the workspace
  2) It is a transient window and it's parent has focus.
 
-(implemented in unmapnotify case in main)
+(implemented in UnmapNotify case in main)
 Remove focus when any frame is closed 
 Remove focus and change it to previously focussed window when:
  1) The currently focussed frame is closed.
 
-(implemented in buttonrelease case in main)
+(implemented in ButtonRelease case in main)
  2) The currently focussed frame is sunk
  3) A window is replaced using the title menu with another window.
 
-(same lines as 3 above)
+(same section as "window is replaced" above)
 Remove focus if any window is sunk - because giving focus shouldn't have to raise a window.
- 
-Change focus to another window whenever the user clicks on it.
+
+(implemented in ButtonPress) 
+Change focus to another window whenever the user clicks on it an
 ****/
 
 void add_focus(Window new, struct Focus_list* focus) {
@@ -53,7 +54,7 @@ void remove_focus(Window old, struct Focus_list* focus) {
 
 //this doesn't actually focus the window in case it is in the wrong workspace.
 //caller must determine that.
-void check_new_frame_focus (Display *display, struct Frame_list *frames, int index, struct Pixmaps *pixmaps) {
+void check_new_frame_focus (Display *display, struct Frame_list *frames, int index) {
   struct Frame *frame = &frames->list[index];
   int set_focus = 0;
   
@@ -61,23 +62,25 @@ void check_new_frame_focus (Display *display, struct Frame_list *frames, int ind
   else 
   if(frames->focus.used > 0  
   && frame->transient == frames->focus.list[frames->focus.used - 1]) { //parent has focus
-    unfocus_frames(display, frames, pixmaps);
+    unfocus_frames(display, frames);
     set_focus=1;
   }
   
   if(set_focus) {
     add_focus(frame->window, &frames->focus);
-    frame->selected = 1;
-    show_frame_state(display, frame, pixmaps);
+    frame->selected = 1;    
+    XRaiseWindow(display, frames->list[index].selection_indicator.indicator_active);
+    XFlush(display);
   }
 }
 
 //deselect all the frames.
-void unfocus_frames(Display *display, struct Frame_list *frames, struct Pixmaps *pixmaps) {
+void unfocus_frames(Display *display, struct Frame_list *frames) {
   for(int i = 0; i < frames->used; i++) 
   if(frames->list[i].selected) {
     frames->list[i].selected = 0;
-    show_frame_state(display, &frames->list[i], pixmaps);
+    XRaiseWindow(display, frames->list[i].selection_indicator.indicator_normal);      
+    XFlush(display);
   }
 }
 
@@ -86,16 +89,21 @@ void unfocus_frames(Display *display, struct Frame_list *frames, struct Pixmaps 
 //rather than a constant time one.  The alternative would be to always keep the frame list
 //in focus order, but copying around reasonably large structs seems more expensive than
 //zipping through them once in a while.
-void recover_focus(Display *display, struct Frame_list *frames, struct Pixmaps *pixmaps) {
+void recover_focus(Display *display, struct Frame_list *frames) {
   if(frames->focus.used == 0) return;
   printf("Recovering focus\n");
   for(int i = frames->used - 1; i >= 0; i--) 
   if(frames->list[i].window == frames->focus.list[frames->focus.used - 1]) {
-    XMapWindow(display, frames->list[i].frame); //Just in case
+    XGrabServer(display);
+    XSetErrorHandler(supress_xerror);
+    //seems excessive but closing windows often causes 
     XSetInputFocus(display, frames->list[i].window, RevertToPointerRoot, CurrentTime);
+    XSync(display, False);
+    XSetErrorHandler(NULL);    
+    XUngrabServer(display);
     XFlush(display);
     frames->list[i].selected = 1;
-    show_frame_state(display, &frames->list[i], pixmaps);
+    change_frame_mode(display, &frames->list[i], frames->list[i].mode);
     break;
   }
   
