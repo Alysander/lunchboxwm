@@ -2,10 +2,12 @@ void check_frame_limits(Display *display, struct Frame *frame) {
   Screen* screen = DefaultScreenOfDisplay(display);  
 
   if(frame->w < frame->min_width)  frame->w = frame->min_width;
-  else if(frame->w > frame->max_width) frame->w = frame->max_width;
+  else 
+  if(frame->w > frame->max_width)  frame->w = frame->max_width;
   
   if(frame->h < frame->min_height) frame->h = frame->min_height;
-  else if(frame->h > frame->max_height) frame->h = frame->max_height;  
+  else 
+  if(frame->h > frame->max_height) frame->h = frame->max_height;  
   
   if(frame->x < 0) frame->x = 0;
   if(frame->y < 0) frame->y = 0;
@@ -16,7 +18,7 @@ void check_frame_limits(Display *display, struct Frame *frame) {
     frame->y = XHeightOfScreen(screen)- frame->h - MENUBAR_HEIGHT;
 }
 
-void change_frame_mode(Display *display, struct Frame *frame,  enum Window_mode mode) {
+void change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode) {
   Screen* screen = DefaultScreenOfDisplay(display);
   if(frame->selected != 0) XRaiseWindow(display, frame->selection_indicator.indicator_active);
   else XRaiseWindow(display, frame->selection_indicator.indicator_normal);      
@@ -27,7 +29,7 @@ void change_frame_mode(Display *display, struct Frame *frame,  enum Window_mode 
   
   XFlush(display);
   if(frame->mode == unset  &&  mode == unset) {
-    printf("This frame did not have a stacking mode set\n");
+    //printf("This frame did not have a stacking mode set\n");
     mode = floating;
   }
     
@@ -39,40 +41,7 @@ void change_frame_mode(Display *display, struct Frame *frame,  enum Window_mode 
     check_frame_limits(display, frame);
     resize_frame(display, frame);
   }
-/*  else 
-  if(frame->mode == minimal  &&  mode != minimal) {
-    
-    frame->w += H_SPACING*2 - MINIMAL_SPACING*2;
-    frame->h += TITLEBAR_HEIGHT - MINIMAL_TITLEBAR_HEIGHT;
-    frame->max_width  += H_SPACING*2 - MINIMAL_SPACING*2;
-    frame->max_height += TITLEBAR_HEIGHT - MINIMAL_TITLEBAR_HEIGHT;
-    frame->min_width  += H_SPACING*2 - MINIMAL_SPACING*2;
-    frame->min_height += TITLEBAR_HEIGHT - MINIMAL_TITLEBAR_HEIGHT;
-     
-    XMapWindow(display, frame->mode_dropdown.backing);
-    XMapWindow(display, frame->close_button.backing);    
-    XMapWindow(display, frame->selection_indicator.backing);
-    XMapWindow(display, frame->mode_dropdown.mode_hotspot);
-    XMapWindow(display, frame->close_button.close_hotspot);
-
-    XMoveWindow(display, frame->title_menu.frame,     H_SPACING*2 + BUTTON_SIZE, V_SPACING);
-    XMoveWindow(display, frame->title_menu.body,      EDGE_WIDTH, EDGE_WIDTH);  
-    XMoveWindow(display, frame->title_menu.backing,   EDGE_WIDTH, EDGE_WIDTH);
-    XMoveWindow(display, frame->title_menu.arrow.backing, frame->w - TITLEBAR_USED_WIDTH - EDGE_WIDTH*2 - BUTTON_SIZE, EDGE_WIDTH);
-    XMoveWindow(display, frame->l_grip,  0, TITLEBAR_HEIGHT + EDGE_WIDTH*2);
-    XMoveWindow(display, frame->bl_grip, 0, frame->h - CORNER_GRIP_SIZE);
-    XMoveWindow(display, frame->b_grip,  CORNER_GRIP_SIZE, frame->h - CORNER_GRIP_SIZE);
-    XMoveWindow(display, frame->br_grip, frame->w - CORNER_GRIP_SIZE, frame->h - CORNER_GRIP_SIZE);
-    XMoveWindow(display, frame->r_grip,  frame->w - CORNER_GRIP_SIZE, TITLEBAR_HEIGHT + EDGE_WIDTH*2);
-    //same y as body, with a constant width as the sides (so H_SPACING)
-    XMoveWindow(display, frame->backing, EDGE_WIDTH*2 + H_SPACING, TITLEBAR_HEIGHT + EDGE_WIDTH*2);
-    XMoveWindow(display, frame->title_menu.hotspot, H_SPACING*2 + BUTTON_SIZE + EDGE_WIDTH, 0);
-    XMoveWindow(display, frame->body,  EDGE_WIDTH, EDGE_WIDTH + TITLEBAR_HEIGHT );
-      
-    frame->mode = floating;
-    resize_frame(display, frame);
-  } */
-
+  
   if(mode == hidden) {
     XUnmapWindow(display, frame->frame);
     frame->mode = hidden;
@@ -87,25 +56,7 @@ void change_frame_mode(Display *display, struct Frame *frame,  enum Window_mode 
     XRaiseWindow(display, frame->mode_dropdown.tiling_normal);
     frame->mode = tiling;
   }
-/*  else
-  if(mode == minimal) {
-    
-    frame->w -= H_SPACING*2 - MINIMAL_SPACING*2;
-    frame->h -= TITLEBAR_HEIGHT - MINIMAL_TITLEBAR_HEIGHT;
-    frame->max_width  -= H_SPACING*2 - MINIMAL_SPACING*2;
-    frame->max_height -= TITLEBAR_HEIGHT - MINIMAL_TITLEBAR_HEIGHT;
-    frame->min_width  -= H_SPACING*2 - MINIMAL_SPACING*2;
-    frame->min_height -= TITLEBAR_HEIGHT - MINIMAL_TITLEBAR_HEIGHT;
-    
-    XUnmapWindow(display, frame->mode_dropdown.backing);
-    XUnmapWindow(display, frame->close_button.backing);
-    XUnmapWindow(display, frame->selection_indicator.backing);
-    XUnmapWindow(display, frame->mode_dropdown.mode_hotspot);
-    XUnmapWindow(display, frame->close_button.close_hotspot);
-    frame->mode = minimal;
-    resize_frame(display, frame);
-  }
-*/  
+
   else 
   if(mode == desktop  &&  frame->mode != desktop) {
     XRaiseWindow(display, frame->mode_dropdown.desktop_normal);
@@ -132,7 +83,7 @@ void change_frame_mode(Display *display, struct Frame *frame,  enum Window_mode 
 This function responds to a user's request to unsink a window by changing its mode from sinking
 */
 void unsink_frame (Display *display, struct Frame_list *frames, int index) {
-  printf("unsink frame\n");
+  //printf("unsink frame\n");
   drop_frame(display, frames, index);
 }
 
@@ -148,7 +99,7 @@ void drop_frame (Display *display, struct Frame_list *frames, int clicked_frame)
 
   struct Frame *frame = &frames->list[clicked_frame]; 
   struct Rectangle_list free_spaces = {0, 8, NULL};
-  double min_displacement = 0; 
+  double min_displacement = -1; 
   int min = -1;
   int min_dx = 0;
   int min_dy = 0;
@@ -160,7 +111,7 @@ void drop_frame (Display *display, struct Frame_list *frames, int clicked_frame)
   , frame->h };
   
   #ifdef SHOW_FRAME_DROP  
-  printf("Retiling dropped window\n");
+  printf("Attempting to tile dropped window\n");
   #endif
   if(frame->mode == tiling) {
     frame->mode = hidden;
@@ -181,7 +132,7 @@ void drop_frame (Display *display, struct Frame_list *frames, int clicked_frame)
     , free_spaces.list[k].x, free_spaces.list[k].y
     , free_spaces.list[k].w, free_spaces.list[k].h, (float)displacement);
     #endif
-    if(displacement >= 0  &&  (min_displacement == 0  ||  displacement < min_displacement)) {
+    if(displacement >= 0  &&  (min_displacement == -1  ||  displacement < min_displacement)) {
       min_displacement = displacement;
       min = k;
       min_dx = dx;
@@ -201,7 +152,7 @@ void drop_frame (Display *display, struct Frame_list *frames, int clicked_frame)
     for(int k = 0; k < free_spaces.used; k++) {
       if(free_spaces.list[k].w == 0
       || free_spaces.list[k].h == 0) {
-        printf("Error: FOUND ZERO AREA FREE SPACE\n");
+        //printf("Error: FOUND ZERO AREA FREE SPACE\n");
         continue;
       }
       w_proportion = (double)frame->w / free_spaces.list[k].w;
@@ -219,15 +170,27 @@ void drop_frame (Display *display, struct Frame_list *frames, int clicked_frame)
     
     if(best_space != -1) {
       change_frame_mode(display, frame, tiling);
-      frame->x = free_spaces.list[best_space].x;
-      frame->y = free_spaces.list[best_space].y;
-      if(free_spaces.list[best_space].w < frame->w) frame->w = free_spaces.list[best_space].w;
-      if(free_spaces.list[best_space].h < frame->h) frame->h = free_spaces.list[best_space].h;
-      
+      if(free_spaces.list[best_space].w < frame->w) {  
+        frame->x = free_spaces.list[best_space].x;
+        frame->w = free_spaces.list[best_space].w;
+        if(frame->y + frame->h > free_spaces.list[best_space].y + free_spaces.list[best_space].h) 
+          frame->y = free_spaces.list[best_space].y + free_spaces.list[best_space].h - frame->h;
+        else if(frame->y < free_spaces.list[best_space].y)
+          frame->y = free_spaces.list[best_space].y;
+      }
+      if(free_spaces.list[best_space].h < frame->h) {
+        frame->y = free_spaces.list[best_space].y;
+        frame->h = free_spaces.list[best_space].h; 
+        if(frame->x + frame->w > free_spaces.list[best_space].x + free_spaces.list[best_space].w) 
+          frame->x = free_spaces.list[best_space].x + free_spaces.list[best_space].w - frame->w;
+        else if(frame->x < free_spaces.list[best_space].x)
+          frame->x = free_spaces.list[best_space].x;
+      }
       if(frame->w > frame->max_width) frame->w = frame->max_width;
       if(frame->h > frame->max_height) frame->h = frame->max_height;
       resize_frame(display, frame);
     }
+    else change_frame_mode(display, frame, frame->mode);
   }
   else {
     #ifdef SHOW_FRAME_DROP  
@@ -236,7 +199,6 @@ void drop_frame (Display *display, struct Frame_list *frames, int clicked_frame)
     change_frame_mode(display, frame, tiling);
     frame->x += min_dx;
     frame->y += min_dy;
-    printf("move 2\n");    
     XMoveWindow(display, frame->frame, frame->x, frame->y);
     XFlush(display);
   }
@@ -262,7 +224,7 @@ void resize_nontiling_frame (Display *display, struct Frame_list *frames, int cl
   int new_x = mouse_root_x - pointer_start_x;
   int new_y = frame->y; 
   //int new_y = mouse_root_y - pointer_start_y; //no top grip
-  printf("resize_nontiling_frame %s\n", frames->list[clicked_frame].window_name);
+  //printf("resize_nontiling_frame %s\n", frames->list[clicked_frame].window_name);
   if(frame->mode != desktop) {
     if(new_x < 0) new_x = 0;
     if(new_y < 0) new_y = 0;
@@ -372,7 +334,6 @@ void move_frame (Display *display, struct Frame *frame
       new_y = 0;
       *pointer_start_y = mouse_root_y;
     }
-
     
     if(new_width != 0  &&  new_width < frame->min_width) {
       new_width = frame->min_width;
@@ -426,6 +387,8 @@ void move_frame (Display *display, struct Frame *frame
 int replace_frame(Display *display, struct Frame *target, struct Frame *replacement
 , Window sinking_seperator, Window tiling_seperator, Window floating_seperator, struct Pixmaps *pixmaps) {
   XWindowChanges changes;
+  XWindowChanges changes2;
+  enum Window_mode mode;
   unsigned int mask = CWX | CWY | CWWidth | CWHeight;
 
   #ifdef SHOW_BUTTON_PRESS_EVENT
@@ -438,7 +401,15 @@ int replace_frame(Display *display, struct Frame *target, struct Frame *replacem
     printf("The requested window doesn't fit on the target window\n");
     #endif
     return 0;
-  }  
+  }
+  if(replacement->mode != hidden && (target->min_width > replacement->w
+  || target->min_height > replacement->h)) {
+    #ifdef SHOW_BUTTON_PRESS_EVENT
+    printf("The requested window doesn't fit on the target window\n");
+    #endif
+    return 0;  
+  }
+  
   changes.x = target->x;
   changes.y = target->y;
   
@@ -447,21 +418,40 @@ int replace_frame(Display *display, struct Frame *target, struct Frame *replacem
       
   if(target->h < replacement->max_height) changes.height = target->h; 
   else changes.height = replacement->max_height;
-
+  
+  mode = replacement->mode;
+  if(mode != hidden) {
+    changes2.x = replacement->x;
+    changes2.y = replacement->y;
+    
+    if(replacement->w < target->max_width) changes2.width = replacement->w;  //save info for request
+    else changes2.width = target->max_width;
+    
+    if(replacement->h < target->max_height) changes2.height = replacement->h; 
+    else changes2.height = target->max_height;
+      
+    target->x = changes2.x;
+    target->y = changes2.y;
+    target->w = changes2.width;
+    target->h = changes2.height;  
+    //printf("Target mode %d, x %d, y %d, w %d, h %d\n", target->mode, target->x, target->y, target->w, target->h);
+    XConfigureWindow(display, target->frame, mask, &changes2);
+  }
+  
   replacement->x = changes.x;
   replacement->y = changes.y;
   replacement->w = changes.width;
-  replacement->h = changes.height;  
-  
+  replacement->h = changes.height;
+  //printf("Target mode %d, x %d, y %d, w %d, h %d\n", mode, replacement->x, replacement->y, replacement->w, replacement->h);
   XConfigureWindow(display, replacement->frame, mask, &changes);
+  
   resize_frame(display, replacement);
-  if(replacement->mode == hidden) {
-    //printf("mapping the window again\n");
-    XMapWindow(display,  replacement->frame); 
-  }
-   
+  resize_frame(display, target);  
+
   change_frame_mode(display, replacement, target->mode);
-  change_frame_mode(display, target, hidden);
+  change_frame_mode(display, target, mode);
+  stack_frame(display, target,      sinking_seperator, tiling_seperator, floating_seperator);
+  stack_frame(display, replacement, sinking_seperator, tiling_seperator, floating_seperator);
   
   return 1;
 }
@@ -496,7 +486,6 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
     axis is 'x' or 'y',
     frames is a valid Frame_list,
     index is a valid index to frames,
-    display is valid x11 connection,
     size is the new width or height 
     position is the new x or y co-ordinate and is within a valid range.
   *****/

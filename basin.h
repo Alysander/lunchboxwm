@@ -22,8 +22,8 @@
 #define PULLDOWN_WIDTH 120
 
 #define BUTTON_SIZE 20
-#define V_SPACING 4
-#define H_SPACING 4
+#define V_SPACING 3
+#define H_SPACING 3
 #define TITLEBAR_HEIGHT (BUTTON_SIZE + (V_SPACING * 2))
 #define EDGE_WIDTH 1
 #define PIXMAP_SIZE 16
@@ -46,9 +46,13 @@
 #define PUSH_PULL_RESIZE_MARGIN 1
 
 /*** Convenience Macros ***/
-#define INTERSECTS_BEFORE(x1, w1, x2, w2) (x1 + w1 > x2  &&  x1 <= x2)
-#define INTERSECTS_AFTER(x1, w1, x2, w2)  (x1 < x2 + w2  &&  x1 + w1 >= x2 + w2)
-#define INTERSECTS(x1, w1, x2, w2)        (INTERSECTS_BEFORE(x1, w1, x2, w2) || INTERSECTS_AFTER(x1, w1, x2, w2))
+//w means width.
+
+#define INTERSECTS_BEFORE(x2, w2, x1, w1) ((x2 < x1)    &&  (x2 + w2 > x1) && (x2 + w2 <= x1 + w1))
+#define INTERSECTS_AFTER(x2, w2, x1, w1)  ((x2 >= x1)   &&  (x2 < x1 + w1) && (x2 + w2 > x1 + w1))
+#define INTERSECTS_WITHIN(x2, w2, x1, w1) ((x2 <= x1)   &&  (x2 + w2 >= x1 + w1))
+#define INTERSECTS_OUTSIDE(x2, w2, x1, w1) ((x2 >= x1 ) &&  (x2 + w2 <= x1 + w1))
+#define INTERSECTS(x1, w1, x2, w2) (INTERSECTS_BEFORE(x1, w1, x2, w2) || INTERSECTS_AFTER(x1, w1, x2, w2) || INTERSECTS_WITHIN(x1, w1, x2, w2) || INTERSECTS_OUTSIDE(x1, w1, x2, w2))
 
 enum Window_mode {
   floating,
@@ -92,24 +96,6 @@ struct Frame {
   
   Window window;    //the reparented window 
   Window frame, body, innerframe, titlebar;
-
-  t_edge,
-  l_edge,
-  b_edge,
-  r_edge,
-  tl_corner,
-  tr_corner,
-  bl_corner,
-  br_corner,
-  selection_indicator,
-  //start middle end to allow filling and changing of widgets width
-  //state windows are all children of a single parent window.
-  title_menu_lhs,
-  title_menu_middle, //fill
-  title_menu_rhs,    //includes arrow
-  mode_dropdown_lhs, //no fill needed because contents are constant.
-  mode_dropdown_rhs, //includes arrow
-    
 
   Window backing;   //backing is the same dimensions as the framed window.  
                     //It is used so that the resize grips can cover the innerframe but still be below the framed window.
@@ -238,7 +224,6 @@ struct Pixmaps {
   , pulldown_floating_normal_p, pulldown_floating_pressed_p, pulldown_floating_deactivated_p
   , pulldown_tiling_normal_p,   pulldown_tiling_pressed_p,   pulldown_tiling_deactivated_p
   , pulldown_desktop_normal_p,  pulldown_desktop_pressed_p,  pulldown_desktop_deactivated_p
-  , hide_button_normal_p,       hide_button_pressed_p,       hide_button_deactivated_p
   , close_button_normal_p,      close_button_pressed_p /*, close_button_deactivated_p*/ ;
   //maybe make a close button deactivated mode (but still allow it to work) as a transitionary measure
   //since dialog boxes and utility windows shouldn't need it (but might since compatibility isn't ensured)
@@ -284,8 +269,6 @@ enum Widget_pixmap {
   selection_indicator,
 
   arrow,
-
-  hide, 
    
   close_button,
 

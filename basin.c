@@ -23,6 +23,7 @@
 //#define SHOW_FRAME_DROP  
 //#define SHOW_PROPERTY_NOTIFY
 //#define SHOW_CLIENT_MESSAGE
+//#define SHOW_FREE_SPACE_STEPS
 
 /**** Configure behaviour *****/
 /* This turns on a sort of "sinking" feature by */
@@ -150,7 +151,7 @@ void end_event_loop(int sig) {
 int supress_xerror(Display *display, XErrorEvent *event) {
   (void) display;
   (void) event;
-  printf("Caught an error\n");
+  //printf("Caught an error\n");
   return 0;
 }
 
@@ -269,7 +270,7 @@ int main (int argc, char* argv[]) {
           struct Frame_list *frames = &workspaces.list[k];
           for(i = 0; i < frames->used; i++) {
             if(event.xany.window == frames->list[i].window) {
-              printf("Unmapping window %s\n", frames->list[i].window_name);
+              //printf("Unmapping window %s\n", frames->list[i].window_name);
               XUngrabPointer(display, CurrentTime);
               if(clicked_frame != -1) {
                 #ifdef SHOW_UNMAP_NOTIFY_EVENT
@@ -831,6 +832,7 @@ int main (int argc, char* argv[]) {
                 else if(event.xbutton.window == mode_menu.desktop) {
                   change_frame_mode(display, &frames->list[i], desktop); //Redrawing mode pulldown                  
                 }
+                else change_frame_mode(display, &frames->list[i], frames->list[i].mode);
                 stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator, floating_seperator);
                 break;
               }
@@ -1059,12 +1061,10 @@ int main (int argc, char* argv[]) {
               printf("Configure window: %s\n", frames->list[i].window_name);
               #endif
               if ((clicked_frame == i  &&  pulldown == root) //this window is being resized or if
-              || (clicked_frame != -1  //this window could be being resized indirectly
-                 && frames->list[i].mode == tiling
-                 && frames->list[clicked_frame].mode == tiling)) {
+              || frames->list[i].mode == tiling) {
                 //TODO  figure out how to handle tiled windows enlarging themselves.
                 #ifdef SHOW_CONFIGURE_REQUEST_EVENT
-                printf("Ignoring config req., due to ongoing resize operation \n");
+                printf("Ignoring config req., due to ongoing resize operation or tiled window\n");
                 #endif
                 break;
               }
@@ -1161,7 +1161,7 @@ int main (int argc, char* argv[]) {
       break;
       
       default:
-        printf("Warning: Unhandled event %d\n", event.type);
+        //printf("Warning: Unhandled event %d\n", event.type);
       break;
     }
   }
@@ -1299,7 +1299,7 @@ void list_properties(Display *display, Window window) {
     name = NULL;
     name = XGetAtomName(display, list[i]);
     if(name != NULL) { 
-      printf("Property: %s\n", name);  
+      //printf("Property: %s\n", name);  
       XFree(name);
     }
   }

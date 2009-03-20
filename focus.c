@@ -91,7 +91,7 @@ void unfocus_frames(Display *display, struct Frame_list *frames) {
 //zipping through them once in a while.
 void recover_focus(Display *display, struct Frame_list *frames) {
   if(frames->focus.used == 0) return;
-  printf("Recovering focus\n");
+  //printf("Recovering focus\n");
   for(int i = frames->used - 1; i >= 0; i--) 
   if(frames->list[i].window == frames->focus.list[frames->focus.used - 1]) {
     XGrabServer(display);

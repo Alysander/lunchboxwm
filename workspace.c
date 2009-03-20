@@ -22,7 +22,7 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
     if(workspaces->list == NULL) return -1;
   }
   else if(workspaces->used == workspaces->max) {
-    printf("reallocating, used %d, max%d\n", workspaces->used, workspaces->max);
+    //printf("reallocating, used %d, max%d\n", workspaces->used, workspaces->max);
     struct Frame_list* temp = NULL;
     temp = realloc(workspaces->list, sizeof(struct Frame_list) * workspaces->max * 2);
     if(temp != NULL) workspaces->list = temp;
@@ -153,7 +153,7 @@ void remove_frame_list(Display *display, struct Workspace_list* workspaces, int 
 char *load_program_name(Display* display, Window window) {
   XClassHint program_hint;
   if(XGetClassHint(display, window, &program_hint)) {
-    printf("res_name %s, res_class %s\n", program_hint.res_name, program_hint.res_class);
+   // printf("res_name %s, res_class %s\n", program_hint.res_name, program_hint.res_class);
     if(program_hint.res_name != NULL) XFree(program_hint.res_name);    
     if(program_hint.res_class != NULL)
       return program_hint.res_class;
@@ -205,10 +205,10 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
     check_new_frame_focus (display, &workspaces->list[k], frame_index);
     stack_frame(display, &workspaces->list[k].list[frame_index], sinking_seperator, tiling_seperator, floating_seperator);
     if(k == current_workspace  &&  current_workspace != -1) {
-      printf("Created and mapped window\n");
+      //printf("Created and mapped window\n");
       XMapWindow(display, workspaces->list[k].list[frame_index].frame);
       if(workspaces->list[k].list[frame_index].selected != 0) {
-        printf("Set focus to window %s\n", workspaces->list[k].list[frame_index].window_name);
+       // printf("Set focus to window %s\n", workspaces->list[k].list[frame_index].window_name);
         XSetInputFocus(display, workspaces->list[k].list[frame_index].window, RevertToPointerRoot, CurrentTime);
       }
     }
@@ -257,7 +257,7 @@ void change_to_workspace(Display *display, struct Workspace_list *workspaces, in
     for(int i = 0; i < frames->used; i++) 
     if(frames->list[i].mode != hidden) XMapWindow(display, frames->list[i].frame); 
     
-    printf("changing focus to one in new workspace\n");
+   // printf("changing focus to one in new workspace\n");
     recover_focus(display, frames);
     XFlush(display);
     *current_workspace = index;

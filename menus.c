@@ -171,7 +171,7 @@ void create_mode_menu(Display *display, struct Mode_menu *mode_menu
   ,item_hidden_p,  item_hidden_hover_p,   item_hidden_active_p,   item_hidden_active_hover_p,   item_hidden_deactivated_p;
   
   mode_menu->frame = XCreateSimpleWindow(display, root, 0, 0
-  , PULLDOWN_WIDTH + EDGE_WIDTH*2, MENU_ITEM_HEIGHT * 5 + EDGE_WIDTH*2, 0, black, black);
+  , PULLDOWN_WIDTH + EDGE_WIDTH*2, MENU_ITEM_HEIGHT * 4 + EDGE_WIDTH*2, 0, black, black);
 
   XSetWindowBackgroundPixmap(display, mode_menu->frame,    pixmaps->border_p );
          
@@ -183,11 +183,8 @@ void create_mode_menu(Display *display, struct Mode_menu *mode_menu
   
   mode_menu->desktop = XCreateSimpleWindow(display, mode_menu->frame, EDGE_WIDTH, MENU_ITEM_HEIGHT*2 + EDGE_WIDTH
   , PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-
-  mode_menu->blank = XCreateSimpleWindow(display, mode_menu->frame, EDGE_WIDTH, MENU_ITEM_HEIGHT*3 + EDGE_WIDTH
-  , PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);  
   
-  mode_menu->hidden = XCreateSimpleWindow(display, mode_menu->frame, EDGE_WIDTH, MENU_ITEM_HEIGHT*4 + EDGE_WIDTH
+  mode_menu->hidden = XCreateSimpleWindow(display, mode_menu->frame, EDGE_WIDTH, MENU_ITEM_HEIGHT*3 + EDGE_WIDTH
   , PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
   
   XDefineCursor(display, mode_menu->frame, cursors->normal);
@@ -277,9 +274,6 @@ void create_mode_menu(Display *display, struct Mode_menu *mode_menu
   mode_menu->item_hidden_active =          XCreateSimpleWindow(display, mode_menu->hidden, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
   mode_menu->item_hidden_active_hover =    XCreateSimpleWindow(display, mode_menu->hidden, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
   mode_menu->item_hidden_deactivated =     XCreateSimpleWindow(display, mode_menu->hidden, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);  
-
-  XSetWindowBackgroundPixmap(display, mode_menu->blank, pixmaps->body_p);
-  XMapWindow(display, mode_menu->blank);
   
   XSetWindowBackgroundPixmap(display, mode_menu->item_floating, item_floating_p);
   XSetWindowBackgroundPixmap(display, mode_menu->item_floating_hover, item_floating_hover_p);
@@ -448,9 +442,9 @@ void show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *m
 
   //these amounts are from create_mode_menu.
   int width = PULLDOWN_WIDTH + EDGE_WIDTH*2;  
-  int height = MENU_ITEM_HEIGHT * 5 + EDGE_WIDTH*2; 
+  int height = MENU_ITEM_HEIGHT * 4 + EDGE_WIDTH*2; 
   
-  printf("showing mode dropdown\n");  
+  //printf("showing mode dropdown\n");  
   if(active_frame->mode == floating) 
     XRaiseWindow(display, mode_menu->item_floating_active);
   else XRaiseWindow(display, mode_menu->item_floating);
@@ -462,7 +456,7 @@ void show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *m
   if(active_frame->mode == desktop)  
     XRaiseWindow(display, mode_menu->item_desktop_active);
   else  XRaiseWindow(display, mode_menu->item_desktop);
-  printf("showing mode dropdown..2 \n");  
+ // printf("showing mode dropdown..2 \n");  
   
   XRaiseWindow(display, mode_menu->item_hidden);
     
@@ -485,5 +479,5 @@ void place_popup_menu(Display *display, Window calling_widget, Window popup_menu
   XRaiseWindow(display, popup_menu);
   XMapWindow(display, popup_menu);
   XFlush(display);
-  printf("placed popup\n");
+  //printf("placed popup\n");
 }

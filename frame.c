@@ -79,14 +79,14 @@ int create_frame(Display *display, struct Frame_list* frames
 
 
   if(frames->used == frames->max) {
-    printf("reallocating, used %d, max%d\n", frames->used, frames->max);
+    //printf("reallocating, used %d, max%d\n", frames->used, frames->max);
     struct Frame* temp = NULL;
     temp = realloc(frames->list, sizeof(struct Frame) * frames->max * 2);
     if(temp != NULL) frames->list = temp;
     else return -1;
     frames->max *= 2;
   }
-  printf("Creating frames->list[%d] with window %lu, connection %lu\n", frames->used, (unsigned long)framed_window, (unsigned long)display);
+  //printf("Creating frames->list[%d] with window %lu, connection %lu\n", frames->used, (unsigned long)framed_window, (unsigned long)display);
   //add this window to the save set as soon as possible so that if an error occurs it is still available
 
   XAddToSaveSet(display, framed_window); 
@@ -421,67 +421,7 @@ void resize_frame(Display* display, struct Frame* frame) {
     XMoveWindow(display, frame->window, 0,0);
     XFlush(display);
   }
-  /*
-  else if(frame->mode == minimal) {
-    //need to add hide button.
-    XMoveResizeWindow(display, frame->frame, frame->x, frame->y,  frame->w, frame->h);
-    XMoveResizeWindow(display, frame->titlebar, EDGE_WIDTH, EDGE_WIDTH, frame->w - EDGE_WIDTH*2, MINIMAL_TITLEBAR_HEIGHT);
 
-    XResizeWindow(display, frame->title_menu.arrow.backing, MINIMAL_BUTTON_SIZE, MINIMAL_BUTTON_SIZE);
-    
-    if(frame->title_menu.width + MINIMAL_BUTTON_SIZE < frame->w - MINIMAL_BUTTON_SIZE*2) {
-      XMoveResizeWindow(display, frame->title_menu.frame,   0, 0, frame->title_menu.width + MINIMAL_BUTTON_SIZE, MINIMAL_BUTTON_SIZE);
-      XMoveResizeWindow(display, frame->title_menu.hotspot, 0, 0, frame->title_menu.width + MINIMAL_BUTTON_SIZE, MINIMAL_BUTTON_SIZE);
-      XMoveResizeWindow(display, frame->title_menu.body,    0, 0, frame->title_menu.width + MINIMAL_BUTTON_SIZE, MINIMAL_BUTTON_SIZE);
-      XMoveResizeWindow(display, frame->title_menu.backing, 0, 0, frame->title_menu.width + MINIMAL_BUTTON_SIZE, MINIMAL_BUTTON_SIZE);
-      XMoveWindow(display, frame->title_menu.arrow.backing,       frame->title_menu.width + MINIMAL_BUTTON_SIZE, 0);
-    }
-    else {
-      XMoveResizeWindow(display, frame->title_menu.frame,   0, 0, frame->w - MINIMAL_BUTTON_SIZE*2, MINIMAL_BUTTON_SIZE);
-      XMoveResizeWindow(display, frame->title_menu.hotspot, 0, 0, frame->w - MINIMAL_BUTTON_SIZE*2, MINIMAL_BUTTON_SIZE);
-      XMoveResizeWindow(display, frame->title_menu.body,    0, 0, frame->w - MINIMAL_BUTTON_SIZE*2, MINIMAL_BUTTON_SIZE);
-      XMoveResizeWindow(display, frame->title_menu.backing, 0, 0, frame->w - MINIMAL_BUTTON_SIZE*2, MINIMAL_BUTTON_SIZE);
-      XMoveWindow(display,   frame->title_menu.arrow.backing,   frame->w - MINIMAL_BUTTON_SIZE, 0);
-    }
-    
-    XMoveResizeWindow(display, frame->body,  EDGE_WIDTH, EDGE_WIDTH + MINIMAL_TITLEBAR_HEIGHT
-    ,frame->w - EDGE_WIDTH*2, frame->h - (MINIMAL_TITLEBAR_HEIGHT + EDGE_WIDTH*2));
-
-    XMoveResizeWindow(display, frame->innerframe
-    , EDGE_WIDTH + MINIMAL_SPACING, EDGE_WIDTH + MINIMAL_TITLEBAR_HEIGHT
-    , frame->w - (EDGE_WIDTH + MINIMAL_SPACING)*2, frame->h - (MINIMAL_TITLEBAR_HEIGHT + EDGE_WIDTH*2 + MINIMAL_SPACING));
-    
-    XMoveResizeWindow(display, frame->backing
-    , EDGE_WIDTH*2 + MINIMAL_SPACING, MINIMAL_TITLEBAR_HEIGHT + EDGE_WIDTH*2
-    , frame->w - (EDGE_WIDTH*2 + MINIMAL_SPACING)*2, frame->h - (MINIMAL_TITLEBAR_HEIGHT + EDGE_WIDTH*4 + MINIMAL_SPACING));
-
-    XResizeWindow(display, frame->window
-    , frame->w - (EDGE_WIDTH*2 + MINIMAL_SPACING)*2, frame->h - (MINIMAL_TITLEBAR_HEIGHT + EDGE_WIDTH*4 + MINIMAL_SPACING));
-
-    XMoveResizeWindow(display, frame->l_grip
-    , 0, MINIMAL_TITLEBAR_HEIGHT + EDGE_WIDTH*2
-    , CORNER_GRIP_SIZE, frame->h - MINIMAL_TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2);
-
-    XMoveResizeWindow(display, frame->bl_grip
-    , 0, frame->h - CORNER_GRIP_SIZE
-    , CORNER_GRIP_SIZE, CORNER_GRIP_SIZE);
-
-    XMoveResizeWindow(display, frame->b_grip
-    ,  CORNER_GRIP_SIZE, frame->h - CORNER_GRIP_SIZE
-    , frame->w - CORNER_GRIP_SIZE*2, CORNER_GRIP_SIZE);
-
-    XMoveResizeWindow(display, frame->br_grip
-    , frame->w - CORNER_GRIP_SIZE, frame->h - CORNER_GRIP_SIZE
-    , CORNER_GRIP_SIZE, CORNER_GRIP_SIZE);
-
-    XMoveResizeWindow(display, frame->r_grip
-    , frame->w - CORNER_GRIP_SIZE, TITLEBAR_HEIGHT + EDGE_WIDTH*2
-    , CORNER_GRIP_SIZE, frame->h - MINIMAL_TITLEBAR_HEIGHT - CORNER_GRIP_SIZE - EDGE_WIDTH*2);
-    
-    XMoveWindow(display, frame->window, 0,0);
-    XFlush(display);
-
-  } */
 }
 
 void free_frame_name(Display* display, struct Frame* frame) {
@@ -640,9 +580,10 @@ void get_frame_hints(Display* display, struct Frame* frame) {
   XSizeHints specified;
   long pre_ICCCM; //pre ICCCM recovered values which are ignored.
 
+  /*
   printf("BEFORE: width %d, height %d, x %d, y %d\n", 
         frame->w, frame->h, frame->x, frame->y);
-
+*/
   frame->max_width  = XWidthOfScreen(screen) - FRAME_HSPACE;
   frame->max_height = XHeightOfScreen(screen) - MENUBAR_HEIGHT - FRAME_VSPACE;  
   frame->min_width  = MINWIDTH - FRAME_HSPACE;
@@ -842,7 +783,7 @@ void get_frame_state(Display *display, struct Frame *frame, struct Atoms *atoms)
   XGetWindowProperty(display, frame->window, atoms->wm_state, 0, 1
   , False, AnyPropertyType, &return_type, &return_format,  &items, &bytes, &contents);
   
-  printf("loading state\n");
+  //printf("loading state\n");
   frame->state = none; 
   if(return_type == XA_ATOM  && contents != NULL) {
     Atom *window_state = (Atom*)contents;
