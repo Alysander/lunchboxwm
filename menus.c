@@ -1,391 +1,244 @@
-void create_menubar(Display *display, struct Menubar *menubar, struct Pixmaps *pixmaps, struct Cursors *cursors) {
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <X11/extensions/shape.h>
+#include <X11/Xlib.h>
+#include <X11/Xcursor/Xcursor.h>
+#include <X11/Xatom.h>
+
+#include "xcheck.h"
+#include "basin.h"
+#include "menus.h"
+#include "theme.h"
+
+/******************* 
+Prec:  display is valid, themes is valid, cursors is valid.
+Post:  Menubar created and mapped.
+Desc:  This function uses the menubar member of the themes pointer to generate all the windows 
+       that comprise the menubar with appropriate pixmap backgrounds.
+todo:  Text needs to be drawn on the theme pixmaps, rater than having text on the menubar.
+todo:  Possibly have an extra parameter that determines whether the menubar is a popup menu and use the shape
+       extention.
+********************/
+void create_menubar(Display *display, struct Menubar *menubar, struct Themes *themes, struct Cursors *cursors) {
+  /* create new window structure, using theme pixmaps */
   XSetWindowAttributes set_attributes;
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
-  unsigned int spacing = (XWidthOfScreen(screen) - MENUBAR_ITEM_WIDTH)/ 4;
+  unsigned int spacing;
 
-  Pixmap program_menu_normal_p, window_menu_normal_p, options_menu_normal_p, links_menu_normal_p, tool_menu_normal_p
-  ,program_menu_pressed_p, window_menu_pressed_p, options_menu_pressed_p, links_menu_pressed_p, tool_menu_pressed_p
-  ,program_menu_deactivated_p, window_menu_deactivated_p, options_menu_deactivated_p, links_menu_deactivated_p, tool_menu_deactivated_p;
+  spacing = (XWidthOfScreen(screen) - themes->menubar[program_menu].w )/4;
+  
+  menubar->widgets[menubar_parent].widget = XCreateSimpleWindow(display, root
+  , 0, XHeightOfScreen(screen) - themes->menubar[menubar_parent].h, XWidthOfScreen(screen)
+  , themes->menubar[menubar_parent].h, 0, black, black);
+  
+  xcheck_setpixmap(display, menubar->widgets[menubar_parent].widget
+  , themes->menubar[menubar_parent].state_p[normal]);
+  
+  for(int i = 0; i < menubar_parent; i++) {
+    menubar->widgets[i].widget = XCreateSimpleWindow(display, menubar->widgets[menubar_parent].widget
+    , spacing*i, 0, themes->menubar[i].w, themes->menubar[i].h, 0, black, black);
+    XSelectInput(display, menubar->widgets[i].widget,  Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
 
-  menubar->border = XCreateSimpleWindow(display, root
-  , 0, XHeightOfScreen(screen) - MENUBAR_HEIGHT, XWidthOfScreen(screen), MENUBAR_HEIGHT, 0, black, black);
-  menubar->body = XCreateSimpleWindow(display, menubar->border
-  , 0, EDGE_WIDTH, XWidthOfScreen(screen), MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-
-  XSetWindowBackgroundPixmap(display, menubar->border, pixmaps->border_p );  
-  XSetWindowBackgroundPixmap(display, menubar->body, pixmaps->titlebar_background_p );
-
-  XDefineCursor(display, menubar->border, cursors->normal);
-  XDefineCursor(display, menubar->body, cursors->normal);
-
-  menubar->program_menu = XCreateSimpleWindow(display, menubar->border
-  , spacing*0, EDGE_WIDTH, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-  menubar->window_menu = XCreateSimpleWindow(display, menubar->border
-  , spacing*1, EDGE_WIDTH, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-  menubar->options_menu = XCreateSimpleWindow(display, menubar->border
-  , spacing*2, EDGE_WIDTH, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black); 
-  menubar->links_menu = XCreateSimpleWindow(display, menubar->border
-  , spacing*3, EDGE_WIDTH, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-  menubar->tool_menu = XCreateSimpleWindow(display, menubar->border
-  , spacing*4, EDGE_WIDTH, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-
-  menubar->program_menu_normal = XCreateSimpleWindow(display,  menubar->program_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-  menubar->program_menu_pressed = XCreateSimpleWindow(display, menubar->program_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-  menubar->window_menu_normal = XCreateSimpleWindow(display,   menubar->window_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-  menubar->window_menu_pressed = XCreateSimpleWindow(display,  menubar->window_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-  menubar->options_menu_normal = XCreateSimpleWindow(display,  menubar->options_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black); 
-  menubar->options_menu_pressed = XCreateSimpleWindow(display, menubar->options_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black); 
-  menubar->links_menu_normal = XCreateSimpleWindow(display,    menubar->links_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-  menubar->links_menu_pressed = XCreateSimpleWindow(display,   menubar->links_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-  menubar->tool_menu_normal = XCreateSimpleWindow(display,     menubar->tool_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-  menubar->tool_menu_pressed = XCreateSimpleWindow(display,    menubar->tool_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-
-  menubar->program_menu_deactivated = XCreateSimpleWindow(display,  menubar->program_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-  menubar->window_menu_deactivated = XCreateSimpleWindow(display,   menubar->window_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-  menubar->options_menu_deactivated = XCreateSimpleWindow(display,  menubar->options_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black); 
-  menubar->links_menu_deactivated = XCreateSimpleWindow(display,    menubar->links_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-  menubar->tool_menu_deactivated = XCreateSimpleWindow(display,     menubar->tool_menu
-  , 0, 0, MENUBAR_ITEM_WIDTH, MENUBAR_HEIGHT - EDGE_WIDTH, 0, black, black);
-
-
-  //make a hotspot called program menu and window_menu
-  XSelectInput (display, menubar->program_menu,  Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
-  XSelectInput (display, menubar->window_menu,  Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
-
-  program_menu_normal_p  = create_widget_pixmap(display, program_menu, normal);
-  program_menu_pressed_p = create_widget_pixmap(display, program_menu, pressed);
-  window_menu_normal_p   = create_widget_pixmap(display, window_menu, normal);
-  window_menu_pressed_p  = create_widget_pixmap(display, window_menu, pressed);
-  options_menu_normal_p  = create_widget_pixmap(display, options_menu, normal);
-  options_menu_pressed_p = create_widget_pixmap(display, options_menu, pressed);
-  links_menu_normal_p    = create_widget_pixmap(display, links_menu, normal);
-  links_menu_pressed_p   = create_widget_pixmap(display, links_menu, pressed);
-  tool_menu_normal_p     = create_widget_pixmap(display, tool_menu, normal);
-  tool_menu_pressed_p    = create_widget_pixmap(display, tool_menu, pressed);
-
-  program_menu_deactivated_p  = create_widget_pixmap(display, program_menu, deactivated);
-  window_menu_deactivated_p   = create_widget_pixmap(display, window_menu, deactivated);
-  options_menu_deactivated_p  = create_widget_pixmap(display, options_menu, deactivated);
-  links_menu_deactivated_p    = create_widget_pixmap(display, links_menu, deactivated);
-  tool_menu_deactivated_p     = create_widget_pixmap(display, tool_menu, deactivated);
-
-  XSetWindowBackgroundPixmap(display, menubar->program_menu_normal,  program_menu_normal_p );
-  XSetWindowBackgroundPixmap(display, menubar->program_menu_pressed, program_menu_pressed_p );
-  XSetWindowBackgroundPixmap(display, menubar->window_menu_normal,   window_menu_normal_p );
-  XSetWindowBackgroundPixmap(display, menubar->window_menu_pressed,  window_menu_pressed_p );
-  XSetWindowBackgroundPixmap(display, menubar->options_menu_normal,  options_menu_normal_p );
-  XSetWindowBackgroundPixmap(display, menubar->options_menu_pressed, options_menu_pressed_p );
-  XSetWindowBackgroundPixmap(display, menubar->links_menu_normal,    links_menu_normal_p );
-  XSetWindowBackgroundPixmap(display, menubar->links_menu_pressed,   links_menu_pressed_p );
-  XSetWindowBackgroundPixmap(display, menubar->tool_menu_normal,     tool_menu_normal_p );
-  XSetWindowBackgroundPixmap(display, menubar->tool_menu_pressed,    tool_menu_pressed_p );
-
-  XSetWindowBackgroundPixmap(display, menubar->program_menu_deactivated,  program_menu_deactivated_p );
-  XSetWindowBackgroundPixmap(display, menubar->window_menu_deactivated,   window_menu_deactivated_p );
-  XSetWindowBackgroundPixmap(display, menubar->options_menu_deactivated,  options_menu_deactivated_p );
-  XSetWindowBackgroundPixmap(display, menubar->links_menu_deactivated,    links_menu_deactivated_p );
-  XSetWindowBackgroundPixmap(display, menubar->tool_menu_deactivated,     tool_menu_deactivated_p );
+    for(int j = 0; j <= inactive; j++) {
+      if(themes->menubar[i].state_p[j]) {
+        menubar->widgets[i].state[j] = XCreateSimpleWindow(display, menubar->widgets[i].widget
+        , 0, 0, themes->menubar[i].w, themes->menubar[i].h, 0, black, black);
+        
+        xcheck_setpixmap(display, menubar->widgets[i].state[j], themes->menubar[i].state_p[j]);
+        xcheck_map(display, menubar->widgets[i].state[j]);
+      }
+      else printf("Warning:  Skipping state pixmap\n");
+    }
+    xcheck_map(display, menubar->widgets[i].widget);
+  }
 
   set_attributes.override_redirect = True; 
-  XChangeWindowAttributes(display, menubar->border, CWOverrideRedirect, &set_attributes);
-
-  XMapWindow(display, menubar->body);
-  XMapWindow(display, menubar->border);
-  XMapWindow(display, menubar->program_menu);
-  XMapWindow(display, menubar->window_menu);
-  XMapWindow(display, menubar->options_menu);
-  XMapWindow(display, menubar->links_menu);
-  XMapWindow(display, menubar->tool_menu);
-
-  XMapWindow(display, menubar->program_menu_normal);
-  XMapWindow(display, menubar->program_menu_pressed);
-  XMapWindow(display, menubar->window_menu_normal);
-  XMapWindow(display, menubar->window_menu_pressed);
-  XMapWindow(display, menubar->options_menu_normal);
-  XMapWindow(display, menubar->options_menu_pressed);
-  XMapWindow(display, menubar->links_menu_normal);
-  XMapWindow(display, menubar->links_menu_pressed);
-  XMapWindow(display, menubar->tool_menu_normal);
-  XMapWindow(display, menubar->tool_menu_pressed);
-
-  XMapWindow(display, menubar->program_menu_deactivated);
-  XMapWindow(display, menubar->window_menu_deactivated);
-  XMapWindow(display, menubar->options_menu_deactivated);
-  XMapWindow(display, menubar->links_menu_deactivated);
-  XMapWindow(display, menubar->tool_menu_deactivated);
-
-  XRaiseWindow(display, menubar->program_menu_normal);
-  XRaiseWindow(display, menubar->window_menu_normal);
-  XRaiseWindow(display, menubar->options_menu_deactivated);
-  XRaiseWindow(display, menubar->links_menu_deactivated);
-  XRaiseWindow(display, menubar->tool_menu_deactivated);
-      
-  XFreePixmap(display, program_menu_normal_p);
-  XFreePixmap(display, program_menu_pressed_p);
-  XFreePixmap(display, window_menu_normal_p);
-  XFreePixmap(display, window_menu_pressed_p);
-  XFreePixmap(display, options_menu_normal_p);
-  XFreePixmap(display, options_menu_pressed_p);
-  XFreePixmap(display, links_menu_normal_p);
-  XFreePixmap(display, links_menu_pressed_p);
-  XFreePixmap(display, tool_menu_normal_p );
-  XFreePixmap(display, tool_menu_pressed_p);
-
-  XFreePixmap(display, program_menu_deactivated_p);
-  XFreePixmap(display, window_menu_deactivated_p);
-  XFreePixmap(display, options_menu_deactivated_p);
-  XFreePixmap(display, links_menu_deactivated_p);
-  XFreePixmap(display, tool_menu_deactivated_p ); 
   
+  XChangeWindowAttributes(display, menubar->widgets[menubar_parent].widget
+  , CWOverrideRedirect, &set_attributes);
+
+  /* Show initial state. */
+  xcheck_raisewin(display, menubar->widgets[program_menu].state[normal]);
+  xcheck_raisewin(display, menubar->widgets[window_menu].state[normal]);
   XFlush(display);
+  
+  /* Show everything */
+  XMapWindow(display, menubar->widgets[menubar_parent].widget);
+  XFlush(display);
+}
+
+/*******************
+Prec: display is valid, themes is valid, cursors is valid.
+      all widgets are zero'd.
+      inner_width and inner_height members of menu are initialized to a nonzero value.
+      themes is valid and has loaded at least a background for the popup_menu_parent. 
+Post: Menu with borders and background but no items is created but not mapped.
+Desc: This function is used to create a blank and generic menu.  Items must be added by caller.
+********************/
+void create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *themes, struct Cursors *cursors) {
+
+  XSetWindowAttributes set_attributes;
+  Window root = DefaultRootWindow(display);
+  Screen* screen = DefaultScreenOfDisplay(display);
+  int black = BlackPixelOfScreen(screen);
+  
+  const int width = menu->inner_width + themes->popup_menu[popup_l_edge].w + themes->popup_menu[popup_r_edge].w;
+  const int height = menu->inner_height + themes->popup_menu[popup_t_edge].h + themes->popup_menu[popup_b_edge].h;
+  
+  menu->widgets[popup_menu_parent].widget = XCreateSimpleWindow(display, root
+  , 0, 0
+  , width, height, 0, black, black);
+
+  XSetWindowBackgroundPixmap(display, menu->widgets[popup_menu_parent].widget
+  , themes->popup_menu[popup_menu_parent].state_p[normal]);
+   
+  //Currently, this is the "base" of the popup menu.
+  //A similar loop will be needed for the actual menu items but not in this function
+  for(int i = popup_t_edge; i < popup_menu_parent; i++) { //popup_menu_parent already done
+
+    int x = themes->popup_menu[i].x;
+    int y = themes->popup_menu[i].y;
+    int w = themes->popup_menu[i].w;
+    int h = themes->popup_menu[i].h;
+    
+    if(x < 0)  x += width;
+    if(y < 0)  y += height; 
+    if(w <= 0) w += width;
+    if(h <= 0) h += height;
+  
+    menu->widgets[i].widget = XCreateSimpleWindow(display
+    , menu->widgets[popup_menu_parent].widget
+    , x, y, w, h, 0, black, black);
+
+    for(int j = 0; j <= inactive; j++) {
+      if(themes->popup_menu[i].state_p[j]) {
+        menu->widgets[i].state[j] = XCreateSimpleWindow(display, menu->widgets[i].widget
+        , 0, 0, w, h, 0, black, black);
+
+        XSetWindowBackgroundPixmap(display, menu->widgets[i].state[j]
+        , themes->popup_menu[i].state_p[j]);
+
+        //TODO
+        if(j == normal) XMapWindow(display, menu->widgets[i].state[j]);
+      }
+      else printf("Warning:  Skipping state pixmap\n");
+    }
+
+    XMapWindow(display, menu->widgets[i].widget);
+  } 
+
+  set_attributes.override_redirect = True; 
+  XChangeWindowAttributes(display, menu->widgets[popup_menu_parent].widget, CWOverrideRedirect, &set_attributes);
+
+//  XMapWindow(display, menu->widgets[popup_menu_parent].widget);
+  XFlush(display);
+
+
 }
 
 void create_mode_menu(Display *display, struct Mode_menu *mode_menu
-, struct Pixmaps *pixmaps, struct Cursors *cursors) {
+, struct Themes *themes, struct Cursors *cursors) {
+
   XSetWindowAttributes set_attributes;
   Window root = DefaultRootWindow(display);
-  Screen* screen =  DefaultScreenOfDisplay(display);  
+  Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
 
-  Pixmap   
-  //these don't have a textured background
-  item_floating_p, item_floating_hover_p, item_floating_active_p, item_floating_active_hover_p, item_floating_deactivated_p
-  ,item_tiling_p,  item_tiling_hover_p,   item_tiling_active_p,   item_tiling_active_hover_p,   item_tiling_deactivated_p  
-  ,item_desktop_p, item_desktop_hover_p,  item_desktop_active_p,  item_desktop_active_hover_p,  item_desktop_deactivated_p
-  ,item_hidden_p,  item_hidden_hover_p,   item_hidden_active_p,   item_hidden_active_hover_p,   item_hidden_deactivated_p;
-  
-  mode_menu->frame = XCreateSimpleWindow(display, root, 0, 0
-  , PULLDOWN_WIDTH + EDGE_WIDTH*2, MENU_ITEM_HEIGHT * 4 + EDGE_WIDTH*2, 0, black, black);
+  //TODO get this from the theme somehow
+  const int menu_item = medium_menu_item_mid; /*Change the mode menu item size here */
 
-  XSetWindowBackgroundPixmap(display, mode_menu->frame,    pixmaps->border_p );
-         
-  mode_menu->floating = XCreateSimpleWindow(display, mode_menu->frame, EDGE_WIDTH, MENU_ITEM_HEIGHT*0 + EDGE_WIDTH
-  , PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-         
-  mode_menu->tiling = XCreateSimpleWindow(display, mode_menu->frame, EDGE_WIDTH, MENU_ITEM_HEIGHT*1 + EDGE_WIDTH
-  , PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
+  mode_menu->menu.inner_width = 90;
+  mode_menu->menu.inner_height = themes->popup_menu[menu_item].h * (hidden + 1);
   
-  mode_menu->desktop = XCreateSimpleWindow(display, mode_menu->frame, EDGE_WIDTH, MENU_ITEM_HEIGHT*2 + EDGE_WIDTH
-  , PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  
-  mode_menu->hidden = XCreateSimpleWindow(display, mode_menu->frame, EDGE_WIDTH, MENU_ITEM_HEIGHT*3 + EDGE_WIDTH
-  , PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  
-  XDefineCursor(display, mode_menu->frame, cursors->normal);
-  
-  XSelectInput(display, mode_menu->floating
-  , ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-  
-  XSelectInput(display, mode_menu->tiling
-  , ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  create_popup_menu(display, &mode_menu->menu, themes, cursors);
 
-  XSelectInput(display, mode_menu->desktop
-  , ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  //Create the menu items
+  for(int i = 0; i <= hidden; i++) {
 
-    XSelectInput(display, mode_menu->hidden
-  , ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-  
-  set_attributes.override_redirect = True; 
-  XChangeWindowAttributes(display, mode_menu->frame,    CWOverrideRedirect, &set_attributes);
-  
-  mode_menu->item_floating =               XCreateSimpleWindow(display, mode_menu->floating, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_floating_hover =         XCreateSimpleWindow(display, mode_menu->floating, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_floating_active =        XCreateSimpleWindow(display, mode_menu->floating, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_floating_active_hover  = XCreateSimpleWindow(display, mode_menu->floating, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_floating_deactivated =   XCreateSimpleWindow(display, mode_menu->floating, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  
-  mode_menu->item_tiling =                 XCreateSimpleWindow(display, mode_menu->tiling, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_tiling_hover =           XCreateSimpleWindow(display, mode_menu->tiling, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_tiling_active =          XCreateSimpleWindow(display, mode_menu->tiling, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_tiling_active_hover =    XCreateSimpleWindow(display, mode_menu->tiling, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_tiling_deactivated =     XCreateSimpleWindow(display, mode_menu->tiling, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  
-  mode_menu->item_desktop =                XCreateSimpleWindow(display, mode_menu->desktop, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_desktop_hover =          XCreateSimpleWindow(display, mode_menu->desktop, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_desktop_active =         XCreateSimpleWindow(display, mode_menu->desktop, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_desktop_active_hover =   XCreateSimpleWindow(display, mode_menu->desktop, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_desktop_deactivated =    XCreateSimpleWindow(display, mode_menu->desktop, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
+    mode_menu->items[i].item = XCreateSimpleWindow(display, mode_menu->menu.widgets[popup_menu_parent].widget
+    , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[menu_item].h * i
+    , mode_menu->menu.inner_width, themes->popup_menu[menu_item].h, 0, black, black);
 
-  mode_menu->item_hidden =                 XCreateSimpleWindow(display, mode_menu->hidden, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_hidden_hover =           XCreateSimpleWindow(display, mode_menu->hidden, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_hidden_active =          XCreateSimpleWindow(display, mode_menu->hidden, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_hidden_active_hover =    XCreateSimpleWindow(display, mode_menu->hidden, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_hidden_deactivated =     XCreateSimpleWindow(display, mode_menu->hidden, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);  
-      
-  item_floating_p              = create_widget_pixmap(display, item_floating, normal);
-  item_floating_hover_p        = create_widget_pixmap(display, item_floating, hover);
-  item_tiling_p                = create_widget_pixmap(display, item_tiling, normal);
-  item_tiling_hover_p          = create_widget_pixmap(display, item_tiling, hover);
-  item_desktop_p               = create_widget_pixmap(display, item_desktop, normal);
-  item_desktop_hover_p         = create_widget_pixmap(display, item_desktop, hover);
-  item_hidden_p                = create_widget_pixmap(display,  item_hidden, normal);
-  item_hidden_hover_p          = create_widget_pixmap(display,  item_hidden, hover);
-  
-  item_floating_active_p       = create_widget_pixmap(display, item_floating, active);
-  item_floating_active_hover_p = create_widget_pixmap(display, item_floating, active_hover);
-  item_tiling_active_p         = create_widget_pixmap(display, item_tiling, active);
-  item_tiling_active_hover_p   = create_widget_pixmap(display, item_tiling, active_hover);
-  item_desktop_active_p        = create_widget_pixmap(display, item_desktop, active);
-  item_desktop_active_hover_p  = create_widget_pixmap(display, item_desktop, active_hover);
-  item_hidden_active_p         = create_widget_pixmap(display, item_hidden, active);
-  item_hidden_active_hover_p   = create_widget_pixmap(display, item_hidden, active_hover);
-  
-  item_floating_deactivated_p  = create_widget_pixmap(display, item_floating, deactivated);
-  item_tiling_deactivated_p    = create_widget_pixmap(display, item_tiling, deactivated);
-  item_desktop_deactivated_p   = create_widget_pixmap(display, item_desktop, deactivated);
-  item_hidden_deactivated_p    = create_widget_pixmap(display, item_hidden, deactivated);
-  
-  mode_menu->item_floating =               XCreateSimpleWindow(display, mode_menu->floating, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_floating_hover =         XCreateSimpleWindow(display, mode_menu->floating, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_floating_active =        XCreateSimpleWindow(display, mode_menu->floating, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_floating_active_hover =  XCreateSimpleWindow(display, mode_menu->floating, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_floating_deactivated =   XCreateSimpleWindow(display, mode_menu->floating, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  
-  mode_menu->item_tiling =                 XCreateSimpleWindow(display, mode_menu->tiling, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_tiling_hover =           XCreateSimpleWindow(display, mode_menu->tiling, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_tiling_active =          XCreateSimpleWindow(display, mode_menu->tiling, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_tiling_active_hover =    XCreateSimpleWindow(display, mode_menu->tiling, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_tiling_deactivated =     XCreateSimpleWindow(display, mode_menu->tiling, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  
-  mode_menu->item_desktop =                XCreateSimpleWindow(display, mode_menu->desktop, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_desktop_hover =          XCreateSimpleWindow(display, mode_menu->desktop, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_desktop_active =         XCreateSimpleWindow(display, mode_menu->desktop, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_desktop_active_hover =   XCreateSimpleWindow(display, mode_menu->desktop, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_desktop_deactivated =    XCreateSimpleWindow(display, mode_menu->desktop, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
+    XSelectInput(display, mode_menu->items[i].item,  Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
 
-  mode_menu->item_hidden =                 XCreateSimpleWindow(display, mode_menu->hidden, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_hidden_hover =           XCreateSimpleWindow(display, mode_menu->hidden, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_hidden_active =          XCreateSimpleWindow(display, mode_menu->hidden, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_hidden_active_hover =    XCreateSimpleWindow(display, mode_menu->hidden, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  mode_menu->item_hidden_deactivated =     XCreateSimpleWindow(display, mode_menu->hidden, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);  
-  
-  XSetWindowBackgroundPixmap(display, mode_menu->item_floating, item_floating_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_floating_hover, item_floating_hover_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_floating_active, item_floating_active_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_floating_active_hover, item_floating_active_hover_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_floating_deactivated, item_floating_deactivated_p);
-  
-  XSetWindowBackgroundPixmap(display, mode_menu->item_tiling, item_tiling_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_tiling_hover, item_tiling_hover_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_tiling_active, item_tiling_active_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_tiling_active_hover, item_tiling_active_hover_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_tiling_deactivated, item_tiling_deactivated_p);
-  
-  XSetWindowBackgroundPixmap(display, mode_menu->item_desktop , item_desktop_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_desktop_hover, item_desktop_hover_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_desktop_active , item_desktop_active_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_desktop_active_hover, item_desktop_active_hover_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_desktop_deactivated , item_desktop_deactivated_p);
+    for(int j = 0; j <= inactive; j++) {
+      if(themes->popup_menu[i].state_p[j]) {
+        char *label = NULL;
+        char Floating[] = "Floating";
+        char Tiling[] = "Tiling";
+        char Hidden[] = "Hidden";
+        char Desktop[] = "Desktop";
 
-  XSetWindowBackgroundPixmap(display, mode_menu->item_hidden, item_hidden_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_hidden_hover , item_hidden_hover_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_hidden_active, item_hidden_active_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_hidden_active_hover, item_hidden_active_hover_p);
-  XSetWindowBackgroundPixmap(display, mode_menu->item_hidden_deactivated , item_hidden_deactivated_p);
-  
-  XRaiseWindow(display, mode_menu->item_floating_active);
+        switch(i) {
+          case floating: label = Floating;
+          break;
+          case tiling: label = Tiling;
+          break;
+          case hidden: label = Hidden;
+          break;
+          case desktop: label = Desktop;
+          break;
+        }
 
-  XMapWindow(display, mode_menu->floating);
-  XMapWindow(display, mode_menu->tiling);
-  XMapWindow(display, mode_menu->desktop);
-  XMapWindow(display, mode_menu->hidden);
-    
-  XMapWindow(display, mode_menu->item_floating);
-  XMapWindow(display, mode_menu->item_floating_hover);
-  XMapWindow(display, mode_menu->item_floating_active);
-  XMapWindow(display, mode_menu->item_floating_active_hover);
-  XMapWindow(display, mode_menu->item_floating_deactivated);
-  
-  XMapWindow(display, mode_menu->item_tiling);
-  XMapWindow(display, mode_menu->item_tiling_hover);
-  XMapWindow(display, mode_menu->item_tiling_active);
-  XMapWindow(display, mode_menu->item_tiling_active_hover);
-  XMapWindow(display, mode_menu->item_tiling_deactivated);
-  
-  XMapWindow(display, mode_menu->item_desktop);
-  XMapWindow(display, mode_menu->item_desktop_hover);
-  XMapWindow(display, mode_menu->item_desktop_active);
-  XMapWindow(display, mode_menu->item_desktop_active_hover);
-  XMapWindow(display, mode_menu->item_desktop_deactivated);
+        mode_menu->items[i].state[j] = XCreateSimpleWindow(display, mode_menu->items[i].item
+        , 0, 0, mode_menu->menu.inner_width, themes->popup_menu[menu_item].h, 0, black, black);
 
-  XMapWindow(display, mode_menu->item_hidden);
-  XMapWindow(display, mode_menu->item_hidden_hover);
-  XMapWindow(display, mode_menu->item_hidden_active);
-  XMapWindow(display, mode_menu->item_hidden_active_hover);
-  XMapWindow(display, mode_menu->item_hidden_deactivated);
+        create_text_background(display, mode_menu->items[i].state[j], label, &themes->small_font_theme[j]
+        , themes->popup_menu[menu_item].state_p[j]
+        , themes->popup_menu[menu_item].w, themes->popup_menu[menu_item].h);
+        XMapWindow(display, mode_menu->items[i].state[j]);
+      }
+      else printf("Warning:  Skipping state pixmap\n");
+    }
+    XMapWindow(display, mode_menu->items[i].item);
+  }
 
-  XFreePixmap(display, item_floating_p);
-  XFreePixmap(display, item_floating_hover_p);
-  XFreePixmap(display, item_tiling_p);
-  XFreePixmap(display, item_tiling_hover_p);
-  XFreePixmap(display, item_desktop_p);
-  XFreePixmap(display, item_desktop_hover_p);
-  XFreePixmap(display, item_hidden_p);
-  XFreePixmap(display, item_hidden_hover_p);
-  
-  XFreePixmap(display, item_floating_active_p);
-  XFreePixmap(display, item_floating_active_hover_p);
-  XFreePixmap(display, item_tiling_active_p);
-  XFreePixmap(display, item_tiling_active_hover_p);
-  XFreePixmap(display, item_desktop_active_p);
-  XFreePixmap(display, item_desktop_active_hover_p);
-  XFreePixmap(display, item_hidden_active_p);
-  XFreePixmap(display, item_hidden_active_hover_p);
-  
-  XFreePixmap(display, item_floating_deactivated_p);
-  XFreePixmap(display, item_tiling_deactivated_p);
-  XFreePixmap(display, item_desktop_deactivated_p);
-  XFreePixmap(display, item_hidden_deactivated_p);
-  
-  XFlush(display);
 }
 
-void create_workspaces_menu(Display *display, struct Workspace_list *workspaces, struct Pixmaps *pixmaps, struct Cursors *cursors) {
-  Window root = DefaultRootWindow(display);
-  Screen* screen =  DefaultScreenOfDisplay(display);  
-  int black = BlackPixelOfScreen(screen);
-  XSetWindowAttributes set_attributes;
+/********************
+   This function only creates the frame and background for the workspace menu.
+   When a workspace is created it must add itself to this menu.
+   it should also check to see it it is bigger than the current width and enlarge it
+   if required.
+*********************/
+void create_workspaces_menu(Display *display, struct Workspace_list *workspaces
+, struct Themes *themes, struct Cursors *cursors) {
 
-  set_attributes.override_redirect = True;     
-  workspaces->workspace_menu = XCreateSimpleWindow(display, root, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  XSetWindowBackgroundPixmap (display, workspaces->workspace_menu, pixmaps->border_p );
-  XDefineCursor(display, workspaces->workspace_menu, cursors->normal);
-  XChangeWindowAttributes(display, workspaces->workspace_menu, CWOverrideRedirect, &set_attributes);
-}
-
-void create_title_menu(Display *display, struct Frame_list *frames, struct Pixmaps *pixmaps, struct Cursors *cursors) {
-  Window root = DefaultRootWindow(display);
-  Screen* screen =  DefaultScreenOfDisplay(display);  
-  int black = BlackPixelOfScreen(screen);
-  XSetWindowAttributes set_attributes;
+  const int menu_item = medium_menu_item_mid;  //TODO this must come from the theme
   
-  set_attributes.override_redirect = True; 
-  frames->title_menu = XCreateSimpleWindow(display, root, 0, 0, PULLDOWN_WIDTH, MENU_ITEM_HEIGHT, 0, black, black);
-  XSetWindowBackgroundPixmap (display, frames->title_menu, pixmaps->border_p );
-  XDefineCursor(display, frames->title_menu, cursors->normal);
-  XChangeWindowAttributes(display, frames->title_menu, CWOverrideRedirect, &set_attributes);
+  workspaces->workspace_menu.inner_width = 90; //TODO this must come from the theme
+  workspaces->workspace_menu.inner_height = themes->popup_menu[menu_item].h;
+
+  create_popup_menu(display, &workspaces->workspace_menu, themes, cursors);
 }
 
-void show_workspace_menu(Display *display, Window calling_widget, struct Workspace_list* workspaces, int index, int x, int y) {
+/**************
+The title menu is used for both the window menu and the dropdown list that appears at the top of the window.
+Does it assume that titles have already been created? 
+***************/
+void create_title_menu(Display *display, struct Popup_menu *window_menu
+, struct Themes *themes, struct Cursors *cursors) {
+
+  const int menu_item = medium_menu_item_mid; //TODO this must come from the theme
+
+  window_menu->inner_width = 90;        //TODO this must come from the theme
+  window_menu->inner_height = themes->popup_menu[menu_item].h;
+
+  create_popup_menu(display, window_menu, themes, cursors);
+}
+
+void show_workspace_menu(Display *display, Window calling_widget, struct Workspace_list* workspaces
+, int index, int x, int y, struct Themes *themes) {
   int max_length = 100;
-  int width;
-  int height = MENU_ITEM_HEIGHT * workspaces->used + EDGE_WIDTH*2;
+
+
+  //TODO, do a loop and a resize things as in resize_frame
+
+  //TOOD medium_menu_item_mid + lhs + rhs
+  int menu_item = medium_menu_item_mid;
 
   for(int i = 0; i < workspaces->used; i++)  
   if(workspaces->list[i].workspace_menu.width > max_length) 
@@ -393,91 +246,165 @@ void show_workspace_menu(Display *display, Window calling_widget, struct Workspa
 
   //If this is the title menu show the title of the window that the menu appeared on in bold.
   for(int i = 0; i < workspaces->used; i++) {
-    if(i == index)  XRaiseWindow(display, workspaces->list[i].workspace_menu.item_title_active );
-    else XRaiseWindow(display, workspaces->list[i].workspace_menu.item_title);
+    if(i == index) xcheck_raisewin(display, workspaces->list[i].workspace_menu.state[active]);
+    else  xcheck_raisewin(display, workspaces->list[i].workspace_menu.state[normal]);
   }
   
   //Make all the menu items the same width and height.
-  for(int i = 0; i < workspaces->used; i++) {
-    XMoveWindow(display, workspaces->list[i].workspace_menu.backing, EDGE_WIDTH, EDGE_WIDTH + MENU_ITEM_HEIGHT * i);
-    XResizeWindow(display, workspaces->list[i].workspace_menu.backing, max_length, MENU_ITEM_HEIGHT);    
+  for(int i = 0; i < workspaces->used; i++) if(workspaces->list[i].workspace_menu.item) {
+    //TODO menu_item_mid + lhs +rhs
+    XMoveWindow(display,  workspaces->list[i].workspace_menu.item
+    , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[menu_item].h * i);
+   // XResizeWindow(display, workspaces->list[i].workspace_menu.item, max_length, themes->popup_menu[menu_item].h);
   }
 
-  width = max_length + EDGE_WIDTH*2; //this is now the total width of the pop-up menu
-  place_popup_menu(display, calling_widget, workspaces->workspace_menu, x, y, width, height);
+  workspaces->workspace_menu.inner_width = max_length;
+  workspaces->workspace_menu.inner_height = themes->popup_menu[menu_item].h * workspaces->used;
+  
+  int width    = workspaces->workspace_menu.inner_width
+   + themes->popup_menu[popup_l_edge].w + themes->popup_menu[popup_r_edge].w;
+   
+  int height   = workspaces->workspace_menu.inner_height 
+  + themes->popup_menu[popup_t_edge].h + themes->popup_menu[popup_b_edge].h;
+  
+  resize_popup_menu(display, &workspaces->workspace_menu, themes);
+
+  place_popup_menu(display, calling_widget, workspaces->workspace_menu.widgets[popup_menu_parent].widget
+  , 0, y
+  , width, height, themes);
 
 }
 
-/*This function pops-up the title menu in the titlebar or the window menu.
+/*********************
+  This function pops-up the title menu in the titlebar or the window menu.
   the index parameter is the window which was clicked, so that it can be shown in bold.
-  This function is also the window menu, which is done by setting the index to -1. */
-void show_title_menu(Display *display, Window calling_widget, struct Frame_list* frames, int index, int x, int y) {
+  This function is also the window menu, which is done by setting the index to -1. 
+**********************/
+
+void show_title_menu(Display *display, struct Popup_menu *window_menu, Window calling_widget, struct Frame_list* frames
+, int index, int x, int y, struct Themes *themes) {
+
   int max_length = 100;
-  int width;
-  int height = MENU_ITEM_HEIGHT*frames->used + EDGE_WIDTH*2;
-  
-  for(int i = 0; i < frames->used; i++)  if(frames->list[i].title_menu.width > max_length) max_length = frames->list[i].title_menu.width;
-    
+  int width  = themes->popup_menu[popup_l_edge].w + themes->popup_menu[popup_r_edge].w;
+
+  int height = themes->popup_menu[medium_menu_item_mid].h * frames->used 
+  + themes->popup_menu[popup_t_edge].h + themes->popup_menu[popup_b_edge].h;
+  return;
+
+  for(int i = 0; i < frames->used; i++)  if(frames->list[i].menu.width > max_length) {
+    max_length = frames->list[i].menu.width;
+  }
+  //TODO, do a loop and a resize things as in resize_frame
   //If this is the Window menu, disable the tiling windows because they are already tiled.
   if(index == -1) for(int i = 0; i < frames->used; i++) {
-    if(frames->list[i].mode == tiling) XRaiseWindow(display, frames->list[i].menu_item.item_title_deactivated);
-    else XRaiseWindow(display, frames->list[i].menu_item.item_title);
+    if(frames->list[i].mode == tiling) xcheck_raisewin(display, frames->list[i].menu.state[inactive]);
+    else xcheck_raisewin(display, frames->list[i].menu.state[normal]);
   }
   //If this is the title menu show the title of the window that the menu appeared on in bold.
   else for(int i = 0; i < frames->used; i++) {
-    if(i == index) XRaiseWindow(display, frames->list[i].menu_item.item_title_active);
-    else XRaiseWindow(display, frames->list[i].menu_item.item_title);
+    if(i == index) xcheck_raisewin(display, frames->list[i].menu.state[active]);
+    else xcheck_raisewin(display, frames->list[i].menu.state[normal]);
   }
+
   //Make all the menu items the same width and height.
+/*
   for(int i = 0; i < frames->used; i++) {
-    XMoveWindow(display, frames->list[i].menu_item.backing, EDGE_WIDTH, EDGE_WIDTH + MENU_ITEM_HEIGHT * i);  
-    XResizeWindow(display, frames->list[i].menu_item.backing, max_length, MENU_ITEM_HEIGHT);    
+    //TODO menu_item_mid + lhs +rhs
+    XMoveWindow(display, frames->list[i].menu.item, 0, themes->popup_menu[medium_menu_item_mid].h * i);
+    XResizeWindow(display, frames->list[i].menu.item, max_length, themes->popup_menu[medium_menu_item_mid].h);
   }
-  
-  width = max_length + EDGE_WIDTH*2; //this is now the total width of the pop-up menu
-  place_popup_menu(display, calling_widget, frames->title_menu, x, y, width, height);
+  */
+
+  width += max_length;
+  printf("Showing title menu at %d %d\n", x,y);
+
+  place_popup_menu(display, calling_widget, window_menu->widgets[popup_menu_parent].widget, x, y, width, height, themes);
 }
 
-void show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *mode_menu, struct Frame *active_frame, struct Pixmaps *pixmaps, int x, int y) {
+void show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *mode_menu
+, struct Frame *active_frame, struct Themes *themes, int x, int y) {
 
   //these amounts are from create_mode_menu.
-  int width = PULLDOWN_WIDTH + EDGE_WIDTH*2;  
-  int height = MENU_ITEM_HEIGHT * 4 + EDGE_WIDTH*2; 
-  
-  //printf("showing mode dropdown\n");  
+  //TODO menu_item_mid + lhs +rhs  
+  int width = themes->popup_menu[popup_l_edge].w 
+  + 90 + themes->popup_menu[popup_r_edge].w;
+
+  int height = themes->popup_menu[medium_menu_item_mid].h * (hidden + 1) 
+  + themes->popup_menu[popup_t_edge].h + themes->popup_menu[popup_b_edge].h;
+
+  printf("Showing mode mode\n");
   if(active_frame->mode == floating) 
-    XRaiseWindow(display, mode_menu->item_floating_active);
-  else XRaiseWindow(display, mode_menu->item_floating);
-  
-  if(active_frame->mode == tiling)
-    XRaiseWindow(display, mode_menu->item_tiling_active);
-  else  XRaiseWindow(display, mode_menu->item_tiling);
-  
-  if(active_frame->mode == desktop)  
-    XRaiseWindow(display, mode_menu->item_desktop_active);
-  else  XRaiseWindow(display, mode_menu->item_desktop);
- // printf("showing mode dropdown..2 \n");  
-  
-  XRaiseWindow(display, mode_menu->item_hidden);
-    
+    xcheck_raisewin(display, mode_menu->items[floating].state[active]);
+  else xcheck_raisewin(display, mode_menu->items[floating].state[normal]);
+
+  if(active_frame->mode == tiling) 
+    xcheck_raisewin(display, mode_menu->items[tiling].state[active]);
+  else  xcheck_raisewin(display, mode_menu->items[tiling].state[normal]);
+
+  if(active_frame->mode == desktop) 
+    xcheck_raisewin(display, mode_menu->items[desktop].state[active]);
+  else  xcheck_raisewin(display, mode_menu->items[desktop].state[normal]);
+
+  xcheck_raisewin(display, mode_menu->items[hidden].state[normal]);
+
   XFlush(display);
 
-  place_popup_menu(display, calling_widget, mode_menu->frame, x, y, width, height);
+  place_popup_menu(display, calling_widget, mode_menu->menu.widgets[popup_menu_parent].widget, x, y, width, height, themes);
 }
 
-void place_popup_menu(Display *display, Window calling_widget, Window popup_menu, int x, int y, int width, int height) {
+void resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *themes) {
+
+  const int width  = menu->inner_width  + themes->popup_menu[popup_l_edge].w + themes->popup_menu[popup_r_edge].w;
+  const int height = menu->inner_height + themes->popup_menu[popup_t_edge].h + themes->popup_menu[popup_b_edge].h;
+
+  XResizeWindow(display, menu->widgets[popup_menu_parent].widget, width, height);
+
+  //Currently, this is the "base" of the popup menu.
+  //A similar loop will be needed for the actual menu items but not in this function
+  for(int i = popup_t_edge; i < popup_menu_parent; i++) { //popup_menu_parent already done
+
+    int x = themes->popup_menu[i].x;
+    int y = themes->popup_menu[i].y;
+    int w = themes->popup_menu[i].w;
+    int h = themes->popup_menu[i].h;
+
+    //only move or resize those which are dependent on the width.
+    if(x < 0  ||  y < 0  ||  w <= 0  ||  h <= 0) {
+      if(x < 0)  x += width;
+      if(y < 0)  y += height; 
+      if(w <= 0) w += width;
+      if(h <= 0) h += height;
+
+      XMoveResizeWindow(display, menu->widgets[i].widget, x, y, w, h);
+
+      for(int j = 0; j <= inactive; j++) {
+        if(themes->popup_menu[i].state_p[j]) {
+          XResizeWindow(display, menu->widgets[i].state[j], w, h);
+        }
+        else printf("Warning:  Skipping state pixmap\n");
+      }
+    }
+  } 
+
+  XFlush(display);
+}
+
+void place_popup_menu(Display *display, Window calling_widget, Window popup_menu
+, int x, int y, int width, int height, struct Themes *themes) {
   Screen* screen = DefaultScreenOfDisplay(display);
   XWindowAttributes details;
-  
+
   XGetWindowAttributes(display, calling_widget, &details);
+
   y += details.height;
+
   if(y + height > XHeightOfScreen(screen)) y = y - (details.height + height); //either side of the widget
   if(y < 0) y = XHeightOfScreen(screen) - height;  
   if(x + width > XWidthOfScreen(screen)) x = XWidthOfScreen(screen) - width;
-  
-  XMoveResizeWindow(display, popup_menu, x, y, width, height);
-  XRaiseWindow(display, popup_menu);
+
+  XMoveWindow(display, popup_menu, x, y);
+  xcheck_raisewin(display, popup_menu);
   XMapWindow(display, popup_menu);
   XFlush(display);
-  //printf("placed popup\n");
+  printf("placed popup\n");
 }

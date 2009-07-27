@@ -1,3 +1,18 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <X11/extensions/shape.h>
+#include <X11/Xlib.h>
+#include <X11/Xcursor/Xcursor.h>
+#include <X11/Xatom.h>
+
+#include "basin.h"
+
+#include "frame.h"
+#include "frame-actions.h"
+#include "focus.h"
+#include "xcheck.h"
+
 /****
 
 (implemented in add_frame_to_workspace called from main)
@@ -67,9 +82,9 @@ void check_new_frame_focus (Display *display, struct Frame_list *frames, int ind
   }
   
   if(set_focus) {
-    add_focus(frame->window, &frames->focus);
+    add_focus(frame->framed_window, &frames->focus);
     frame->selected = 1;    
-    XRaiseWindow(display, frames->list[index].selection_indicator.indicator_active);
+    xcheck_raisewin(display, frames->list[index].widgets[selection_indicator].state[active]);
     XFlush(display);
   }
 }
@@ -79,7 +94,7 @@ void unfocus_frames(Display *display, struct Frame_list *frames) {
   for(int i = 0; i < frames->used; i++) 
   if(frames->list[i].selected) {
     frames->list[i].selected = 0;
-    XRaiseWindow(display, frames->list[i].selection_indicator.indicator_normal);      
+    xcheck_raisewin(display, frames->list[i].widgets[selection_indicator].state[normal]);
     XFlush(display);
   }
 }
@@ -89,21 +104,21 @@ void unfocus_frames(Display *display, struct Frame_list *frames) {
 //rather than a constant time one.  The alternative would be to always keep the frame list
 //in focus order, but copying around reasonably large structs seems more expensive than
 //zipping through them once in a while.
-void recover_focus(Display *display, struct Frame_list *frames) {
+void recover_focus(Display *display, struct Frame_list *frames, struct Themes *themes) {
   if(frames->focus.used == 0) return;
   //printf("Recovering focus\n");
   for(int i = frames->used - 1; i >= 0; i--) 
-  if(frames->list[i].window == frames->focus.list[frames->focus.used - 1]) {
+  if(frames->list[i].framed_window == frames->focus.list[frames->focus.used - 1]) {
     XGrabServer(display);
     XSetErrorHandler(supress_xerror);
     //seems excessive but closing windows often causes 
-    XSetInputFocus(display, frames->list[i].window, RevertToPointerRoot, CurrentTime);
+    XSetInputFocus(display, frames->list[i].framed_window, RevertToPointerRoot, CurrentTime);
     XSync(display, False);
     XSetErrorHandler(NULL);    
     XUngrabServer(display);
     XFlush(display);
     frames->list[i].selected = 1;
-    change_frame_mode(display, &frames->list[i], frames->list[i].mode);
+    change_frame_mode(display, &frames->list[i], frames->list[i].mode, themes);
     break;
   }
   

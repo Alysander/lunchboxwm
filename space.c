@@ -1,3 +1,10 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <X11/Xlib.h>
+
+#include "basin.h"
+#include "space.h"
 
 struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_list *frames) {
   //the start variable is used to skip windows at the start 
@@ -26,6 +33,7 @@ struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_lis
       if(INTERSECTS(current.x, current.w, used_spaces.list[j].x, used_spaces.list[j].w)
       && INTERSECTS(current.y, current.h, used_spaces.list[j].y, used_spaces.list[j].h)) {
         //This should never occur
+        //Enforce precondition of largest_available spaces algorithm.
         free(used_spaces.list);
         used_spaces.list = NULL;
         used_spaces.used = 0;
