@@ -5,6 +5,6 @@ void create_workspaces_menu(Display *display, struct Workspace_list *workspaces,
 void show_workspace_menu   (Display *display, Window calling_widget, struct Workspace_list* workspaces, int index, int x, int y, struct Themes *themes);
 void show_title_menu       (Display *display, struct Popup_menu *window_menu, Window calling_widget, struct Frame_list *frames, int index, int x, int y, struct Themes *themes);
 void show_mode_menu        (Display *display, Window calling_widget, struct Mode_menu *mode_menu, struct Frame *active_frame, struct Themes *themes, int x, int y);  
-void place_popup_menu      (Display *display, Window calling_widget, Window popup_menu, int x, int y, int width, int height, struct Themes *themes);
+void place_popup_menu      (Display *display, Window calling_widget, Window popup_menu, int x, int y, struct Themes *themes);
 void resize_popup_menu     (Display *display, struct Popup_menu *menu, struct Themes *themes);
 void create_popup_menu     (Display *display, struct Popup_menu *menu, struct Themes *themes, struct Cursors *cursors);

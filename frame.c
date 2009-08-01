@@ -36,7 +36,6 @@ remove_frame(Display* display, struct Frame_list* frames, int index) {
 
   //free_frame_icon_size(display, &frames->list[index]);
   //always unmap the title pulldown before removing the frame or else it will crash
-  //TODO destroy sequence (what is this todo for again?)
   //XDestroyWindow(display, frames->list[index].menu_item.backing);
   
   XGrabServer(display);
@@ -231,7 +230,6 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
     //map windows
   }
   //select input
-  XMapWindow(display, frame->widgets[frame_parent].widget); //remove this later and get change_to_workspace to map it properly
   XSelectInput(display, frame->widgets[frame_parent].widget,   Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
 
   XDefineCursor(display, frame->widgets[frame_parent].widget, cursors->normal);
@@ -244,7 +242,7 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
   if(themes->window_type[unknown][mode_dropdown_hotspot].exists) {
     XSelectInput(display, frame->widgets[mode_dropdown_hotspot].widget, ButtonPressMask | ButtonReleaseMask);
     XDefineCursor(display, frame->widgets[mode_dropdown_hotspot].widget, cursors->pressable);
-    XRaiseWindow(display, frame->widgets[mode_dropdown_hotspot].widget);
+//    XRaiseWindow(display, frame->widgets[mode_dropdown_hotspot].widget);
   }
 
   if(themes->window_type[unknown][title_menu_hotspot].exists) {
@@ -315,9 +313,6 @@ void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) 
       }
     }
   }
-  if(frame->widgets[mode_dropdown_hotspot].widget) {
-    XRaiseWindow(display, frame->widgets[mode_dropdown_hotspot].widget);
-  }
   XFlush(display);
 }
 
@@ -371,12 +366,13 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
     return;
   }
 
+  //DO we need to create this??
   temp.menu.item = XCreateSimpleWindow(display
   , window_menu->widgets[popup_menu_parent].widget //what is the parent?
   , themes->popup_menu[l_edge].w, 0
   , XWidthOfScreen(screen), themes->popup_menu[menu_item].h
   , 0, black, black);
-
+  XSelectInput(display, temp.menu.item, ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
   //create corresponding title menu item for this frame
   for(int i = 0; i <= inactive; i++) {
     temp.menu.state[i] = XCreateSimpleWindow(display
@@ -387,10 +383,18 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
 
     create_text_background(display, temp.menu.state[i], temp.window_name
     , &themes->medium_font_theme[i], themes->popup_menu[menu_item].state_p[i]
-    , themes->popup_menu[menu_item].w, themes->popup_menu[menu_item].h);
-
+    , XWidthOfScreen(screen), themes->popup_menu[menu_item].h);
+    
+//    if(themes->window_type[frame->type][title_menu_text].state_p[i]) {
+      create_text_background(display, temp.widgets[title_menu_text].state[i], temp.window_name
+      , &themes->medium_font_theme[active], themes->window_type[frame->type][title_menu_text].state_p[i]
+      , XWidthOfScreen(screen), themes->window_type[frame->type][title_menu_text].h);
+//    }
+    
+    XMapWindow(display, temp.menu.item);
     XMapWindow(display, temp.menu.state[i]);
   }
+  xcheck_raisewin(display, temp.menu.state[active]);
   //these are the items for inside the menu
   //need to create all these windows.
 
@@ -402,10 +406,7 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
   }
   XFlush(display);
 
-  frame->title_width = 90;
-  frame->menu_width = 90;
-/*  frame->title_width = get_title_width(display, frame->window_name);
-  frame->menu_width =  get_title_width(display, frame->window_name);  */
+  temp.menu.width = 90; /* get_title_width(display, frame->window_name);  */
   *frame = temp;
 }
 
@@ -564,7 +565,7 @@ void get_frame_type(Display *display, struct Frame *frame, struct Atoms *atoms, 
     #endif
     for(int i =0; i < items; i++) {
     //these are fairly mutually exclusive so be suprised if there are others
-      if(window_type[i] == atoms->wm_window_type_desktop) {
+      if(window_type[i] == atoms->wm_window_type_desktop  &&  themes->window_type[program]) {
         #ifdef SHOW_PROPERTIES
         printf("mode/type: desktop\n");
         #endif
@@ -578,40 +579,38 @@ void get_frame_type(Display *display, struct Frame *frame, struct Atoms *atoms, 
 
         frame->type = unknown;
       }
-      else if(window_type[i] == atoms->wm_window_type_dock) {
+      else if(window_type[i] == atoms->wm_window_type_dock  &&  themes->window_type[system_program]) {
         #ifdef SHOW_PROPERTIES
         printf("type: dock\n");
         #endif
         change_frame_mode(display, frame, floating, themes);
-        //change_frame_mode(display, frame, minimal);
         frame->type = system_program; 
       }
-      else if(window_type[i] == atoms->wm_window_type_splash) {
+      else if(window_type[i] == atoms->wm_window_type_splash  &&  themes->window_type[splash]) {
         #ifdef SHOW_PROPERTIES
         printf("type: splash\n");
         #endif
         change_frame_mode(display, frame, floating, themes);
         frame->type = splash;
       }
-      else if(window_type[i] ==atoms->wm_window_type_dialog) {
+      else if(window_type[i] ==atoms->wm_window_type_dialog  &&  themes->window_type[dialog]) {
         #ifdef SHOW_PROPERTIES
         printf("type: dialog\n");
         #endif
         change_frame_mode(display, frame, floating, themes);
         frame->type = dialog;
       }
-      else if(window_type[i] == atoms->wm_window_type_utility) {
+      else if(window_type[i] == atoms->wm_window_type_utility  &&  themes->window_type[utility]) {
         #ifdef SHOW_PROPERTIES
         printf("type: utility\n");
         #endif
-        change_frame_mode(display, frame, floating, themes);
-        //change_frame_mode(display, frame, minimal);        
+        change_frame_mode(display, frame, floating, themes);        
         frame->type = utility;
       }
     }
   }
 
-  if(frame->type == unknown) change_frame_mode(display, frame, floating, themes);
+  if(frame->type == unknown) change_frame_mode(display, frame, floating, themes);  
   if(contents != NULL) XFree(contents);
 }
 

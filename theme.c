@@ -61,8 +61,7 @@ struct Themes *create_themes(Display *display, char *theme_name) {
     goto error;
   }
 
-  /* TODO */
-  themes = malloc(sizeof(struct Themes));
+  themes = calloc(1, sizeof(struct Themes));
   if(themes == NULL) {
     fprintf(stderr, "Error: insufficient memory\n");
     goto error;
@@ -70,6 +69,8 @@ struct Themes *create_themes(Display *display, char *theme_name) {
 
 //TODO check if file exists, otherwise use program_frame theme
   themes->window_type[unknown]        = create_component_theme(display, "program_frame");
+
+/*****
   themes->window_type[splash]         = create_component_theme(display, "program_frame");
   themes->window_type[file]           = create_component_theme(display, "program_frame");
   themes->window_type[program]        = create_component_theme(display, "program_frame");
@@ -81,9 +82,15 @@ struct Themes *create_themes(Display *display, char *theme_name) {
   themes->window_type[popup_menu]     = create_component_theme(display, "program_frame");
   themes->window_type[popup_menubar]  = create_component_theme(display, "program_frame");  
   themes->window_type[menubar]        = create_component_theme(display, "program_frame");
-
+*****/
+/****
+TODO Verify that: 
+t_edge                         x >= 0, y >= 0, w <=0, h>0
+l_edge                         x >= 0, y >= 0, w > 0, h<=0
+b_edge                         x > 0,  y < 0, w <= 0, h>0
+r_edge                         x < 0,  y >= 0, w > 0, h <= 0
+****/
   themes->popup_menu = create_component_theme(display, "popup_menu");
-
   themes->menubar = create_component_theme(display, "menubar");
 
   if(!themes->window_type[unknown]) goto error;
@@ -138,7 +145,7 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
     nwidgets = popup_menu_parent + 1; 
     ntiles =   tile_popup_parent + 1;
   }
-  //splash ?
+  //TODO splash ?
 
   /* Allocate memory and open files */
   themes = calloc(nwidgets, sizeof(struct Widget_theme));
@@ -159,10 +166,10 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
   /***
   To add another tiled background the following steps need to be followed:
   1) Add item to enumerators.
-  2) Add tile name in strcmp below.  This should be the widget's name it is for prepended with tile_.
+  2) Add tile name in strcmp below.  This should be the widget's name prepended with "tile_".
   3) Add in appropriate swap_widget theme commands before and after the pixmaps have been created.
   ***/
-
+  
   /* Read in entries from the theme's region file into the theme array. */
   while(!feof(regions)) {
     int returned = 0;
@@ -377,19 +384,24 @@ static void create_font_themes(struct Themes *restrict themes) {
   }
 
   themes->large_font_theme[active].weight = CAIRO_FONT_WEIGHT_BOLD;
-  themes->large_font_theme[inactive].r = 0;
-  themes->large_font_theme[inactive].g = 0;
-  themes->large_font_theme[inactive].b = 0;
+  themes->large_font_theme[active_hover].weight = CAIRO_FONT_WEIGHT_BOLD;
+  themes->large_font_theme[inactive].r = 0.17;
+  themes->large_font_theme[inactive].g = 0.17;
+  themes->large_font_theme[inactive].b = 0.17;
+
 
   themes->small_font_theme[active].weight = CAIRO_FONT_WEIGHT_BOLD;
-  themes->small_font_theme[inactive].r = 0;
-  themes->small_font_theme[inactive].g = 0;
-  themes->small_font_theme[inactive].b = 0;
+  themes->small_font_theme[active_hover].weight = CAIRO_FONT_WEIGHT_BOLD;
+  themes->small_font_theme[inactive].r = 0.17;
+  themes->small_font_theme[inactive].g = 0.17;
+  themes->small_font_theme[inactive].b = 0.17;
+
 
   themes->medium_font_theme[active].weight = CAIRO_FONT_WEIGHT_BOLD;
-  themes->medium_font_theme[inactive].r = 0;
-  themes->medium_font_theme[inactive].g = 0;
-  themes->medium_font_theme[inactive].b = 0;
+  themes->medium_font_theme[active_hover].weight = CAIRO_FONT_WEIGHT_BOLD;
+  themes->medium_font_theme[inactive].r = 0.17;
+  themes->medium_font_theme[inactive].g = 0.17;
+  themes->medium_font_theme[inactive].b = 0.17;
 
 }
 
@@ -538,7 +550,7 @@ void create_text_background(Display *display, Window window, const char *restric
   if(b_h <= 0) return;
   if(!background_p || !font_theme) return;
 
-  printf("Creating text pixmap %s\n", text);
+  //printf("Creating text pixmap %s\n", text);
 
   unsigned int width = XWidthOfScreen(screen);
   unsigned int height = b_h;  

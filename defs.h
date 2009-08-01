@@ -33,4 +33,4 @@ This is a work around hack that incidently disables resizing of those windows. *
 //#define ALLOW_POSITION_HINTS 
 
 /* Allows synchronized xlib calls - useful when debugging */
-#define ALLOW_XLIB_DEBUG
+//#define ALLOW_XLIB_DEBUG

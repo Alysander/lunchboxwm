@@ -112,7 +112,7 @@ void create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes 
     menu->widgets[i].widget = XCreateSimpleWindow(display
     , menu->widgets[popup_menu_parent].widget
     , x, y, w, h, 0, black, black);
-
+    
     for(int j = 0; j <= inactive; j++) {
       if(themes->popup_menu[i].state_p[j]) {
         menu->widgets[i].state[j] = XCreateSimpleWindow(display, menu->widgets[i].widget
@@ -162,8 +162,7 @@ void create_mode_menu(Display *display, struct Mode_menu *mode_menu
     , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[menu_item].h * i
     , mode_menu->menu.inner_width, themes->popup_menu[menu_item].h, 0, black, black);
 
-    XSelectInput(display, mode_menu->items[i].item,  Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
-
+    XSelectInput(display, mode_menu->items[i].item,  ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
     for(int j = 0; j <= inactive; j++) {
       if(themes->popup_menu[i].state_p[j]) {
         char *label = NULL;
@@ -270,8 +269,7 @@ void show_workspace_menu(Display *display, Window calling_widget, struct Workspa
   resize_popup_menu(display, &workspaces->workspace_menu, themes);
 
   place_popup_menu(display, calling_widget, workspaces->workspace_menu.widgets[popup_menu_parent].widget
-  , 0, y
-  , width, height, themes);
+  , 0, y, themes);
 
 }
 
@@ -281,24 +279,22 @@ void show_workspace_menu(Display *display, Window calling_widget, struct Workspa
   This function is also the window menu, which is done by setting the index to -1. 
 **********************/
 
-void show_title_menu(Display *display, struct Popup_menu *window_menu, Window calling_widget, struct Frame_list* frames
+void show_title_menu(Display *display, struct Popup_menu *title_menu, Window calling_widget, struct Frame_list* frames
 , int index, int x, int y, struct Themes *themes) {
 
-  int max_length = 100;
-  int width  = themes->popup_menu[popup_l_edge].w + themes->popup_menu[popup_r_edge].w;
+  //TODO this does not consider what to do if a window is created when the menu is open
+  int max_length = 90;
 
   int height = themes->popup_menu[medium_menu_item_mid].h * frames->used 
   + themes->popup_menu[popup_t_edge].h + themes->popup_menu[popup_b_edge].h;
-  return;
 
   for(int i = 0; i < frames->used; i++)  if(frames->list[i].menu.width > max_length) {
     max_length = frames->list[i].menu.width;
   }
-  //TODO, do a loop and a resize things as in resize_frame
-  //If this is the Window menu, disable the tiling windows because they are already tiled.
   if(index == -1) for(int i = 0; i < frames->used; i++) {
-    if(frames->list[i].mode == tiling) xcheck_raisewin(display, frames->list[i].menu.state[inactive]);
-    else xcheck_raisewin(display, frames->list[i].menu.state[normal]);
+//TODO check that the tiled window can actually fit on the screen
+//    if(frames->list[i].mode == tiling) xcheck_raisewin(display, frames->list[i].menu.state[inactive]); 
+    xcheck_raisewin(display, frames->list[i].menu.state[normal]);
   }
   //If this is the title menu show the title of the window that the menu appeared on in bold.
   else for(int i = 0; i < frames->used; i++) {
@@ -307,18 +303,23 @@ void show_title_menu(Display *display, struct Popup_menu *window_menu, Window ca
   }
 
   //Make all the menu items the same width and height.
-/*
-  for(int i = 0; i < frames->used; i++) {
-    //TODO menu_item_mid + lhs +rhs
-    XMoveWindow(display, frames->list[i].menu.item, 0, themes->popup_menu[medium_menu_item_mid].h * i);
-    XResizeWindow(display, frames->list[i].menu.item, max_length, themes->popup_menu[medium_menu_item_mid].h);
-  }
-  */
 
-  width += max_length;
+  for(int i = 0; i < frames->used; i++) {
+    XMoveWindow(display, frames->list[i].menu.item
+    , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[medium_menu_item_mid].h * i);
+    XResizeWindow(display, frames->list[i].menu.item, max_length, themes->popup_menu[medium_menu_item_mid].h);
+    printf("y %d\n",themes->popup_menu[popup_t_edge].h + themes->popup_menu[medium_menu_item_mid].h * i);
+  }
+  
+
   printf("Showing title menu at %d %d\n", x,y);
 
-  place_popup_menu(display, calling_widget, window_menu->widgets[popup_menu_parent].widget, x, y, width, height, themes);
+  title_menu->inner_width = max_length;
+  title_menu->inner_height = themes->popup_menu[medium_menu_item_mid].h * frames->used;
+
+  resize_popup_menu(display, title_menu, themes);
+  place_popup_menu(display, calling_widget, title_menu->widgets[popup_menu_parent].widget, x, y, themes);
+  XFlush(display);
 }
 
 void show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *mode_menu
@@ -349,7 +350,7 @@ void show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *m
 
   XFlush(display);
 
-  place_popup_menu(display, calling_widget, mode_menu->menu.widgets[popup_menu_parent].widget, x, y, width, height, themes);
+  place_popup_menu(display, calling_widget, mode_menu->menu.widgets[popup_menu_parent].widget, x, y, themes);
 }
 
 void resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *themes) {
@@ -389,21 +390,33 @@ void resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes 
   XFlush(display);
 }
 
+/*
+This function places a popup menu either above or below a particular widget.
+It is placed above the widget to prevent it going off the bottom of the screen.
+The x,y needs to be supplied because the x,y of the calling widget will be relative to its parent
+, not the screen.
+*/
 void place_popup_menu(Display *display, Window calling_widget, Window popup_menu
-, int x, int y, int width, int height, struct Themes *themes) {
+, int x, int y, struct Themes *themes) {
   Screen* screen = DefaultScreenOfDisplay(display);
   XWindowAttributes details;
+  XWindowAttributes popup_details;
 
   XGetWindowAttributes(display, calling_widget, &details);
+  XGetWindowAttributes(display, popup_menu, &popup_details);  
+  
+  int width  = popup_details.width;
+  int height = popup_details.height;
 
   y += details.height;
 
   if(y + height > XHeightOfScreen(screen)) y = y - (details.height + height); //either side of the widget
   if(y < 0) y = XHeightOfScreen(screen) - height;  
   if(x + width > XWidthOfScreen(screen)) x = XWidthOfScreen(screen) - width;
-
+  printf("width is %d\n", width);
   XMoveWindow(display, popup_menu, x, y);
-  xcheck_raisewin(display, popup_menu);
+  XRaiseWindow(display, popup_menu);
+//  xcheck_raisewin(display, popup_menu);
   XMapWindow(display, popup_menu);
   XFlush(display);
   printf("placed popup\n");

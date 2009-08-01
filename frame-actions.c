@@ -85,7 +85,7 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
     xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs_desktop].widget);
     xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs_desktop].state[normal]);
     xcheck_raisewin(display, frame->widgets[mode_dropdown_rhs].state[normal]);
-//    frame->x = -(EDGE_WIDTH*2 + H_SPACING);
+//    frame->x = -(EDGE_WIDTH*2 + H_SPACING);  TODO use themes coordinates
 //    frame->y = -(TITLEBAR_HEIGHT + EDGE_WIDTH);
 
     if(frame->max_width >= XWidthOfScreen(screen)) 
@@ -101,6 +101,7 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
     frame->mode = desktop;
     resize_frame(display, frame, themes);
   }
+  xcheck_raisewin(display, frame->widgets[mode_dropdown_hotspot].widget);
   XFlush(display);
 }
 

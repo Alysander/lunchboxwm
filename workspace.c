@@ -17,6 +17,7 @@
 #include "focus.h"
 
 /*** Create Workspace ***/
+//create_workspace
 int create_frame_list(Display *display, struct Workspace_list* workspaces, char *workspace_name, struct Themes *themes, struct Cursors *cursors) {
   Window root = DefaultRootWindow(display);
   Screen* screen =  DefaultScreenOfDisplay(display);  
@@ -58,23 +59,22 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
   , CWOverrideRedirect | CWBackPixmap | CWCursor , &attributes);
   XLowerWindow(display, frames->virtual_desktop);
 
-  //TODO create workspace menu item
-
   unsigned int width = 90;
   const int menu_item = medium_menu_item_mid;  
 
   frames->workspace_menu.item = XCreateSimpleWindow(display
   , workspaces->workspace_menu.widgets[popup_menu_parent].widget
   , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h
-//, themes->popup_menu[menu_item].x, themes->popup_menu[menu_item].y
   , width, themes->popup_menu[menu_item].h
   , 0, black, black);
 
-  for(int i = 0; i <= inactive; i++) if(themes->popup_menu[menu_item].state_p[i]) {
+  XSelectInput(display, frames->workspace_menu.item,  ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  
+  for(int i = 0; i <= inactive; i++) { //if(themes->popup_menu[menu_item].state_p[i])
     frames->workspace_menu.state[i] = XCreateSimpleWindow(display
     , frames->workspace_menu.item
     , 0, 0
-    , width, themes->popup_menu[menu_item].h
+    , XWidthOfScreen(screen), themes->popup_menu[menu_item].h
     , 0, black, black);
 
     create_text_background(display, frames->workspace_menu.state[i], frames->workspace_name
@@ -87,8 +87,8 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
   XMapWindow(display, frames->workspace_menu.item);
 
   //TODO rearrange list now
-  frames->workspace_menu.width = 90;
-  //frames->workspace_menu.width = get_title_width(display, frames->workspace_name);
+  //frames->workspace_menu.width = 90;
+  frames->workspace_menu.width = get_title_width(display, frames->workspace_name);
 
   //Create the frame_list
   frames->used = 0;

@@ -31,10 +31,6 @@
 //this is the number of pixels the frame takes up from either side of a window together
 #define FRAME_HSPACE (EDGE_WIDTH*2 + H_SPACING)*2
 
-#define TITLEBAR_USED_WIDTH (H_SPACING*5 + PULLDOWN_WIDTH + BUTTON_SIZE + EDGE_WIDTH*2 + BUTTON_SIZE)
-#define TITLE_MAX_HEIGHT (BUTTON_SIZE - EDGE_WIDTH*4)
-//subtract this from the width of the window to find the max title width.
-#define TITLE_MAX_WIDTH_DIFF (TITLEBAR_USED_WIDTH + EDGE_WIDTH*2 + BUTTON_SIZE)
 #define MENUBAR_HEIGHT (TITLEBAR_HEIGHT - V_SPACING + EDGE_WIDTH)
 
 
@@ -252,8 +248,6 @@ struct Frame {
   Window framed_window; //the window which is reparented.
   struct Widget widgets[frame_parent + 1];
 
-  unsigned int title_width;
-  unsigned int menu_width;
   struct Menu_item menu; //this contains icons used in the window menu and the title menu
 
   struct { //these is used during tiling resize operations.
