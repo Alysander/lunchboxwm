@@ -59,7 +59,7 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
   , CWOverrideRedirect | CWBackPixmap | CWCursor , &attributes);
   XLowerWindow(display, frames->virtual_desktop);
 
-  unsigned int width = 90;
+  unsigned int width = workspaces->workspace_menu.inner_width; //TODO when a workspace is added to the list, it must also be resized to the width of that list.
   const int menu_item = medium_menu_item_mid;  
 
   frames->workspace_menu.item = XCreateSimpleWindow(display
@@ -86,9 +86,7 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
 
   XMapWindow(display, frames->workspace_menu.item);
 
-  //TODO rearrange list now
-  //frames->workspace_menu.width = 90;
-  frames->workspace_menu.width = get_title_width(display, frames->workspace_name);
+  frames->workspace_menu.width = get_text_width(display, frames->workspace_name, &themes->medium_font_theme[active]);
 
   //Create the frame_list
   frames->used = 0;

@@ -150,7 +150,7 @@ void create_mode_menu(Display *display, struct Mode_menu *mode_menu
   //TODO get this from the theme somehow
   const int menu_item = medium_menu_item_mid; /*Change the mode menu item size here */
 
-  mode_menu->menu.inner_width = 90;
+  mode_menu->menu.inner_width = DEFAULT_MENU_ITEM_WIDTH;
   mode_menu->menu.inner_height = themes->popup_menu[menu_item].h * (hidden + 1);
   
   create_popup_menu(display, &mode_menu->menu, themes, cursors);
@@ -208,7 +208,7 @@ void create_workspaces_menu(Display *display, struct Workspace_list *workspaces
 
   const int menu_item = medium_menu_item_mid;  //TODO this must come from the theme
   
-  workspaces->workspace_menu.inner_width = 90; //TODO this must come from the theme
+  workspaces->workspace_menu.inner_width = DEFAULT_MENU_ITEM_WIDTH; //TODO this must come from the theme
   workspaces->workspace_menu.inner_height = themes->popup_menu[menu_item].h;
 
   create_popup_menu(display, &workspaces->workspace_menu, themes, cursors);
@@ -223,7 +223,7 @@ void create_title_menu(Display *display, struct Popup_menu *window_menu
 
   const int menu_item = medium_menu_item_mid; //TODO this must come from the theme
 
-  window_menu->inner_width = 90;        //TODO this must come from the theme
+  window_menu->inner_width = DEFAULT_MENU_ITEM_WIDTH;        //TODO this must come from the theme
   window_menu->inner_height = themes->popup_menu[menu_item].h;
 
   create_popup_menu(display, window_menu, themes, cursors);
@@ -283,7 +283,7 @@ void show_title_menu(Display *display, struct Popup_menu *title_menu, Window cal
 , int index, int x, int y, struct Themes *themes) {
 
   //TODO this does not consider what to do if a window is created when the menu is open
-  int max_length = 90;
+  int max_length = DEFAULT_MENU_ITEM_WIDTH;
 
   int height = themes->popup_menu[medium_menu_item_mid].h * frames->used 
   + themes->popup_menu[popup_t_edge].h + themes->popup_menu[popup_b_edge].h;
@@ -291,6 +291,7 @@ void show_title_menu(Display *display, struct Popup_menu *title_menu, Window cal
   for(int i = 0; i < frames->used; i++)  if(frames->list[i].menu.width > max_length) {
     max_length = frames->list[i].menu.width;
   }
+  
   if(index == -1) for(int i = 0; i < frames->used; i++) {
 //TODO check that the tiled window can actually fit on the screen
 //    if(frames->list[i].mode == tiling) xcheck_raisewin(display, frames->list[i].menu.state[inactive]); 
@@ -308,7 +309,6 @@ void show_title_menu(Display *display, struct Popup_menu *title_menu, Window cal
     XMoveWindow(display, frames->list[i].menu.item
     , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[medium_menu_item_mid].h * i);
     XResizeWindow(display, frames->list[i].menu.item, max_length, themes->popup_menu[medium_menu_item_mid].h);
-    printf("y %d\n",themes->popup_menu[popup_t_edge].h + themes->popup_menu[medium_menu_item_mid].h * i);
   }
   
 
@@ -328,7 +328,7 @@ void show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *m
   //these amounts are from create_mode_menu.
   //TODO menu_item_mid + lhs +rhs  
   int width = themes->popup_menu[popup_l_edge].w 
-  + 90 + themes->popup_menu[popup_r_edge].w;
+  + DEFAULT_MENU_ITEM_WIDTH + themes->popup_menu[popup_r_edge].w;
 
   int height = themes->popup_menu[medium_menu_item_mid].h * (hidden + 1) 
   + themes->popup_menu[popup_t_edge].h + themes->popup_menu[popup_b_edge].h;

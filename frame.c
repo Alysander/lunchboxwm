@@ -372,24 +372,25 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
   , themes->popup_menu[l_edge].w, 0
   , XWidthOfScreen(screen), themes->popup_menu[menu_item].h
   , 0, black, black);
+
+  temp.menu.width = get_text_width(display, temp.window_name, &themes->medium_font_theme[active]);
+  
   XSelectInput(display, temp.menu.item, ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
   //create corresponding title menu item for this frame
   for(int i = 0; i <= inactive; i++) {
     temp.menu.state[i] = XCreateSimpleWindow(display
     , temp.menu.item
     , 0, 0
-    , window_menu->inner_width, themes->popup_menu[menu_item].h
+    , XWidthOfScreen(screen), themes->popup_menu[menu_item].h
     , 0, black, black);
 
     create_text_background(display, temp.menu.state[i], temp.window_name
     , &themes->medium_font_theme[i], themes->popup_menu[menu_item].state_p[i]
     , XWidthOfScreen(screen), themes->popup_menu[menu_item].h);
     
-//    if(themes->window_type[frame->type][title_menu_text].state_p[i]) {
-      create_text_background(display, temp.widgets[title_menu_text].state[i], temp.window_name
-      , &themes->medium_font_theme[active], themes->window_type[frame->type][title_menu_text].state_p[i]
-      , XWidthOfScreen(screen), themes->window_type[frame->type][title_menu_text].h);
-//    }
+    create_text_background(display, temp.widgets[title_menu_text].state[i], temp.window_name
+    , &themes->medium_font_theme[active], themes->window_type[frame->type][title_menu_text].state_p[i]
+    , XWidthOfScreen(screen), themes->window_type[frame->type][title_menu_text].h);
     
     XMapWindow(display, temp.menu.item);
     XMapWindow(display, temp.menu.state[i]);
@@ -406,7 +407,7 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
   }
   XFlush(display);
 
-  temp.menu.width = 90; /* get_title_width(display, frame->window_name);  */
+
   *frame = temp;
 }
 
@@ -545,7 +546,8 @@ void get_frame_wm_hints(Display *display, struct Frame *frame) {
 }
 */
 
-void get_frame_type(Display *display, struct Frame *frame, struct Atoms *atoms, struct Themes *themes) {
+void 
+get_frame_type(Display *display, struct Frame *frame, struct Atoms *atoms, struct Themes *themes) {
   unsigned char *contents = NULL;
   Atom return_type;
   int return_format;

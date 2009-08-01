@@ -89,6 +89,7 @@ t_edge                         x >= 0, y >= 0, w <=0, h>0
 l_edge                         x >= 0, y >= 0, w > 0, h<=0
 b_edge                         x > 0,  y < 0, w <= 0, h>0
 r_edge                         x < 0,  y >= 0, w > 0, h <= 0
+title_menu_text: all states exist for all defined window types
 ****/
   themes->popup_menu = create_component_theme(display, "popup_menu");
   themes->menubar = create_component_theme(display, "menubar");
@@ -586,14 +587,9 @@ void create_text_background(Display *display, Window window, const char *restric
 
 }
 
-//TODO, specify face and size.
-//also specify weight?
-/*
-This is called when the workspace menu is called and when the window menu is shown
-, it should be done whenever an item is added
-
-int get_title_width(Display* display, const char *title, char *face_name, float size) {
-  Window root = DefaultRootWindow(display); 
+/* This function calculates the width of a title when drawn using the specified font theme in pixels. It is used to calculate popup menu widths.
+   It never returns a length larger than the width of the screen. */
+unsigned int get_text_width(Display* display, const char *title, struct Font_theme *font_theme) {
   int screen_number = DefaultScreen (display);
   Screen* screen = DefaultScreenOfDisplay(display);
   Visual *colours =  DefaultVisual(display, screen_number);
@@ -601,14 +597,14 @@ int get_title_width(Display* display, const char *title, char *face_name, float 
   cairo_surface_t *surface;
   cairo_t *cr;
   cairo_text_extents_t extents;
-
-  temp = XCreateSimpleWindow(display, root, 0, 0, PIXMAP_SIZE, PIXMAP_SIZE, 0, WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
-  XFlush(display);
+  unsigned int width;
+  
+  temp = XCreateSimpleWindow(display, DefaultRootWindow(display), 0, 0, PIXMAP_SIZE, PIXMAP_SIZE, 0, WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
   surface = cairo_xlib_surface_create(display, temp, colours,  PIXMAP_SIZE, PIXMAP_SIZE);
   cr = cairo_create(surface);
 
-  cairo_select_font_face (cr, face, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-  cairo_set_font_size(cr, size); 
+  cairo_select_font_face (cr, font_theme->font_name, font_theme->slant, font_theme->weight);
+  cairo_set_font_size(cr, font_theme->size); 
   cairo_text_extents(cr, title, &extents);
 
   XDestroyWindow(display, temp); 
@@ -618,11 +614,8 @@ int get_title_width(Display* display, const char *title, char *face_name, float 
 
   if(extents.x_bearing < 0) extents.x_advance -=  extents.x_bearing;
 
-  return (int)extents.x_advance + 1; //have a extra pixel at the RHS just in case
+  width = extents.x_advance + font_theme->x;
+  if(width > XWidthOfScreen(screen)) width = XWidthOfScreen(screen);
+  
+  return width;
 }
-
-
-Pixmap create_title_pixmap(Display* display, const char* title, enum Title_pixmap type) {
-};
-*/
-
