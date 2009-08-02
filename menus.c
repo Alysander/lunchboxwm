@@ -316,7 +316,7 @@ void show_title_menu(Display *display, struct Popup_menu *title_menu, Window cal
 
   title_menu->inner_width = max_length;
   title_menu->inner_height = themes->popup_menu[medium_menu_item_mid].h * frames->used;
-
+  XFlush(display);
   resize_popup_menu(display, title_menu, themes);
   place_popup_menu(display, calling_widget, title_menu->widgets[popup_menu_parent].widget, x, y, themes);
   XFlush(display);
@@ -390,12 +390,12 @@ void resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes 
   XFlush(display);
 }
 
-/*
+/****
 This function places a popup menu either above or below a particular widget.
 It is placed above the widget to prevent it going off the bottom of the screen.
 The x,y needs to be supplied because the x,y of the calling widget will be relative to its parent
 , not the screen.
-*/
+****/
 void place_popup_menu(Display *display, Window calling_widget, Window popup_menu
 , int x, int y, struct Themes *themes) {
   Screen* screen = DefaultScreenOfDisplay(display);

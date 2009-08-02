@@ -49,7 +49,7 @@ remove_frame(Display* display, struct Frame_list* frames, int index) {
   XUngrabServer(display);
 
   free_frame_name(display, &frames->list[index]);
-  
+  XDestroyWindow(display, frames->list[index].menu.item);
   if((frames->used != 1) && (index != frames->used - 1)) { //the frame is not alone or the last
     frames->list[index] = frames->list[frames->used - 1]; //swap the deleted frame with the last frame
   }
@@ -132,8 +132,8 @@ create_frame (Display *display, struct Frame_list* frames
   frame.w = get_attributes.width;  
   frame.h = get_attributes.height;
 
-  frame.hspace = themes->window_type[unknown][frame_parent].w - themes->window_type[unknown][window].w;
-  frame.vspace = themes->window_type[unknown][frame_parent].h - themes->window_type[unknown][window].h;
+  frame.hspace = 0 - themes->window_type[unknown][window].w;
+  frame.vspace = 0 - themes->window_type[unknown][window].h;
   printf("frame hspace = %d\n", frame.hspace);
   printf("frame vspace = %d\n", frame.vspace);
 
@@ -229,6 +229,7 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
     }
     //map windows
   }
+  frame->menu.item = 0;
   //select input
   XSelectInput(display, frame->widgets[frame_parent].widget,   Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
 
@@ -242,7 +243,6 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
   if(themes->window_type[unknown][mode_dropdown_hotspot].exists) {
     XSelectInput(display, frame->widgets[mode_dropdown_hotspot].widget, ButtonPressMask | ButtonReleaseMask);
     XDefineCursor(display, frame->widgets[mode_dropdown_hotspot].widget, cursors->pressable);
-//    XRaiseWindow(display, frame->widgets[mode_dropdown_hotspot].widget);
   }
 
   if(themes->window_type[unknown][title_menu_hotspot].exists) {
@@ -255,9 +255,8 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
     XDefineCursor(display, frame->widgets[tl_corner].widget, cursors->resize_tl_br);
   }
   if(themes->window_type[unknown][t_edge].exists) {
-// TODO I don't current want the top edge to be used as a resize, perhaps this should be a seperate widget
-//    XSelectInput(display, frame->widgets[t_edge].widget,     ButtonPressMask | ButtonReleaseMask);
-//    XDefineCursor(display, frame->widgets[t_edge].widget , cursors->resize_v);
+    XSelectInput(display, frame->widgets[t_edge].widget,     ButtonPressMask | ButtonReleaseMask);
+    XDefineCursor(display, frame->widgets[t_edge].widget , cursors->resize_v);
   }
   if(themes->window_type[unknown][tr_corner].exists) {
     XSelectInput(display, frame->widgets[tr_corner].widget,  ButtonPressMask | ButtonReleaseMask);
@@ -288,8 +287,8 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
 
 /*** Moves and resizes the subwindows of the frame ***/
 void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) {
-  XMoveResizeWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y, frame->w, frame->h);
 
+  XMoveResizeWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y, frame->w, frame->h);
   XResizeWindow(display, frame->framed_window, frame->w - frame->hspace, frame->h - frame->vspace);
 
   for(int i = 0; i < frame_parent; i++) {
@@ -316,15 +315,14 @@ void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) 
   XFlush(display);
 }
 
+/*This is used to make the transition to the EWMH UTF8 names simpler */
 void
 free_frame_name(Display* display, struct Frame* frame) {
   if(frame->window_name != NULL) {
     XFree(frame->window_name);
     frame->window_name = NULL;
-    XDestroyWindow(display, frame->menu.item);
-    XFlush(display);
   }
-}
+} 
 
 /*** create pixmaps with the specified name if it is available, otherwise use a default name
 TODO check if the name is just whitespace  ***/
@@ -366,23 +364,27 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
     return;
   }
 
-  //DO we need to create this??
-  temp.menu.item = XCreateSimpleWindow(display
-  , window_menu->widgets[popup_menu_parent].widget //what is the parent?
-  , themes->popup_menu[l_edge].w, 0
-  , XWidthOfScreen(screen), themes->popup_menu[menu_item].h
-  , 0, black, black);
 
-  temp.menu.width = get_text_width(display, temp.window_name, &themes->medium_font_theme[active]);
-  
-  XSelectInput(display, temp.menu.item, ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-  //create corresponding title menu item for this frame
-  for(int i = 0; i <= inactive; i++) {
-    temp.menu.state[i] = XCreateSimpleWindow(display
-    , temp.menu.item
-    , 0, 0
+  if(!temp.menu.item) {
+    temp.menu.item = XCreateSimpleWindow(display
+    , window_menu->widgets[popup_menu_parent].widget
+    , themes->popup_menu[l_edge].w, 0
     , XWidthOfScreen(screen), themes->popup_menu[menu_item].h
     , 0, black, black);
+    for(int i = 0; i <= inactive; i++) {
+      temp.menu.state[i] = XCreateSimpleWindow(display
+      , temp.menu.item
+      , 0, 0
+      , XWidthOfScreen(screen), themes->popup_menu[menu_item].h
+      , 0, black, black);
+    }
+    XSelectInput(display, temp.menu.item, ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  }
+  
+  temp.menu.width = get_text_width(display, temp.window_name, &themes->medium_font_theme[active]);
+  
+  //create corresponding title menu item for this frame
+  for(int i = 0; i <= inactive; i++) {
 
     create_text_background(display, temp.menu.state[i], temp.window_name
     , &themes->medium_font_theme[i], themes->popup_menu[menu_item].state_p[i]
@@ -392,7 +394,8 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
     , &themes->medium_font_theme[active], themes->window_type[frame->type][title_menu_text].state_p[i]
     , XWidthOfScreen(screen), themes->window_type[frame->type][title_menu_text].h);
     
-    XMapWindow(display, temp.menu.item);
+    //If this is mapped here, it might be shown in the wrong workspace,
+    //XMapWindow(display, temp.menu.item);
     XMapWindow(display, temp.menu.state[i]);
   }
   xcheck_raisewin(display, temp.menu.state[active]);
@@ -401,12 +404,23 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
 
   //TODO map new titles 
 
-  //destroy old title if it had one
-  if(frame->window_name != NULL) {
+  
+  {
+    XWindowAttributes attr;
+    XGetWindowAttributes(display, temp.menu.item, &attr);
+    //destroy old title if it had one
     free_frame_name(display, frame);
+    
+    if(attr.map_state != IsUnmapped) { //remap all the state pixmaps
+      XSelectInput(display, temp.menu.item, 0);
+      XSync(display, False);
+      XUnmapWindow(display, temp.menu.item);
+      XSelectInput(display, temp.menu.item, ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+      XFlush(display);
+      XMapWindow(display, temp.menu.item);
+    }
   }
   XFlush(display);
-
 
   *frame = temp;
 }
@@ -420,10 +434,12 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
   XSizeHints specified;
   long pre_ICCCM; //pre ICCCM recovered values which are ignored.
 
-  /*  printf("BEFORE: width %d, height %d, x %d, y %d\n", frame->w, frame->h, frame->x, frame->y); */
-  //TODO, need to calculate this using the theme...
-  frame->max_width  = XWidthOfScreen(screen) - frame->hspace;
-  frame->max_height = XHeightOfScreen(screen) - frame->vspace; //- MENUBAR_HEIGHT
+/*  printf("BEFORE: width %d, height %d, x %d, y %d\n", frame->w, frame->h, frame->x, frame->y); */
+//  frame->max_width  = XWidthOfScreen(screen) - frame->hspace;
+//  frame->max_height = XHeightOfScreen(screen) - frame->vspace; //- MENUBAR_HEIGHT
+
+  frame->max_width  = XWidthOfScreen(screen) * 2; //prevent overly large windows
+  frame->max_height = XHeightOfScreen(screen) *2;
   frame->min_width  = MINWIDTH - frame->hspace;
   frame->min_height = MINHEIGHT - frame->vspace;
 
@@ -436,15 +452,8 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
      current width is their minimum size, in the hope that it is overridden by the
      size hints. This kind of behaviour causes problems on small screens like the
      eee pc. */
-
-  if(frame->w > XWidthOfScreen(screen)) {
-    frame->min_width = frame->w;
-    frame->max_width = frame->min_width;      
-  }
-  if(frame->h > XHeightOfScreen(screen)) {
-    frame->min_height = frame->h;
-    frame->max_height = frame->min_height;
-  }
+  if(frame->w > XWidthOfScreen(screen))  frame->min_width = frame->w;
+  if(frame->h > XHeightOfScreen(screen)) frame->min_height = frame->h;
   #endif
 
   if(XGetWMNormalHints(display, frame->framed_window, &specified, &pre_ICCCM) != 0) {

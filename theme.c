@@ -83,6 +83,7 @@ struct Themes *create_themes(Display *display, char *theme_name) {
   themes->window_type[popup_menubar]  = create_component_theme(display, "program_frame");  
   themes->window_type[menubar]        = create_component_theme(display, "program_frame");
 *****/
+
 /****
 TODO Verify that: 
 t_edge                         x >= 0, y >= 0, w <=0, h>0
@@ -90,6 +91,9 @@ l_edge                         x >= 0, y >= 0, w > 0, h<=0
 b_edge                         x > 0,  y < 0, w <= 0, h>0
 r_edge                         x < 0,  y >= 0, w > 0, h <= 0
 title_menu_text: all states exist for all defined window types
+window                         x >= 0,  y >= 0, w <= 0, h <= 0
+frame_parent                   x == 0, y == 0, w == 0, h == 0
+
 ****/
   themes->popup_menu = create_component_theme(display, "popup_menu");
   themes->menubar = create_component_theme(display, "menubar");
@@ -168,7 +172,7 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
   To add another tiled background the following steps need to be followed:
   1) Add item to enumerators.
   2) Add tile name in strcmp below.  This should be the widget's name prepended with "tile_".
-  3) Add in appropriate swap_widget theme commands before and after the pixmaps have been created.
+  3) Add in appropriate swap_widget command to be used before and after the pixmaps have been created.
   ***/
   
   /* Read in entries from the theme's region file into the theme array. */
@@ -187,6 +191,7 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
     else fprintf(stderr, "Loading theme for %s\n", widget_name);
     if(strstr(type, "frame")) {    
       if(!strcmp(widget_name, "window"))                   current_widget = window;
+      else if(!strcmp(widget_name, "titlebar"))            current_widget = titlebar;
       else if(!strcmp(widget_name, "t_edge"))              current_widget = t_edge;
       else if(!strcmp(widget_name, "l_edge"))              current_widget = l_edge;
       else if(!strcmp(widget_name, "b_edge"))              current_widget = b_edge;
@@ -210,6 +215,7 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
       else if(!strcmp(widget_name, "close_button"))               current_widget = close_button;
       else if(!strcmp(widget_name, "close_button_hotspot"))       current_widget = close_button_hotspot ;
       else if(!strcmp(widget_name, "frame_parent"))               current_widget = frame_parent;
+      else if(!strcmp(widget_name, "tile_titlebar")) {         was_tile = 1; current_tile = tile_titlebar;  }
       else if(!strcmp(widget_name, "tile_t_edge")) {           was_tile = 1; current_tile = tile_t_edge;    }
       else if(!strcmp(widget_name, "tile_l_edge")) {           was_tile = 1; current_tile = tile_l_edge;    }
       else if(!strcmp(widget_name, "tile_b_edge")) {           was_tile = 1; current_tile = tile_b_edge;    }
@@ -433,6 +439,7 @@ will be at and the image itself need to be temporarily swapped.
 ******/
 static void swap_tiled_widget_themes(char *type, struct Widget_theme *themes, struct Widget_theme *tiles) {
   if(strstr(type, "frame")) {
+    swap_widget_theme(&tiles[tile_titlebar], &themes[titlebar]);
     swap_widget_theme(&tiles[tile_t_edge], &themes[t_edge]);
     swap_widget_theme(&tiles[tile_r_edge], &themes[r_edge]);
     swap_widget_theme(&tiles[tile_b_edge], &themes[b_edge]);

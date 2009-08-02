@@ -60,20 +60,20 @@ int main (int argc, char* argv[]) {
   struct Workspace_list workspaces = {.used = 0, .max = 16, .list = NULL};
   struct Atoms atoms;
 
-  struct Mode_menu mode_menu;    //this menu is created and reused for all framed windows.
-  struct Popup_menu title_menu; //this menu is created and reused across workspaces and framed windows.
+  struct Mode_menu mode_menu;  //this menu is created and reused for all framed windows.
+  struct Popup_menu title_menu;//this menu is created and reused across workspaces and framed windows.
   
-  int do_click_to_focus = 0; //used by EnterNotify and ButtonPress to determine when to set focus
-                             //TODO currently requires num_lock to be off
+  int do_click_to_focus = 0;   //used by EnterNotify and ButtonPress to determine when to set focus
+                               //TODO currently requires num_lock to be off
 
-  int grab_move = 0;         //used by EnterNotfy, LeaveNotify and ButtonPress to allow alt+click moves of windows
+  int grab_move = 0;           //used by EnterNotfy, LeaveNotify and ButtonPress to allow alt+click moves of windows
 
   int pointer_start_x, pointer_start_y; //used by ButtonPress and motionNotify for window movement arithmetic
-  int r_edge_dx, b_edge_dy;             //used by resize_nontiling_frame for maintaining cursor distance from RHS and bottom edges.
+  int r_edge_dx, b_edge_dy;             //used by resize_frame_grip for maintaining cursor distance from RHS and bottom edges.
   
   int clicked_frame = -1;     //identifies the window being moved/resized by frame index and the frame the title menu was opened on.
   int current_workspace = -1; //determines the workspace the clicked_frame was in, if any.
-  Window clicked_widget = 0;      //clicked_widget is used to determine if close buttons etc. should be activated
+  Window clicked_widget = 0;  //clicked_widget is used to determine if close buttons etc. should be activated
   int resize_x_direction = 0; //used in motionNotify, 1 means LHS, -1 means RHS 
   int resize_y_direction = 0; //used in motionNotify, 1 means top, -1 means bottom
   int i;                     
@@ -128,7 +128,6 @@ int main (int argc, char* argv[]) {
   
   change_to_workspace(display, &workspaces, &current_workspace, -1, themes);
 
-//  sleep(5);  
   /* Passive grab for alt+click moving windows */
   XGrabButton(display, Button1, Mod1Mask, root, False, ButtonPressMask | ButtonMotionMask
   , GrabModeAsync, GrabModeAsync, None, cursors.grab);
@@ -306,11 +305,14 @@ int main (int argc, char* argv[]) {
             || event.xbutton.window ==  frames->list[i].widgets[mode_dropdown_hotspot].widget
             || event.xbutton.window ==  frames->list[i].widgets[close_button_hotspot].widget
             || event.xbutton.window ==  frames->list[i].widgets[title_menu_hotspot].widget
+            || event.xbutton.window ==  frames->list[i].widgets[t_edge].widget
+            || event.xbutton.window ==  frames->list[i].widgets[b_edge].widget            
             || event.xbutton.window ==  frames->list[i].widgets[l_edge].widget  //need to show that these have been disabled for sinking windows.
             || event.xbutton.window ==  frames->list[i].widgets[r_edge].widget
+            || event.xbutton.window ==  frames->list[i].widgets[tl_corner].widget
+            || event.xbutton.window ==  frames->list[i].widgets[tr_corner].widget
             || event.xbutton.window ==  frames->list[i].widgets[bl_corner].widget
             || event.xbutton.window ==  frames->list[i].widgets[br_corner].widget
-            || event.xbutton.window ==  frames->list[i].widgets[b_edge].widget
             || (event.xbutton.window == frames->list[i].framed_window && do_click_to_focus)) {
               #ifdef SHOW_BUTTON_PRESS_EVENT
               printf("Got a click\n");
@@ -333,7 +335,7 @@ int main (int argc, char* argv[]) {
                 || event.xbutton.window == frames->list[i].widgets[close_button_hotspot].widget)
                   break; //allow the mode pulldown and close button to be used on lurking windows.
 
-                unsink_frame (display, frames, i, themes);
+                drop_frame(display, frames, i, themes);
                 i = frames->used;
                 clicked_frame = -1; 
               }
@@ -438,6 +440,9 @@ int main (int argc, char* argv[]) {
             else 
             if(event.xbutton.window == frames->list[i].widgets[l_edge].widget
             || event.xbutton.window == frames->list[i].widgets[r_edge].widget
+            || event.xbutton.window == frames->list[i].widgets[t_edge].widget
+            || event.xbutton.window == frames->list[i].widgets[tl_corner].widget
+            || event.xbutton.window == frames->list[i].widgets[tr_corner].widget
             || event.xbutton.window == frames->list[i].widgets[bl_corner].widget
             || event.xbutton.window == frames->list[i].widgets[br_corner].widget
             || event.xbutton.window == frames->list[i].widgets[b_edge].widget) {
@@ -454,16 +459,36 @@ int main (int argc, char* argv[]) {
               b_edge_dy = frames->list[i].y + frames->list[i].h - event.xbutton.y_root;
               clicked_frame = i;
               //current_workspace = k;
-
+              //  pointer_start_y += TITLEBAR_HEIGHT + 1 + EDGE_WIDTH*2;
               //TODO remove macros and replace with theme position information
               if(event.xbutton.window == frames->list[i].widgets[l_edge].widget) {
                 #ifdef SHOW_BUTTON_PRESS_EVENT
                 printf("pressed l_edge on window %lu\n", frames->list[i].widgets[frame_parent].widget);
                 #endif
                 clicked_widget = frames->list[i].widgets[l_edge].widget;
-                pointer_start_y += TITLEBAR_HEIGHT + 1 + EDGE_WIDTH*2;
                 // TODO  pointer_start_y += frames->list[i].h + themes->window_type[frames->list[i].type][bl_corner].y;
                 resize_cursor = cursors.resize_h;
+              }
+              else if(event.xbutton.window == frames->list[i].widgets[t_edge].widget) {
+                #ifdef SHOW_BUTTON_PRESS_EVENT
+                printf("pressed t_edge on window %lu\n", (unsigned long)frames->list[i].widgets[frame_parent].widget);
+                #endif
+                clicked_widget = frames->list[i].widgets[t_edge].widget;
+                resize_cursor = cursors.resize_v;
+              }
+              else if(event.xbutton.window == frames->list[i].widgets[tl_corner].widget) {
+                #ifdef SHOW_BUTTON_PRESS_EVENT
+                printf("pressed tl_corner on window %lu\n", (unsigned long)frames->list[i].widgets[frame_parent].widget);
+                #endif
+                clicked_widget = frames->list[i].widgets[tl_corner].widget;
+                resize_cursor = cursors.resize_tl_br;
+              }
+              else if(event.xbutton.window == frames->list[i].widgets[tr_corner].widget) {
+                #ifdef SHOW_BUTTON_PRESS_EVENT
+                printf("pressed tr_corner on window %lu\n", (unsigned long)frames->list[i].widgets[frame_parent].widget);
+                #endif
+                clicked_widget = frames->list[i].widgets[tr_corner].widget;
+                resize_cursor = cursors.resize_tr_bl;
               }
               else if(event.xbutton.window == frames->list[i].widgets[r_edge].widget) {
                 #ifdef SHOW_BUTTON_PRESS_EVENT
@@ -477,7 +502,6 @@ int main (int argc, char* argv[]) {
                 printf("pressed bl_edge on window %lu\n", frames->list[i].widgets[frame_parent].widget);
                 #endif
                 clicked_widget = frames->list[i].widgets[bl_corner].widget;
-                pointer_start_y += frames->list[i].h - CORNER_GRIP_SIZE;
                 resize_cursor = cursors.resize_tr_bl;
               }
               else if(event.xbutton.window == frames->list[i].widgets[br_corner].widget) {
@@ -929,7 +953,7 @@ int main (int argc, char* argv[]) {
           }
           else {  /*** Resize grips are being dragged ***/
             //clicked_widget is set to one of the grips.
-            resize_nontiling_frame(display, frames, clicked_frame
+            resize_using_frame_grip(display, frames, clicked_frame
             , pointer_start_x, pointer_start_y, mouse_root_x, mouse_root_y
             , r_edge_dx, b_edge_dy, clicked_widget, themes);
           }
@@ -985,7 +1009,7 @@ int main (int argc, char* argv[]) {
 
               frames->list[i].w = event.xconfigurerequest.width + FRAME_HSPACE;
               frames->list[i].h = event.xconfigurerequest.height + FRAME_VSPACE;
-              if(frames->list[i].mode != desktop) check_frame_limits(display, &frames->list[i]);
+              check_frame_limits(display, &frames->list[i]);
 
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
               printf("new width %d, new height %d\n", frames->list[i].w, frames->list[i].h);

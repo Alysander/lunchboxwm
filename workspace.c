@@ -194,9 +194,10 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
     check_new_frame_focus (display, &workspaces->list[k], frame_index);
     stack_frame(display, &workspaces->list[k].list[frame_index], sinking_seperator, tiling_seperator, floating_seperator);
     if(k == current_workspace  &&  current_workspace != -1) {
-      printf("Created and mapped window\n");
+      printf("Created and mapped window in workspace %d\n", k);
 
       XMapWindow(display, workspaces->list[k].list[frame_index].widgets[frame_parent].widget);
+      XMapWindow(display, workspaces->list[k].list[frame_index].menu.item);
       if(workspaces->list[k].list[frame_index].selected != 0) {
         printf("Set focus to window %s\n", workspaces->list[k].list[frame_index].window_name);
         XSetInputFocus(display, workspaces->list[k].list[frame_index].widgets[window].widget, RevertToPointerRoot, CurrentTime);
@@ -249,17 +250,22 @@ void change_to_workspace(Display *display, struct Workspace_list *workspaces, in
     if(*current_workspace < workspaces->used  &&  *current_workspace >= 0) {
       frames = &workspaces->list[*current_workspace];
       XUnmapWindow(display, frames->virtual_desktop);
-      for(int i = 0; i < frames->used; i++) XUnmapWindow(display, frames->list[i].widgets[frame_parent].widget);
+      for(int i = 0; i < frames->used; i++) {
+        XUnmapWindow(display, frames->list[i].widgets[frame_parent].widget);
+        XUnmapWindow(display, frames->list[i].menu.item);
+      }
     }
     //if index == -1, change to default workspace
     if(index < 0  &&  workspaces->used > 0) index = 0;
 
     frames = &workspaces->list[index];
-    XMapWindow(display, frames->virtual_desktop);// TODO, this was commented out because I thought it was obscuring the wrong windows
-    for(int i = 0; i < frames->used; i++) 
-    if(frames->list[i].mode != hidden) XMapWindow(display, frames->list[i].widgets[frame_parent].widget); 
-
-   // printf("changing focus to one in new workspace\n");
+    XMapWindow(display, frames->virtual_desktop);
+    for(int i = 0; i < frames->used; i++) { 
+      if(frames->list[i].mode != hidden) XMapWindow(display, frames->list[i].widgets[frame_parent].widget); 
+      XMapWindow(display, frames->list[i].menu.item);
+      //TODO Map other "shared" window names here
+    }
+    // printf("changing focus to one in new workspace\n");
     recover_focus(display, frames, themes);
     XFlush(display);
     *current_workspace = index;

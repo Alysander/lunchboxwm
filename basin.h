@@ -38,10 +38,6 @@ enum Splash_widget {
   splash_parent
 };
 
-enum Splash_background_tile {
-  tile_splash_parent
-};
-
 enum Menubar_widget {
   program_menu,
   window_menu,
@@ -50,10 +46,6 @@ enum Menubar_widget {
   tool_menu,
   menubar_parent      /* menubar_parent must be last      */
 }; 
-
-enum Menubar_background_tile {
-  tile_menubar_parent /* tile_menubar_parent must be last */
-};
 
 enum Popup_menu_widget {
   small_menu_item_lhs,
@@ -76,17 +68,10 @@ enum Popup_menu_widget {
   popup_menu_parent /* popup_menu_parent must be last */
 };
 
-enum Popup_menu_background_tile {
-  tile_popup_t_edge,
-  tile_popup_l_edge,
-  tile_popup_b_edge,
-  tile_popup_r_edge,
-  tile_popup_parent /*tile_popup_parent must be last */
-};
-
 enum Frame_widget {
   window,
   t_edge,
+  titlebar,
   l_edge,
   b_edge,
   r_edge,
@@ -111,16 +96,6 @@ enum Frame_widget {
   close_button_hotspot,
 
   frame_parent  /*frame parent must be last */
-};
-
-enum Frame_background_tile {
-  tile_t_edge,
-  tile_l_edge,
-  tile_b_edge,
-  tile_r_edge,
-  tile_title_menu_text, 
-  tile_title_menu_icon, //TODO
-  tile_frame_parent /* tile_frame_parent must be last */
 };
 
 enum Window_mode {
