@@ -14,10 +14,14 @@
 #include "space.h"
 #include "frame-actions.h"
 
+/*****
+This function places moves the frame so that it is on-screen.
+Or if it is off the screen, has it's bottom right hand corner visible (for dialog boxes).
+It doesn't resize the frame.
+******/
 void 
 check_frame_limits(Display *display, struct Frame *frame) {
   Screen* screen = DefaultScreenOfDisplay(display);  
-
 
   if(frame->w < frame->min_width)  frame->w = frame->min_width;
   else 
@@ -27,18 +31,26 @@ check_frame_limits(Display *display, struct Frame *frame) {
   else 
   if(frame->h > frame->max_height) frame->h = frame->max_height;  
 
-  if(frame->mode == desktop) return;
-    
-  if(frame->x < 0 ) frame->x = 0;
-  if(frame->y < 0 ) frame->y = 0;
+  if(frame->mode != desktop) {  
+    if(frame->x < 0 ) frame->x = 0;
+    if(frame->y < 0 ) frame->y = 0;
   
-  if(frame->x + frame->w > XWidthOfScreen(screen)) 
-    frame->x = XWidthOfScreen(screen) - frame->w;
-  if(frame->y + frame->h > XHeightOfScreen(screen) - MENUBAR_HEIGHT) 
-    frame->y = XHeightOfScreen(screen)- frame->h - MENUBAR_HEIGHT;
-  
+    if(frame->x + frame->w > XWidthOfScreen(screen)) 
+      frame->x = XWidthOfScreen(screen) - frame->w;
+    if(frame->y + frame->h > XHeightOfScreen(screen) - MENUBAR_HEIGHT) 
+      frame->y = XHeightOfScreen(screen)- frame->h - MENUBAR_HEIGHT;
+  }
 }
 
+/****** 
+This function changes the frames mode to the desired mode. 
+It shows the appropriate mode menu on the frame and resizes/moves the frame if appropriate.
+If the mode is "tiling" it cannot ensure that the windows do not overlap because it doesn't have access to the frame list.
+If the mode is set to "unset" then it sets the frame to whatever frame->mode currently is.
+In the create frame function, this must be after create_frame_subwindows is called.
+It is also after the get_frame_mode function, which sets the frame->mode directly before the create_frame_subwindows.
+It should then be called with the mode "unset"
+******/
 void 
 change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, struct Themes *themes) {
   Screen* screen = DefaultScreenOfDisplay(display);
@@ -51,19 +63,24 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
   xcheck_raisewin(display, frame->widgets[title_menu_text].state[normal]);
   xcheck_raisewin(display, frame->widgets[title_menu_rhs].state[normal]);
 
-  if(mode == frame->mode  &&  mode == desktop) return; //This is causing dekstop windows to snap back sometimes
-    
-  /**** Undo state changes from current frame mode before settings new mode ****/
-  if(frame->mode == unset  &&  mode == unset) mode = floating;
-  else
-  if(frame->mode == hidden) XMapWindow(display, frame->widgets[frame_parent].widget);
-  else 
-  if(frame->mode == desktop) {
-    check_frame_limits(display, frame); //bring the mode back
-    resize_frame(display, frame, themes);
+  if(mode == frame->mode  &&  mode == desktop) return; //This is causing dekstop windows to snap around needlessly.
+  
+  /**** Set the initial frame mode to whatever frame mode currently. This is done when the frame is created. ***/
+  if(mode == unset) {
+    mode = frame->mode;
   }
-
+  /**** Undo state changes from current frame mode before settings new mode ****/
+  else {
+    if(frame->mode == hidden) XMapWindow(display, frame->widgets[frame_parent].widget);
+    else 
+    if(frame->mode == desktop) {
+      check_frame_limits(display, frame); //bring the mode back
+      resize_frame(display, frame, themes);
+    }
+  }
+  
   XFlush(display);
+  /*** Change the state of the frame to the new mode ***/
   if(mode == hidden) {
     XUnmapWindow(display, frame->widgets[frame_parent].widget);
     frame->mode = hidden;
@@ -81,6 +98,7 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
     xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs_tiling].state[normal]);
     xcheck_raisewin(display, frame->widgets[mode_dropdown_rhs].state[normal]);
     frame->mode = tiling;
+    //cannot drop frame here because it requires access to the whole frame list
   }
 
   else 
@@ -108,14 +126,14 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
   XFlush(display);
 }
 
-/*
+/*******
 This function moves the dropped window to the nearest available space.
 If the window has been enlarged so that it exceeds all available sizes,
 a best-fit algorithm is used to determine the closest size.
 If all spaces are smaller than the window's minimum size 
 (which can only happen if the window's mode is being changed) the window
 remains in it's previous mode. Otherwise the window's mode is changed to tiling.
-*/
+********/
 void 
 drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, struct Themes *themes) {
   
@@ -143,7 +161,7 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
 
   if(free_spaces.list == NULL) return;
   
-  for(int k = 0; k < free_spaces.used; k++) {
+  for(unsigned int k = 0; k < free_spaces.used; k++) {
     double displacement = 0;
     int dx = 0;
     int dy = 0;
@@ -170,7 +188,7 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
     double w_proportion, h_proportion, current_fit;
     double best_fit = -1;
     int best_space = -1;
-    for(int k = 0; k < free_spaces.used; k++) {
+    for(unsigned int k = 0; k < free_spaces.used; k++) {
       if(free_spaces.list[k].w == 0
       || free_spaces.list[k].h == 0) {
         //printf("Error: FOUND ZERO AREA FREE SPACE\n");
@@ -228,15 +246,14 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
   return;
 }
 
-/*
+/****
 This function handles responding to the users click and drag on the resize grips of the window.
-*/
+*****/
 void 
 resize_using_frame_grip (Display *display, struct Frame_list *frames, int clicked_frame
 , int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y
 , int r_edge_dx, int b_edge_dy, Window clicked_widget, struct Themes *themes) {
   
-  Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
 
   struct Frame *frame = &frames->list[clicked_frame];  
@@ -248,7 +265,7 @@ resize_using_frame_grip (Display *display, struct Frame_list *frames, int clicke
   /* precalculated potential values for x and y */ 
   /* This is done so that the they can be tested and altered in one place */
 
-  int pot_x = new_x = mouse_root_x - pointer_start_x;
+  int pot_x = mouse_root_x - pointer_start_x;
   int pot_y = mouse_root_y - pointer_start_y;
   if(frame->mode != desktop) {
     if(pot_x < 0) pot_x = 0;
@@ -317,11 +334,11 @@ resize_using_frame_grip (Display *display, struct Frame_list *frames, int clicke
 }
 
 
-/*
+/******
 This handles moving/resizing the window when the titlebar is dragged.  
 It resizes windows that are pushed against the edge of the screen,
 to sizes between the defined min and max.
-*/
+*******/
 void 
 move_frame (Display *display, struct Frame *frame
 , int *pointer_start_x, int *pointer_start_y, int mouse_root_x, int mouse_root_y
@@ -335,7 +352,6 @@ move_frame (Display *display, struct Frame *frame
   // the resize_x/y_direction variables are used to identify when a squish resize has occured
   // and this is then used to decide when to stretch the window from the edge.
 
-  Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
   printf("Got a move frame\n");
   int new_width = 0;
@@ -424,7 +440,9 @@ move_frame (Display *display, struct Frame *frame
   }
   XFlush(display);  
 }
+/*****
 
+*****/
 int 
 replace_frame(Display *display, struct Frame *target, struct Frame *replacement
 , Window sinking_seperator, Window tiling_seperator, Window floating_seperator, struct Themes *themes) {
@@ -498,7 +516,9 @@ replace_frame(Display *display, struct Frame *target, struct Frame *replacement
   return 1;
 }
 
-/* Implements stacking and focus policy */
+/**** 
+Implements stacking and focus policy 
+*****/
 void 
 stack_frame(Display *display, struct Frame *frame, Window sinking_seperator, Window tiling_seperator, Window floating_seperator) {
   XWindowChanges changes;
@@ -519,7 +539,10 @@ stack_frame(Display *display, struct Frame *frame, Window sinking_seperator, Win
   XFlush(display);
 }
 
-//maybe remove overlap variable and instead simply set the indirect resize parameters and just reset them is something goes wrong?
+/******
+maybe remove overlap variable and instead simply set the indirect resize parameters
+and just reset them is something goes wrong?
+******/
 void resize_tiling_frame(Display *display, struct Frame_list *frames, int index, char axis, int position, int size, struct Themes *themes) {
   printf("Got a resize_tilting_frame\n");
   /******

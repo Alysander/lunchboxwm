@@ -2,10 +2,8 @@
 #include <stdio.h>
 
 #include <string.h>
-#include <pwd.h>
-#include <unistd.h>
 #include <stdlib.h>
-
+#include <unistd.h>
 #include <X11/Xlib.h>
 #include <cairo/cairo.h>
 #include <cairo/cairo-xlib.h>
@@ -14,12 +12,51 @@
 #include "theme.h"
 #include "xcheck.h"
 
+enum Splash_background_tile {
+  tile_splash_parent
+};
+
+enum Menubar_background_tile {
+  tile_menubar_parent /* tile_menubar_parent must be last */
+};
+
+enum Popup_menu_background_tile {
+  tile_popup_t_edge,
+  tile_popup_l_edge,
+  tile_popup_b_edge,
+  tile_popup_r_edge,
+  tile_popup_parent /*tile_popup_parent must be last */
+};
+
+enum Frame_background_tile {
+  tile_t_edge,
+  tile_titlebar,
+  tile_l_edge,
+  tile_b_edge,
+  tile_r_edge,
+  tile_title_menu_text, 
+  tile_title_menu_icon, //TODO
+  tile_frame_parent /* tile_frame_parent must be last */
+};
+
+static struct Widget_theme *create_component_theme(Display *display, char *type);
+
+static void create_font_themes(struct Themes *restrict themes);
+static void swap_widget_theme(struct Widget_theme *from, struct Widget_theme *to);
+static void swap_tiled_widget_themes(char *type, struct Widget_theme *themes, struct Widget_theme *tiles);
+
+static void create_widget_theme_pixmap(Display *display, struct Widget_theme *widget_theme, cairo_surface_t **theme_images);
+static void remove_widget_themes (Display *display, struct Widget_theme *themes, int length);
+
+
 #define PATH_SIZE 400
+#define WIDGET_NAME_SIZE 50
+
 /* strnadd concatinates s1 and s2 and writes the result into s0 provided the length of s1 and s2 
 is less that the limit, which is usually defined as the length of s0.  If any of the passed strings are NULL
 s0 is returned unmodified.  If the limit is less than the length of s2, s0 is returned unmodified. 
 All strings must be NULL terminated and this function ensures that s0 will always be null terminated */
-char *strnadd(char *restrict s0, size_t limit, char *restrict s1, char *restrict s2) {
+char *strnadd(char *restrict s0, char *restrict s1, char *restrict s2, size_t limit) {
   size_t length;
   if(!s0  ||  !s1  ||  !s2)  return s0;
   length = strlen(s1) + strlen(s2) + 1;
@@ -31,30 +68,27 @@ char *strnadd(char *restrict s0, size_t limit, char *restrict s1, char *restrict
   return s0;
 }
 
-/* create_component_themes opens the theme in the theme folder with the name specified by theme_name.
+/* create_themes opens the theme in the theme folder with the name specified by theme_name.
 It changes the current working directory before calling create_component_theme each window type.
 If an error occurs when opening the theme a NULL pointer is returned. */
 struct Themes *create_themes(Display *display, char *theme_name) {
   struct Themes *themes = NULL;
-  struct passwd *wd = NULL;
   char *path = NULL;
-  char *login_name = NULL;
+  char *home = getenv("HOME");
 
-  login_name = getlogin();  
-  path = malloc(PATH_SIZE * sizeof(char));
-
-  if(!path) return NULL;
-
-  if(!login_name) { 
-    fprintf(stderr, "Error: getlogin returned NULL\n");
-    goto error;
+  if(!home) {
+    fprintf(stderr, "Could not access HOME environmental variable\n");
+    return NULL;
   }
-
-  wd = getpwnam(login_name);
-  if(!wd) goto error;
-
-  strnadd(path, 200, wd->pw_dir, "/.basin/themes/");
-  strcat(path, theme_name);
+  
+  path = malloc(PATH_SIZE * sizeof(char));
+  if(!path) {
+    fprintf(stderr, "Out of memory\n");
+    return NULL;
+  }
+  
+  strnadd(path, home, "/.basin/themes/", PATH_SIZE);
+  strncat(path, theme_name, PATH_SIZE);
   printf("The theme path is: %s\n", path);
   if(chdir(path)) {
     fprintf(stderr, "Error opening theme path: %s\n", path);
@@ -162,7 +196,7 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
   filename = calloc(100, sizeof(char));
   if(!filename) goto error;
 
-  regions = fopen(strnadd(filename, 50, type, "_regions"), "r");
+  regions = fopen(strnadd(filename, type, "_regions", WIDGET_NAME_SIZE), "r");
   if(regions == NULL) {
     fprintf(stderr, "Error:  A required theme file \"%s_regions\" could not be accessed\n", type);
     goto error;
@@ -180,7 +214,7 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
     int returned = 0;
     unsigned int current_widget;
     unsigned int current_tile;
-    char widget_name[60];
+    char widget_name[WIDGET_NAME_SIZE];
     int x,y,w,h;
     int was_tile = 0;
     returned = fscanf(regions, "%s %d %d %d %d\n", widget_name, &x, &y, &w, &h);
@@ -279,38 +313,38 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
     }
     continue;
     name_error:
-    fprintf(stderr, "Error loading theme - widget name \"\%s\" not recognized\n", widget_name);        
+    fprintf(stderr, "Error loading theme - widget name \"%s\" not recognized\n", widget_name);        
     goto error;
   }
   fclose(regions); regions = NULL;
   
   /* Load the different state image files */
   theme_images[normal]  
-  = cairo_image_surface_create_from_png(strnadd(filename, 50, type, "_normal.png"));
+  = cairo_image_surface_create_from_png(strnadd(filename, type, "_normal.png", WIDGET_NAME_SIZE));
   printf("filename %s\n", filename);
   theme_images[active]  
-  = cairo_image_surface_create_from_png(strnadd(filename, 50, type, "_active.png"));
+  = cairo_image_surface_create_from_png(strnadd(filename, type, "_active.png", WIDGET_NAME_SIZE));
   theme_images[normal_hover] 
-  = cairo_image_surface_create_from_png(strnadd(filename, 50, type, "_normal_hover.png"));
+  = cairo_image_surface_create_from_png(strnadd(filename, type, "_normal_hover.png", WIDGET_NAME_SIZE));
   theme_images[active_hover] 
-  = cairo_image_surface_create_from_png(strnadd(filename, 50, type, "_active_hover.png"));
+  = cairo_image_surface_create_from_png(strnadd(filename, type, "_active_hover.png", WIDGET_NAME_SIZE));
   theme_images[normal_focussed] 
-  = cairo_image_surface_create_from_png(strnadd(filename, 50, type, "_normal_focussed.png"));
+  = cairo_image_surface_create_from_png(strnadd(filename, type, "_normal_focussed.png", WIDGET_NAME_SIZE));
   theme_images[active_focussed] 
-  = cairo_image_surface_create_from_png(strnadd(filename, 50, type, "_active_focussed.png"));
+  = cairo_image_surface_create_from_png(strnadd(filename, type, "_active_focussed.png", WIDGET_NAME_SIZE));
   theme_images[normal_focussed_hover] 
-  = cairo_image_surface_create_from_png(strnadd(filename, 50, type, "_normal_focussed_hover.png"));
+  = cairo_image_surface_create_from_png(strnadd(filename, type, "_normal_focussed_hover.png", WIDGET_NAME_SIZE));
   theme_images[active_focussed_hover] 
-  = cairo_image_surface_create_from_png(strnadd(filename, 50, type, "_active_focussed_hover.png"));
+  = cairo_image_surface_create_from_png(strnadd(filename, type, "_active_focussed_hover.png", WIDGET_NAME_SIZE));
   theme_images[inactive] 
-  = cairo_image_surface_create_from_png(strnadd(filename, 50, type, "_inactive.png"));
+  = cairo_image_surface_create_from_png(strnadd(filename, type, "_inactive.png", WIDGET_NAME_SIZE));
 
   //TODO perhaps check to make sure that they have the same dimensions
   for(int i = 0; i <= inactive; i++) {
     if(cairo_surface_status(theme_images[i]) == CAIRO_STATUS_FILE_NOT_FOUND) {
       if(i != normal  &&  i != active  &&  i != inactive) {  /* Focussed variations are optional */
         cairo_surface_destroy(theme_images[i]);
-        theme_images[i] == NULL;
+        theme_images[i] = NULL;
       }
       else {
         fprintf(stderr, "Error:  Image file for theme component %s - %d\n not found\n", type, i);
@@ -327,7 +361,7 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
   swap_tiled_widget_themes(type, themes, tiles);
 
   //create all the widget pixmaps
-  for(int i = 0; i < nwidgets; i++) {
+  for(unsigned int i = 0; i < nwidgets; i++) {
     create_widget_theme_pixmap(display, &themes[i], theme_images);
   }
 
@@ -462,13 +496,11 @@ static void swap_tiled_widget_themes(char *type, struct Widget_theme *themes, st
 static void create_widget_theme_pixmap(Display *display,  struct Widget_theme *widget_theme, cairo_surface_t **theme_images) {
   Window root = DefaultRootWindow(display); 
   int screen_number = DefaultScreen (display);
-  Screen *screen    = DefaultScreenOfDisplay(display);
   Visual *colours   = DefaultVisual(display, screen_number);
 
   cairo_surface_t *surface;
   cairo_t *cr;
 
-  Window temp;
   int x = widget_theme->x;
   int y = widget_theme->y;
   int w = widget_theme->w;
@@ -604,7 +636,7 @@ unsigned int get_text_width(Display* display, const char *title, struct Font_the
   cairo_surface_t *surface;
   cairo_t *cr;
   cairo_text_extents_t extents;
-  unsigned int width;
+  int width;
   
   temp = XCreateSimpleWindow(display, DefaultRootWindow(display), 0, 0, PIXMAP_SIZE, PIXMAP_SIZE, 0, WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
   surface = cairo_xlib_surface_create(display, temp, colours,  PIXMAP_SIZE, PIXMAP_SIZE);
@@ -624,5 +656,5 @@ unsigned int get_text_width(Display* display, const char *title, struct Font_the
   width = extents.x_advance + font_theme->x;
   if(width > XWidthOfScreen(screen)) width = XWidthOfScreen(screen);
   
-  return width;
+  return (unsigned int)width;
 }

@@ -41,7 +41,7 @@ void create_menubar(Display *display, struct Menubar *menubar, struct Themes *th
     menubar->widgets[i].widget = XCreateSimpleWindow(display, menubar->widgets[menubar_parent].widget
     , spacing*i, 0, themes->menubar[i].w, themes->menubar[i].h, 0, black, black);
     XSelectInput(display, menubar->widgets[i].widget,  Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
-
+    XDefineCursor(display, menubar->widgets[i].widget, cursors->pressable);
     for(int j = 0; j <= inactive; j++) {
       if(themes->menubar[i].state_p[j]) {
         menubar->widgets[i].state[j] = XCreateSimpleWindow(display, menubar->widgets[i].widget
@@ -50,7 +50,7 @@ void create_menubar(Display *display, struct Menubar *menubar, struct Themes *th
         xcheck_setpixmap(display, menubar->widgets[i].state[j], themes->menubar[i].state_p[j]);
         xcheck_map(display, menubar->widgets[i].state[j]);
       }
-      else printf("Warning:  Skipping state pixmap\n");
+      //else printf("Warning:  Skipping state pixmap\n");
     }
     xcheck_map(display, menubar->widgets[i].widget);
   }
@@ -92,6 +92,7 @@ void create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes 
   , 0, 0
   , width, height, 0, black, black);
 
+  XDefineCursor(display, menu->widgets[popup_menu_parent].widget, cursors->normal);
   XSetWindowBackgroundPixmap(display, menu->widgets[popup_menu_parent].widget
   , themes->popup_menu[popup_menu_parent].state_p[normal]);
    
@@ -124,7 +125,7 @@ void create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes 
         //TODO
         if(j == normal) XMapWindow(display, menu->widgets[i].state[j]);
       }
-      else printf("Warning:  Skipping state pixmap\n");
+    //  else printf("Warning:  Skipping state pixmap\n");
     }
 
     XMapWindow(display, menu->widgets[i].widget);
@@ -142,8 +143,6 @@ void create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes 
 void create_mode_menu(Display *display, struct Mode_menu *mode_menu
 , struct Themes *themes, struct Cursors *cursors) {
 
-  XSetWindowAttributes set_attributes;
-  Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
 
@@ -190,7 +189,7 @@ void create_mode_menu(Display *display, struct Mode_menu *mode_menu
         , themes->popup_menu[menu_item].w, themes->popup_menu[menu_item].h);
         XMapWindow(display, mode_menu->items[i].state[j]);
       }
-      else printf("Warning:  Skipping state pixmap\n");
+//      else printf("Warning:  Skipping state pixmap\n");
     }
     XMapWindow(display, mode_menu->items[i].item);
   }
@@ -254,22 +253,16 @@ void show_workspace_menu(Display *display, Window calling_widget, struct Workspa
     //TODO menu_item_mid + lhs +rhs
     XMoveWindow(display,  workspaces->list[i].workspace_menu.item
     , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[menu_item].h * i);
-   // XResizeWindow(display, workspaces->list[i].workspace_menu.item, max_length, themes->popup_menu[menu_item].h);
+    XResizeWindow(display, workspaces->list[i].workspace_menu.item, max_length, themes->popup_menu[menu_item].h);
   }
 
   workspaces->workspace_menu.inner_width = max_length;
   workspaces->workspace_menu.inner_height = themes->popup_menu[menu_item].h * workspaces->used;
-  
-  int width    = workspaces->workspace_menu.inner_width
-   + themes->popup_menu[popup_l_edge].w + themes->popup_menu[popup_r_edge].w;
    
-  int height   = workspaces->workspace_menu.inner_height 
-  + themes->popup_menu[popup_t_edge].h + themes->popup_menu[popup_b_edge].h;
-  
   resize_popup_menu(display, &workspaces->workspace_menu, themes);
 
   place_popup_menu(display, calling_widget, workspaces->workspace_menu.widgets[popup_menu_parent].widget
-  , 0, y, themes);
+  , x, y);
 
 }
 
@@ -284,9 +277,6 @@ void show_title_menu(Display *display, struct Popup_menu *title_menu, Window cal
 
   //TODO this does not consider what to do if a window is created when the menu is open
   int max_length = DEFAULT_MENU_ITEM_WIDTH;
-
-  int height = themes->popup_menu[medium_menu_item_mid].h * frames->used 
-  + themes->popup_menu[popup_t_edge].h + themes->popup_menu[popup_b_edge].h;
 
   for(int i = 0; i < frames->used; i++)  if(frames->list[i].menu.width > max_length) {
     max_length = frames->list[i].menu.width;
@@ -318,20 +308,12 @@ void show_title_menu(Display *display, struct Popup_menu *title_menu, Window cal
   title_menu->inner_height = themes->popup_menu[medium_menu_item_mid].h * frames->used;
   XFlush(display);
   resize_popup_menu(display, title_menu, themes);
-  place_popup_menu(display, calling_widget, title_menu->widgets[popup_menu_parent].widget, x, y, themes);
+  place_popup_menu(display, calling_widget, title_menu->widgets[popup_menu_parent].widget, x, y);
   XFlush(display);
 }
 
 void show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *mode_menu
-, struct Frame *active_frame, struct Themes *themes, int x, int y) {
-
-  //these amounts are from create_mode_menu.
-  //TODO menu_item_mid + lhs +rhs  
-  int width = themes->popup_menu[popup_l_edge].w 
-  + DEFAULT_MENU_ITEM_WIDTH + themes->popup_menu[popup_r_edge].w;
-
-  int height = themes->popup_menu[medium_menu_item_mid].h * (hidden + 1) 
-  + themes->popup_menu[popup_t_edge].h + themes->popup_menu[popup_b_edge].h;
+, struct Frame *active_frame, int x, int y) {
 
   printf("Showing mode mode\n");
   if(active_frame->mode == floating) 
@@ -350,7 +332,7 @@ void show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *m
 
   XFlush(display);
 
-  place_popup_menu(display, calling_widget, mode_menu->menu.widgets[popup_menu_parent].widget, x, y, themes);
+  place_popup_menu(display, calling_widget, mode_menu->menu.widgets[popup_menu_parent].widget, x, y);
 }
 
 void resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *themes) {
@@ -382,7 +364,7 @@ void resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes 
         if(themes->popup_menu[i].state_p[j]) {
           XResizeWindow(display, menu->widgets[i].state[j], w, h);
         }
-        else printf("Warning:  Skipping state pixmap\n");
+//        else printf("Warning:  Skipping state pixmap\n");
       }
     }
   } 
@@ -397,7 +379,7 @@ The x,y needs to be supplied because the x,y of the calling widget will be relat
 , not the screen.
 ****/
 void place_popup_menu(Display *display, Window calling_widget, Window popup_menu
-, int x, int y, struct Themes *themes) {
+, int x, int y) {
   Screen* screen = DefaultScreenOfDisplay(display);
   XWindowAttributes details;
   XWindowAttributes popup_details;
@@ -413,11 +395,11 @@ void place_popup_menu(Display *display, Window calling_widget, Window popup_menu
   if(y + height > XHeightOfScreen(screen)) y = y - (details.height + height); //either side of the widget
   if(y < 0) y = XHeightOfScreen(screen) - height;  
   if(x + width > XWidthOfScreen(screen)) x = XWidthOfScreen(screen) - width;
-  printf("width is %d\n", width);
+  //printf("width is %d\n", width);
   XMoveWindow(display, popup_menu, x, y);
   XRaiseWindow(display, popup_menu);
 //  xcheck_raisewin(display, popup_menu);
   XMapWindow(display, popup_menu);
   XFlush(display);
-  printf("placed popup\n");
+  //printf("placed popup\n");
 }

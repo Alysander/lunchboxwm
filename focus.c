@@ -30,7 +30,7 @@ Remove focus and change it to previously focussed window when:
  3) A window is replaced using the title menu with another window.
 
 (same section as "window is replaced" above)
-Remove focus if any window is sunk - because giving focus shouldn't have to raise a window.
+Remove focus if any window is hidden - because giving focus shouldn't have to raise a window.
 
 (implemented in ButtonPress) 
 Change focus to another window whenever the user clicks on it an
@@ -64,7 +64,8 @@ void remove_focus(Window old, struct Focus_list* focus) {
   for( i = focus->used - 1; i >= 0; i--) if(focus->list[i] == old) break;
   if(i < 0) return; //not found
   focus->used--;
-  for( ; i < focus->used; i++) focus->list[i] = focus->list[i + 1];
+  //we know that i is unsigned at this stage
+  for( ; (unsigned int)i < focus->used; i++) focus->list[i] = focus->list[i + 1];
 }
 
 //this doesn't actually focus the window in case it is in the wrong workspace.

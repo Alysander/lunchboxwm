@@ -1,6 +1,6 @@
 
 /* These control which printfs are shown */
-
+#define SHOW_SIG
 #define SHOW_STARTUP                  
 #define SHOW_DESTROY_NOTIFY_EVENT     
 #define SHOW_UNMAP_NOTIFY_EVENT       

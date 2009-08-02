@@ -212,7 +212,8 @@ struct Frame {
   int x,y,w,h;
   int frame_hspace, frame_vspace; //amount used by the frame theme
   enum Window_mode mode;
-  enum Window_type type; 
+  enum Window_type type;
+  enum Window_type theme_type; //this is used in case the theme is actually from a different window type
   enum Window_state state;
   int selected;
   int min_width, max_width;

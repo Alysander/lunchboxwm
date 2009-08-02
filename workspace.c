@@ -158,20 +158,20 @@ void make_default_program_name(Display *display, Window window, char *name) {
 
 
 /* creates the workspace */
-int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window window, int current_workspace
+int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window framed_window, int current_workspace
 , struct Popup_menu *window_menu
 , Window sinking_seperator, Window tiling_seperator, Window floating_seperator
 , struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
-  char *program_name = load_program_name(display, window);
+  char *program_name = load_program_name(display, framed_window);
   int k;
   int frame_index = -1;  
   if(program_name == NULL) {
     #ifdef SHOW_MAP_REQUEST_EVENT
-    printf("Warning, could not load program name for window %lu. ", window);  
+    printf("Warning, could not load program name for window %lu. ", framed_window);  
     printf("Creating default workspace\n");
     #endif
-    make_default_program_name(display, window, "Other Programs");
-    program_name = load_program_name(display, window);
+    make_default_program_name(display, framed_window, "Other Programs");
+    program_name = load_program_name(display, framed_window);
   }
 
   for(k = 0; k < workspaces->used; k++) {
@@ -189,7 +189,7 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
       return -1;
     }
   }
-  frame_index = create_frame(display, &workspaces->list[k], window, window_menu, themes, cursors, atoms);
+  frame_index = create_frame(display, &workspaces->list[k], framed_window, window_menu, themes, cursors, atoms);
   if(frame_index != -1) {
     check_new_frame_focus (display, &workspaces->list[k], frame_index);
     stack_frame(display, &workspaces->list[k].list[frame_index], sinking_seperator, tiling_seperator, floating_seperator);
@@ -221,7 +221,7 @@ int create_startup_workspaces(Display *display, struct Workspace_list *workspace
 
   XQueryTree(display, root, &parent, &children, &windows, &windows_length);  
 
-  if(windows != NULL) for(int i = 0; i < windows_length; i++)  {
+  if(windows != NULL) for(unsigned int i = 0; i < windows_length; i++)  {
     XGetWindowAttributes(display, windows[i], &attributes);
     if(attributes.map_state == IsViewable && !attributes.override_redirect)  {
 

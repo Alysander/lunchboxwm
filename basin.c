@@ -37,6 +37,9 @@ void set_icon_size    (Display *display, Window window, int new_size);
 int done = 0;
 
 void end_event_loop(int sig) {
+  #ifdef SHOW_SIG
+  printf("Caught signal %d\n", sig);
+  #endif
   done = 1;
 }
 
@@ -95,9 +98,10 @@ int main (int argc, char* argv[]) {
   display = XOpenDisplay(NULL);
   if(display == NULL)  {
     printf("Error: Could not open display.\n\n");
-    printf("USAGE: basin\n");
-    printf("Set the display variable using: export DISPLAY=\":foo\"\n");
-    printf("Where foo is the correct screen\n");
+    printf("USAGE: basin [theme_name]\n");
+    printf("Where theme_name is an optional theme name\n");
+    printf("\nSet the DISPLAY environmental variable: export DISPLAY=\":screen_num\"\n");
+    printf("Where screen_num is the correct screen number\n");
     return -1;
   }
   
@@ -111,7 +115,9 @@ int main (int argc, char* argv[]) {
   | ButtonPressMask | ButtonReleaseMask | EnterWindowMask 
   | LeaveWindowMask | FocusChangeMask);
 
-  themes = create_themes(display, "original");
+  if(argc <= 1) themes = create_themes(display, "original");
+  else themes = create_themes(display, argv[1]);
+  
   if(themes == NULL) {
     printf("Error: Could not load theme \"original\".\n\n");
     return -1;
@@ -263,14 +269,13 @@ int main (int argc, char* argv[]) {
         }
         
         if(pulldown) {
-          break;  //the pulldown has been created, ignore button press.  
-                  //Only button releases activate menuitems.
+          break;  //Since the pulldown has been created, ignore button presses.  Only button releases activate menuitems.
         }
         
         /* Menubar menu setup for activation */
         if(event.xbutton.window == menubar.widgets[window_menu].widget) {
           #ifdef SHOW_BUTTON_PRESS_EVENT
-          printf("Starting to activate the Window menu\n", i);
+          printf("Starting to activate the Window menu\n");
           #endif
 
           //A menu is being opened so grab the pointer and intercept the events so that it works.
@@ -284,7 +289,7 @@ int main (int argc, char* argv[]) {
         }
         else if(event.xbutton.window == menubar.widgets[program_menu].widget) {
           #ifdef SHOW_BUTTON_PRESS_EVENT
-          printf("Starting to activate the Program menu\n", i);
+          printf("Starting to activate the Program menu\n");
           #endif
 
           //A menu is being opened so grab the pointer and intercept the events so that it works.
@@ -402,10 +407,13 @@ int main (int argc, char* argv[]) {
                 #endif
 
                 /*** These are used when the popup is cancelled and a frame move starts ***/
-                if(themes->window_type[frames->list[i].type][title_menu_hotspot].x < 0) pointer_start_x += frames->list[i].w;
-                if(themes->window_type[frames->list[i].type][title_menu_hotspot].y < 0) pointer_start_y += frames->list[i].h;
-                pointer_start_x += themes->window_type[frames->list[i].type][title_menu_hotspot].x;
-                pointer_start_y += themes->window_type[frames->list[i].type][title_menu_hotspot].y;
+                if(themes->window_type[frames->list[i].theme_type][title_menu_hotspot].x < 0) 
+                  pointer_start_x += frames->list[i].w;
+                if(themes->window_type[frames->list[i].theme_type][title_menu_hotspot].y < 0) 
+                  pointer_start_y += frames->list[i].h;
+                  
+                pointer_start_x += themes->window_type[frames->list[i].theme_type][title_menu_hotspot].x;
+                pointer_start_y += themes->window_type[frames->list[i].theme_type][title_menu_hotspot].y;
 
                 clicked_widget =  frames->list[i].widgets[title_menu_hotspot].widget;
 
@@ -466,7 +474,7 @@ int main (int argc, char* argv[]) {
                 printf("pressed l_edge on window %lu\n", frames->list[i].widgets[frame_parent].widget);
                 #endif
                 clicked_widget = frames->list[i].widgets[l_edge].widget;
-                // TODO  pointer_start_y += frames->list[i].h + themes->window_type[frames->list[i].type][bl_corner].y;
+                // TODO  pointer_start_y += frames->list[i].h + themes->window_type[frames->list[i].theme_type][bl_corner].y;
                 resize_cursor = cursors.resize_h;
               }
               else if(event.xbutton.window == frames->list[i].widgets[t_edge].widget) {
@@ -845,7 +853,7 @@ int main (int argc, char* argv[]) {
                 XChangeActivePointerGrab(display, PointerMotionMask | ButtonPressMask | ButtonReleaseMask
                 , cursors.normal, CurrentTime);
                 pulldown = mode_menu.menu.widgets[popup_menu_parent].widget;
-                show_mode_menu(display, frames->list[i].widgets[mode_dropdown_hotspot].widget, &mode_menu, &frames->list[i], themes
+                show_mode_menu(display, frames->list[i].widgets[mode_dropdown_hotspot].widget, &mode_menu, &frames->list[i]
                 , event.xbutton.x_root - event.xbutton.x, event.xbutton.y_root - event.xbutton.y);
                 break;
               }

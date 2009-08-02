@@ -13,7 +13,6 @@ struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_lis
   struct Rectangle_list used_spaces = {0, 8, NULL};
   struct Rectangle_list free_spaces = {0, 8, NULL};
   
-  Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
   
   used_spaces.list = malloc(used_spaces.max * sizeof(struct Rectangle));
@@ -29,7 +28,7 @@ struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_lis
         {frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h};
 
       //printf("Tiled window %s, x %d, y %d, w %d, h %d\n", frames->list[i].window_name, frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h);
-      for(int j = 0; j < used_spaces.used; j++) 
+      for(unsigned int j = 0; j < used_spaces.used; j++) 
       if(INTERSECTS(current.x, current.w, used_spaces.list[j].x, used_spaces.list[j].w)
       && INTERSECTS(current.y, current.h, used_spaces.list[j].y, used_spaces.list[j].h)) {
         //This should never occur
@@ -52,10 +51,10 @@ struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_lis
 It frees the used space */
 struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spaces, int w, int h) {
 
-  struct Rectangle_list free_spaces = {0, 8, NULL};
-  struct Rectangle_list new_spaces = {0, 8, NULL};
-  struct Rectangle_list old_spaces = {0, 8, NULL};  
-  struct Rectangle screen_space = {0, 0, w, h};
+  struct Rectangle_list free_spaces  = {.used = 0, .max = 8, .list = NULL};
+  struct Rectangle_list new_spaces   = {.used = 0, .max = 8, .list = NULL};
+  struct Rectangle_list old_spaces   = {.used = 0, .max = 8, .list = NULL};  
+  struct Rectangle screen_space      = {.x = 0, .y = 0, .w = w, .h = h};
   
   if(used_spaces->list == NULL) return free_spaces;
   free_spaces.list = malloc(free_spaces.max * sizeof(struct Rectangle));  
@@ -69,8 +68,8 @@ struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spac
   add_rectangle(&free_spaces, screen_space ); //define the intitial space.
   
   //for all used spaces (already tiled windows on the screen)
-  for(int i = 0; i < used_spaces->used; i++) {  
-    int j;
+  for(unsigned int i = 0; i < used_spaces->used; i++) {  
+    unsigned int j;
     new_spaces.list = malloc(new_spaces.max * sizeof(struct Rectangle));
     old_spaces.list = malloc(old_spaces.max * sizeof(struct Rectangle));
 
@@ -195,10 +194,10 @@ struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spac
     printf("Integrating Changes\n");
     if(new_spaces.used != 0) {
       //remove the spaces which were modified. O(N*M)
-      for(int k = 0; k < old_spaces.used; k++) remove_rectangle(&free_spaces, old_spaces.list[k]);
+      for(unsigned int k = 0; k < old_spaces.used; k++) remove_rectangle(&free_spaces, old_spaces.list[k]);
       
       //add new_spaces to the free spaces O(N*M)
-      for(int k = 0; k < new_spaces.used; k++) add_rectangle(&free_spaces, new_spaces.list[k]);
+      for(unsigned int k = 0; k < new_spaces.used; k++) add_rectangle(&free_spaces, new_spaces.list[k]);
     }
     if(new_spaces.list == NULL  ||  old_spaces.list == NULL) {
       #ifdef SHOW_FREE_SPACE_STEPS
@@ -255,7 +254,7 @@ void add_rectangle(struct Rectangle_list *list, struct Rectangle new) {
     && list->list[i].y <= new.y
     && list->list[i].w + list->list[i].x >= new.w + new.x
     && list->list[i].h + list->list[i].y >= new.h + new.y) {
-      printf("list %p\n", list->list);
+      printf("list %p\n", (void *)list->list);
       printf("adding space: x %d, y %d, w %d, h %d\n", new.x, new.y, new.w, new.h);
       printf("container %d: x %d, y %d, w %d, h %d\n", i, list->list[i].x, list->list[i].y, list->list[i].w, list->list[i].h);
       return;
@@ -269,7 +268,7 @@ void add_rectangle(struct Rectangle_list *list, struct Rectangle new) {
 
 /* Removes the rectangle from the list if it exists. O(n)*/
 void remove_rectangle(struct Rectangle_list *list, struct Rectangle old) {
-  int i;
+  unsigned int i;
   if(list->list == NULL) {
     printf("NULL list was passed to remove_rectangle\n");
     return;
