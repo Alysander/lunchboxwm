@@ -318,7 +318,7 @@ int main (int argc, char* argv[]) {
             || event.xbutton.window ==  frames->list[i].widgets[tr_corner].widget
             || event.xbutton.window ==  frames->list[i].widgets[bl_corner].widget
             || event.xbutton.window ==  frames->list[i].widgets[br_corner].widget
-            || (event.xbutton.window == frames->list[i].framed_window && do_click_to_focus)) {
+            || (event.xbutton.window == frames->list[i].widgets[window].widget && do_click_to_focus)) {
               #ifdef SHOW_BUTTON_PRESS_EVENT
               printf("Got a click\n");
               #endif

@@ -163,15 +163,13 @@ create_frame (Display *display, struct Frame_list* frames
   XSetErrorHandler(NULL);
   XUngrabServer(display);
 
-  //reparent the framed_window to frame.widgets[window].widget
+
   XSelectInput(display, framed_window,  StructureNotifyMask | PropertyChangeMask);
   //Property notify is used to update titles, structureNotify for destroyNotify events
-  XSelectInput(display, frame.widgets[window].widget
-  , SubstructureRedirectMask | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-
-  //Intercept clicks so we can set the focus and raise window if they are floating.
-  XGrabButton(display, Button1, 0, framed_window, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
-
+  XSelectInput(display, frame.widgets[window].widget, SubstructureRedirectMask | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  //Intercept clicks so we can set the focus and possibly raise floating windows
+  XGrabButton(display, Button1, 0, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
+  
   check_frame_limits(display, &frame);
   resize_frame(display, &frame, themes);
   
@@ -563,7 +561,6 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
     return;
   }
 
-
   if(!temp.menu.item) {
     temp.menu.item = XCreateSimpleWindow(display
     , window_menu->widgets[popup_menu_parent].widget
@@ -584,7 +581,9 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
   
   //create corresponding title menu item for this frame
   for(int i = 0; i <= inactive; i++) {
-
+    XUnmapWindow(display, temp.menu.state[i]);
+    XUnmapWindow(display, temp.widgets[title_menu_text].state[i]);
+    XFlush(display);
     create_text_background(display, temp.menu.state[i], temp.window_name
     , &themes->medium_font_theme[i], themes->popup_menu[menu_item].state_p[i]
     , XWidthOfScreen(screen), themes->popup_menu[menu_item].h);
@@ -595,7 +594,9 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
     
     //If this is mapped here, it might be shown in the wrong workspace,
     //XMapWindow(display, temp.menu.item);
+    /* Show changes to background pixmaps */
     XMapWindow(display, temp.menu.state[i]);
+    XMapWindow(display, temp.widgets[title_menu_text].state[i]);    
   }
   xcheck_raisewin(display, temp.menu.state[active]);
   //these are the items for inside the menu

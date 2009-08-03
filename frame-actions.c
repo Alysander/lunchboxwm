@@ -307,11 +307,17 @@ resize_using_frame_grip (Display *display, struct Frame_list *frames, int clicke
   else if(clicked_widget == frame->widgets[b_edge].widget) {
     new_height = mouse_root_y - frame->y + b_edge_dy;
   }
-  
+
+  //check that the frame is not outside its min or max sizes
   if(new_height < frame->min_height) new_height = frame->min_height;
   if(new_height > frame->max_height) new_height = frame->max_height;
   if(new_width < frame->min_width) new_width = frame->min_width;
   if(new_width > frame->max_width) new_width = frame->max_width;
+
+  //undo movement if the height hasn't changed overall
+  if(new_height == frame->h) new_y = frame->y;
+  if(new_width == frame->w)  new_x = frame->x;
+    
   if(frame->mode != desktop) {
     if(new_x + new_width > XWidthOfScreen(screen))
       new_width = XWidthOfScreen(screen) - new_x;
