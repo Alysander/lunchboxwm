@@ -168,8 +168,9 @@ create_frame (Display *display, struct Frame_list* frames
   //Property notify is used to update titles, structureNotify for destroyNotify events
   XSelectInput(display, frame.widgets[window].widget, SubstructureRedirectMask | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
   //Intercept clicks so we can set the focus and possibly raise floating windows
-  XGrabButton(display, Button1, 0, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
-  
+  XGrabButton(display, AnyButton, 0, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
+  XGrabButton(display, AnyButton, Mod2Mask, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None); //do it for numlock as well
+    
   check_frame_limits(display, &frame);
   resize_frame(display, &frame, themes);
   
@@ -216,6 +217,7 @@ void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) 
     }
   }
   XFlush(display);
+  XSync(display, False);
 }
 
 

@@ -555,7 +555,9 @@ int main (int argc, char* argv[]) {
         printf("EnterNotify on Window %lu, Subwindow %lu, root is %lu\n", event.xcrossing.window, event.xcrossing.subwindow, root);
         #endif
         if(event.xcrossing.mode == NotifyGrab) {
-          if((event.xcrossing.state & Mod1Mask) ||  (event.xcrossing.state & (Mod1Mask | Mod2Mask))) { //allow other masks like numlock
+          printf("NotifyGrab\n");
+          if((event.xcrossing.window == root)
+          && ((event.xcrossing.state & Mod1Mask) || (event.xcrossing.state & (Mod1Mask | Mod2Mask)))) { //allow other masks like numlock
             #ifdef SHOW_ENTER_NOTIFY_EVENTS
             printf("set grab_move\n");
             #endif
