@@ -250,7 +250,9 @@ int main (int argc, char* argv[]) {
         printf("state is %d\n", event.xbutton.state);
         #endif          
         if(event.xbutton.button != Button1  &&  !do_click_to_focus && !grab_move) {
+          #ifdef SHOW_BUTTON_PRESS_EVENT
           printf("Cancelling click\n");
+          #endif
           break;
         }
         
@@ -554,8 +556,8 @@ int main (int argc, char* argv[]) {
         #ifdef SHOW_ENTER_NOTIFY_EVENTS
         printf("EnterNotify on Window %lu, Subwindow %lu, root is %lu\n", event.xcrossing.window, event.xcrossing.subwindow, root);
         #endif
+        /* This makes click to focus work and alt click dragging to move windows */
         if(event.xcrossing.mode == NotifyGrab) {
-          printf("NotifyGrab\n");
           if((event.xcrossing.window == root)
           && ((event.xcrossing.state & Mod1Mask) || (event.xcrossing.state & (Mod1Mask | Mod2Mask)))) { //allow other masks like numlock
             #ifdef SHOW_ENTER_NOTIFY_EVENTS
