@@ -451,7 +451,7 @@ move_frame (Display *display, struct Frame *frame
 *****/
 int 
 replace_frame(Display *display, struct Frame *target, struct Frame *replacement
-, Window sinking_seperator, Window tiling_seperator, Window floating_seperator, struct Themes *themes) {
+, struct Seperators *seps, struct Themes *themes) {
   XWindowChanges changes;
   XWindowChanges changes2;
   enum Window_mode mode;
@@ -516,8 +516,8 @@ replace_frame(Display *display, struct Frame *target, struct Frame *replacement
 
   change_frame_mode(display, replacement, target->mode, themes);
   change_frame_mode(display, target, mode, themes);
-  stack_frame(display, target,      sinking_seperator, tiling_seperator, floating_seperator);
-  stack_frame(display, replacement, sinking_seperator, tiling_seperator, floating_seperator);
+  stack_frame(display, target,      seps);
+  stack_frame(display, replacement, seps);
   
   return 1;
 }
@@ -526,7 +526,7 @@ replace_frame(Display *display, struct Frame *target, struct Frame *replacement
 Implements stacking and focus policy 
 *****/
 void 
-stack_frame(Display *display, struct Frame *frame, Window sinking_seperator, Window tiling_seperator, Window floating_seperator) {
+stack_frame(Display *display, struct Frame *frame, struct Seperators *seps) {
   XWindowChanges changes;
   
   unsigned int mask = CWSibling | CWStackMode;  
@@ -535,11 +535,11 @@ stack_frame(Display *display, struct Frame *frame, Window sinking_seperator, Win
   printf("stacking window %s\n", frame->window_name);
   
   if(frame->mode == tiling) 
-  changes.sibling = tiling_seperator;
+  changes.sibling = seps->tiling_seperator;
   else if(frame->mode == floating) 
-  changes.sibling = floating_seperator;  
+  changes.sibling = seps->floating_seperator;  
   else 
-  changes.sibling = sinking_seperator;
+  changes.sibling = seps->sinking_seperator;
   
   XConfigureWindow(display, frame->widgets[frame_parent].widget, mask, &changes);
   XFlush(display);

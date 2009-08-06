@@ -22,11 +22,9 @@
 #include "frame.h"
 #include "frame-actions.h"
 
-/*** basin.c ***/
 //int main 
-
 void list_properties  (Display *display, Window window);
-void create_seperators(Display *display, Window *sinking_seperator, Window *tiling_seperator, Window *floating_seperator);
+void create_seperators(Display *display, struct Seperators *seps);
 void create_cursors   (Display *display, struct Cursors *cursors);
 void create_hints     (Display *display, struct Atoms *atoms);
 void free_cursors     (Display *display, struct Cursors *cursors);
@@ -45,19 +43,16 @@ void end_event_loop(int sig) {
 
 int main (int argc, char* argv[]) {
   Display* display = NULL;
-  XEvent event;
+  XEvent event; /* 96 bytes per events */
   Window root;
 
   Window pulldown = 0; //this is a sort of "pointer" window.  
                    //it has the window ID of the currently open pop-up
                    //this reduces state and allows the currently open pop-up to be removed
                    //from the screen.
-  Window sinking_seperator; //this window is always above desktop windows.
-  Window tiling_seperator;  //this window is always above tiled windows.
-  Window floating_seperator; //this window is always above floating windows.
-  
-  struct Menubar menubar;
-    
+
+  struct Seperators seps;
+  struct Menubar menubar;    
   struct Themes *themes = NULL;
   struct Cursors cursors;
   struct Workspace_list workspaces = {.used = 0, .max = 16, .list = NULL};
@@ -112,8 +107,7 @@ int main (int argc, char* argv[]) {
   root = DefaultRootWindow(display);
 
   XSelectInput(display, root, SubstructureRedirectMask | ButtonMotionMask 
-  | ButtonPressMask | ButtonReleaseMask | EnterWindowMask 
-  | LeaveWindowMask | FocusChangeMask);
+  | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask | FocusChangeMask);
 
   if(argc <= 1) themes = create_themes(display, "original");
   else themes = create_themes(display, argv[1]);
@@ -125,26 +119,30 @@ int main (int argc, char* argv[]) {
 
   create_cursors (display, &cursors); 
   create_hints(display, &atoms);      
-  create_seperators(display, &sinking_seperator, &tiling_seperator, &floating_seperator);
+  create_seperators(display, &seps);
   create_menubar(display, &menubar, themes, &cursors);
   create_mode_menu(display, &mode_menu, themes, &cursors);
   create_title_menu(display, &title_menu, themes, &cursors);
-  
-  create_startup_workspaces(display, &workspaces, sinking_seperator, tiling_seperator, floating_seperator, &title_menu, themes, &cursors, &atoms);
+  create_startup_workspaces(display, &workspaces, &seps, &title_menu, themes, &cursors, &atoms);
   
   change_to_workspace(display, &workspaces, &current_workspace, -1, themes);
 
-  /* Passive grab for alt+click moving windows */
+  /* Passive grab for alt+click moving windows Mod2Mask is assumed to be numlock. */
+
+  XGrabButton(display, Button1, Mod1Mask | Mod2Mask, root, False, ButtonPressMask | ButtonMotionMask
+  , GrabModeAsync, GrabModeAsync, None, cursors.grab);
+
   XGrabButton(display, Button1, Mod1Mask, root, False, ButtonPressMask | ButtonMotionMask
   , GrabModeAsync, GrabModeAsync, None, cursors.grab);
+  //OR'ing Mod2mask/numlock prevents click to focus and causes some kind of lockup
   
   XFlush(display);
 
   while(!done) {
     //always look for windows that have been destroyed first
-    if(XCheckTypedEvent(display, DestroyNotify, &event)) ;
+    //if(XCheckTypedEvent(display, DestroyNotify, &event)) ;
     //then look for unmaps
-    else if(XCheckTypedEvent(display, UnmapNotify, &event)) ; 
+    if(XCheckTypedEvent(display, UnmapNotify, &event)) ; 
     else XNextEvent(display, &event);
 
     if(done) break;
@@ -227,7 +225,7 @@ int main (int argc, char* argv[]) {
           if(attributes.override_redirect == False) { //TODO investigate whether opening the first workspaces causes it to change to the workspace
             int used = workspaces.used;
             new_workspace = add_frame_to_workspace(display, &workspaces, event.xmaprequest.window, current_workspace
-            , &title_menu, sinking_seperator, tiling_seperator, floating_seperator, themes, &cursors, &atoms);
+            , &title_menu, &seps, themes, &cursors, &atoms);
             #ifdef SHOW_MAP_REQUEST_EVENT
             printf("new workspace %d\n", new_workspace);
             #endif
@@ -247,6 +245,15 @@ int main (int argc, char* argv[]) {
         #ifdef SHOW_BUTTON_PRESS_EVENT
         printf("ButtonPress %lu, subwindow %lu\n", (unsigned long)event.xbutton.window, (unsigned long)event.xbutton.subwindow);
         #endif
+        /* Ignore all button presses except for a button1 press */
+        #ifdef SHOW_BUTTON_PRESS_EVENT
+        printf("state is %d\n", event.xbutton.state);
+        #endif          
+        if(event.xbutton.button != Button1  &&  !do_click_to_focus && !grab_move) {
+          printf("Cancelling click\n");
+          break;
+        }
+        
         resize_x_direction = 0;
         resize_y_direction = 0;
         if(grab_move) {
@@ -323,7 +330,7 @@ int main (int argc, char* argv[]) {
               printf("Got a click\n");
               #endif
 
-              stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator, floating_seperator);
+              stack_frame(display, &frames->list[i], &seps);
 
               if(do_click_to_focus) { 
                 #ifdef SHOW_BUTTON_PRESS_EVENT
@@ -545,10 +552,10 @@ int main (int argc, char* argv[]) {
       /*modifies grab_move and do_click_to focus */
       case EnterNotify:
         #ifdef SHOW_ENTER_NOTIFY_EVENTS
-        printf("EnterNotify on Window %lu, Subwindow %lu\n", event.xcrossing.window, event.xcrossing.subwindow);
+        printf("EnterNotify on Window %lu, Subwindow %lu, root is %lu\n", event.xcrossing.window, event.xcrossing.subwindow, root);
         #endif
         if(event.xcrossing.mode == NotifyGrab) {
-          if(event.xcrossing.state & Mod1Mask) {
+          if((event.xcrossing.state & Mod1Mask) ||  (event.xcrossing.state & (Mod1Mask | Mod2Mask))) { //allow other masks like numlock
             #ifdef SHOW_ENTER_NOTIFY_EVENTS
             printf("set grab_move\n");
             #endif
@@ -724,7 +731,7 @@ int main (int argc, char* argv[]) {
                 if(frames->list[i].mode != floating) {
                   drop_frame(display, frames, i, themes);
                 }
-                stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator, floating_seperator);
+                stack_frame(display, &frames->list[i], &seps);
                 XFlush(display);
                 break;
               }
@@ -772,7 +779,7 @@ int main (int argc, char* argv[]) {
                   change_frame_mode(display, &frames->list[i], desktop, themes); //Redrawing mode pulldown
                 }
                 else change_frame_mode(display, &frames->list[i], frames->list[i].mode, themes);
-                stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator, floating_seperator);
+                stack_frame(display, &frames->list[i], &seps);
                 break;
               }
               /* Handle title menu. This replaces frame with the user's chosen frame */
@@ -784,7 +791,7 @@ int main (int argc, char* argv[]) {
                 //Now we need to identify which window to put here.
                 for(int j = 0; j < frames->used; j++) { //this
                   if(event.xbutton.window == frames->list[j].menu.item) { //hotspot
-                    replace_frame(display, &frames->list[i], &frames->list[j], sinking_seperator, tiling_seperator, floating_seperator, themes);
+                    replace_frame(display, &frames->list[i], &frames->list[j], &seps, themes);
                     remove_focus(frames->list[i].framed_window, &frames->focus);
                     add_focus(frames->list[i].framed_window, &frames->focus);
                     unfocus_frames(display, frames);
@@ -1034,7 +1041,7 @@ int main (int argc, char* argv[]) {
                 if(frames->list[i].mode == hidden) {
                   change_frame_mode(display, &frames->list[i], floating, themes);
                 }
-                stack_frame(display, &frames->list[i], sinking_seperator, tiling_seperator, floating_seperator);
+                stack_frame(display, &frames->list[i], &seps);
               }
               resize_frame(display, &frames->list[i], themes);
               break;
@@ -1129,25 +1136,25 @@ int main (int argc, char* argv[]) {
   return 1;
 }
 
-void create_seperators(Display *display, Window *sinking_seperator, Window *tiling_seperator, Window *floating_seperator) {
+void create_seperators(Display *display, struct Seperators *seps) {
   XSetWindowAttributes set_attributes;
   Window root = DefaultRootWindow(display);
   Screen *screen = DefaultScreenOfDisplay(display);
 
-  *tiling_seperator = XCreateWindow(display, root, 0, 0
+  seps->tiling_seperator = XCreateWindow(display, root, 0, 0
   , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
-  *sinking_seperator = XCreateWindow(display, root, 0, 0
+  seps->sinking_seperator = XCreateWindow(display, root, 0, 0
   , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
-  *floating_seperator = XCreateWindow(display, root, 0, 0
+  seps->floating_seperator = XCreateWindow(display, root, 0, 0
   , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
 
   set_attributes.override_redirect = True;
-  XChangeWindowAttributes(display, *sinking_seperator, CWOverrideRedirect, &set_attributes);
-  XChangeWindowAttributes(display, *tiling_seperator, CWOverrideRedirect, &set_attributes);
-  XChangeWindowAttributes(display, *floating_seperator, CWOverrideRedirect, &set_attributes);
-  XRaiseWindow(display, *sinking_seperator);
-  XRaiseWindow(display, *tiling_seperator);
-  XRaiseWindow(display, *floating_seperator);
+  XChangeWindowAttributes(display, seps->sinking_seperator, CWOverrideRedirect, &set_attributes);
+  XChangeWindowAttributes(display, seps->tiling_seperator, CWOverrideRedirect, &set_attributes);
+  XChangeWindowAttributes(display, seps->floating_seperator, CWOverrideRedirect, &set_attributes);
+  XRaiseWindow(display, seps->sinking_seperator);
+  XRaiseWindow(display, seps->tiling_seperator);
+  XRaiseWindow(display, seps->floating_seperator);
   XFlush(display);
 }
 

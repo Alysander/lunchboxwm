@@ -11,8 +11,8 @@ void move_frame             (Display *display, struct Frame *frame
 , int *resize_x_direction, int *resize_y_direction, struct Themes *themes);
 
 void resize_tiling_frame    (Display *display, struct Frame_list* frames, int index, char axis, int position, int size, struct Themes *themes);
-void stack_frame            (Display *display, struct Frame *frame, Window sinking_seperator, Window tiling_seperator, Window floating_seperator);
+void stack_frame            (Display *display, struct Frame *frame, struct Seperators *seps);
 
 int replace_frame           (Display *display, struct Frame *target
-, struct Frame *replacement, Window sinking_seperator, Window tiling_seperator, Window floating_seperator, struct Themes *themes);  
+, struct Frame *replacement, struct Seperators *seps, struct Themes *themes);  
 

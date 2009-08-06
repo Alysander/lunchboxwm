@@ -185,25 +185,34 @@ void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) 
   XMoveResizeWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y, frame->w, frame->h);
   XResizeWindow(display, frame->framed_window, frame->w - frame->hspace, frame->h - frame->vspace);
 
+  /* Bit of a hack to make the title menu use only the minimum space required */
+  int title_menu_text_diff = 0;
+  int title_menu_rhs_w     = 0;
+  if(themes->window_type[frame->theme_type][title_menu_rhs].exists) 
+    title_menu_rhs_w = themes->window_type[frame->theme_type][title_menu_rhs].w;
+    
   for(int i = 0; i < frame_parent; i++) {
     int x = themes->window_type[frame->theme_type][i].x;
     int y = themes->window_type[frame->theme_type][i].y;
     int w = themes->window_type[frame->theme_type][i].w;
     int h = themes->window_type[frame->theme_type][i].h;
     if(!themes->window_type[frame->theme_type][i].exists) continue; //the exists variable is -1 for hotspots
-
+    
     if(x < 0  ||  y < 0  ||  w <= 0  ||  h <= 0) { //only resize those which are dependent on the width
       if(x <  0) x += frame->w;
       if(y <  0) y += frame->h;
       if(w <= 0) w += frame->w;
       if(h <= 0) h += frame->h;
 
-      XMoveResizeWindow(display, frame->widgets[i].widget, x, y, w, h);
-      for(int j = 0; j <= inactive; j++) {
-        //OPTIMIZATION: these could be a default large size in the create_subwindows
-        //perhaps make the screen width or height if theme component width/height is variable 
-        if(frame->widgets[i].state[j]) XResizeWindow(display, frame->widgets[i].state[j], w, h);        
+      /* Bit of a hack to make the title menu use only the minimum space required */
+      if(i == title_menu_text  &&  (frame->menu.width + title_menu_rhs_w) < w) {
+        title_menu_text_diff = w - (frame->menu.width + title_menu_rhs_w);
+        w = frame->menu.width;
       }
+      else if(i == title_menu_rhs      &&  title_menu_text_diff) x -= title_menu_text_diff;
+      else if(i == title_menu_hotspot  &&  title_menu_text_diff) w -= title_menu_text_diff;
+
+      XMoveResizeWindow(display, frame->widgets[i].widget, x, y, w, h);
     }
   }
   XFlush(display);
@@ -454,6 +463,10 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
       frame->widgets[i].widget = XCreateSimpleWindow(display, frame->widgets[frame_parent].widget
       , x, y, w, h, 0, black, black);
 
+      //OPTIMIZATION: This makes the cropped state windows large so that they don't need to be resized
+      if(themes->window_type[frame->theme_type][i].w <= 0) w = XWidthOfScreen(screen);
+      if(themes->window_type[frame->theme_type][i].h <= 0) h = XWidthOfScreen(screen);       
+      
       if(i != window) //dont create state windows for the framed window 
       for(int j = 0; j <= inactive; j++) {
         frame->widgets[i].state[j] = XCreateSimpleWindow(display, frame->widgets[i].widget

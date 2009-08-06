@@ -82,7 +82,7 @@ enum Frame_widget {
   selection_indicator,
   selection_indicator_hotspot,  
   title_menu_lhs,
-  title_menu_text,   //fill
+  title_menu_text,   //fill -- must be before rhs and hotspot for minimum size in resize frame
   title_menu_rhs,    //includes arrow
   title_menu_hotspot,
 
@@ -204,6 +204,12 @@ struct Mode_menu {
 
 struct Menubar {
   struct Widget widgets[menubar_parent + 1];
+};
+
+struct Seperators {
+  Window sinking_seperator;  //this window is always above desktop windows.
+  Window tiling_seperator;   //this window is always above tiled windows.
+  Window floating_seperator; //this window is always above floating windows.
 };
 
 struct Frame {

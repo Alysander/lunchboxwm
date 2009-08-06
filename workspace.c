@@ -160,7 +160,7 @@ void make_default_program_name(Display *display, Window window, char *name) {
 /* creates the workspace */
 int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window framed_window, int current_workspace
 , struct Popup_menu *window_menu
-, Window sinking_seperator, Window tiling_seperator, Window floating_seperator
+, struct Seperators *seps
 , struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
   char *program_name = load_program_name(display, framed_window);
   int k;
@@ -192,7 +192,7 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
   frame_index = create_frame(display, &workspaces->list[k], framed_window, window_menu, themes, cursors, atoms);
   if(frame_index != -1) {
     check_new_frame_focus (display, &workspaces->list[k], frame_index);
-    stack_frame(display, &workspaces->list[k].list[frame_index], sinking_seperator, tiling_seperator, floating_seperator);
+    stack_frame(display, &workspaces->list[k].list[frame_index], seps);
     if(k == current_workspace  &&  current_workspace != -1) {
       printf("Created and mapped window in workspace %d\n", k);
 
@@ -209,7 +209,7 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
 }
 
 int create_startup_workspaces(Display *display, struct Workspace_list *workspaces
-, Window sinking_seperator, Window tiling_seperator, Window floating_seperator
+, struct Seperators *seps
 , struct Popup_menu *window_menu, struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
 
   unsigned int windows_length;
@@ -226,7 +226,7 @@ int create_startup_workspaces(Display *display, struct Workspace_list *workspace
     if(attributes.map_state == IsViewable && !attributes.override_redirect)  {
 
       add_frame_to_workspace(display, workspaces, windows[i], -1, window_menu
-      , sinking_seperator, tiling_seperator, floating_seperator, themes, cursors, atoms);
+      , seps, themes, cursors, atoms);
     }
   }
   XFree(windows);

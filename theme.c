@@ -127,7 +127,7 @@ r_edge                         x < 0,  y >= 0, w > 0, h <= 0
 title_menu_text: all states exist for all defined window types
 window                         x >= 0,  y >= 0, w <= 0, h <= 0
 frame_parent                   x == 0, y == 0, w == 0, h == 0
-
+title_menu_rhs                 w > 0
 ****/
   themes->popup_menu = create_component_theme(display, "popup_menu");
   themes->menubar = create_component_theme(display, "menubar");
@@ -402,6 +402,7 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
 //This loads the various font settings that are used by functions that draw the text.
 //eventually it will load these from a file.
 static void create_font_themes(struct Themes *restrict themes) {
+
 
   struct Font_theme font_theme = { .font_name = "Sans", .size = 13.5, .r = 1, .g = 1, .b = 1, .a = 1
   , .x = 3, .y = 15, .slant = CAIRO_FONT_SLANT_NORMAL, .weight = CAIRO_FONT_WEIGHT_NORMAL };
