@@ -1039,9 +1039,11 @@ int main (int argc, char* argv[]) {
                
               frames->list[i].w = event.xconfigurerequest.width + FRAME_HSPACE;
               frames->list[i].h = event.xconfigurerequest.height + FRAME_VSPACE;
-              if(frames->list[i].mode == tiling) drop_frame (display, frames, i, themes);
-              check_frame_limits(display, &frames->list[i]);
-              
+              if(frames->list[i].mode == tiling) { 
+                drop_frame (display, frames, i, themes);
+                resize_frame(display, &frames->list[i], themes);
+                check_frame_limits(display, &frames->list[i]);
+              }
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
               printf("new width %d, new height %d\n", frames->list[i].w, frames->list[i].h);
               #endif
@@ -1057,6 +1059,8 @@ int main (int argc, char* argv[]) {
                 stack_frame(display, &frames->list[i], &seps);
               }
               resize_frame(display, &frames->list[i], themes);
+              check_frame_limits(display, &frames->list[i]);
+              XFlush(display);
               break;
             }
           }
