@@ -399,8 +399,8 @@ int main (int argc, char* argv[]) {
                 clicked_widget = frames->list[i].widgets[mode_dropdown_hotspot].widget;
                 /**** These are used when the popup is cancelled and a frame move starts ***/
 
-                if(themes->window_type[frames->list[i].type][mode_dropdown_hotspot].x < 0) pointer_start_x += frames->list[i].w;
-                if(themes->window_type[frames->list[i].type][mode_dropdown_hotspot].y < 0) pointer_start_y += frames->list[i].h;
+                if(themes->window_type[frames->list[i].theme_type][mode_dropdown_hotspot].x < 0) pointer_start_x += frames->list[i].w;
+                if(themes->window_type[frames->list[i].theme_type][mode_dropdown_hotspot].y < 0) pointer_start_y += frames->list[i].h;
                 pointer_start_x += themes->window_type[frames->list[i].type][mode_dropdown_hotspot].x;
                 pointer_start_y += themes->window_type[frames->list[i].type][mode_dropdown_hotspot].y;
 
