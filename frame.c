@@ -554,7 +554,6 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
 
   Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
-  const int menu_item = medium_menu_item_mid; /*Change the mode menu item size here */
   XFetchName(display, temp.framed_window, &temp.window_name);
 
   if(temp.window_name == NULL 
@@ -582,19 +581,19 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
     temp.menu.item = XCreateSimpleWindow(display
     , window_menu->widgets[popup_menu_parent].widget
     , themes->popup_menu[l_edge].w, 0
-    , XWidthOfScreen(screen), themes->popup_menu[menu_item].h
+    , XWidthOfScreen(screen), themes->popup_menu[menu_item_mid].h
     , 0, black, black);
     for(int i = 0; i <= inactive; i++) {
       temp.menu.state[i] = XCreateSimpleWindow(display
       , temp.menu.item
       , 0, 0
-      , XWidthOfScreen(screen), themes->popup_menu[menu_item].h
+      , XWidthOfScreen(screen), themes->popup_menu[menu_item_mid].h
       , 0, black, black);
     }
     XSelectInput(display, temp.menu.item, ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
   }
   
-  temp.menu.width = get_text_width(display, temp.window_name, &themes->medium_font_theme[active]);
+  temp.menu.width = get_text_width(display, temp.window_name, &themes->font_theme[active]);
   
   //create corresponding title menu item for this frame
   for(int i = 0; i <= inactive; i++) {
@@ -602,11 +601,11 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
     XUnmapWindow(display, temp.widgets[title_menu_text].state[i]);
     XFlush(display);
     create_text_background(display, temp.menu.state[i], temp.window_name
-    , &themes->medium_font_theme[i], themes->popup_menu[menu_item].state_p[i]
-    , XWidthOfScreen(screen), themes->popup_menu[menu_item].h);
+    , &themes->font_theme[i], themes->popup_menu[menu_item_mid].state_p[i]
+    , XWidthOfScreen(screen), themes->popup_menu[menu_item_mid].h);
     
     create_text_background(display, temp.widgets[title_menu_text].state[i], temp.window_name
-    , &themes->medium_font_theme[active], themes->window_type[frame->theme_type][title_menu_text].state_p[i]
+    , &themes->font_theme[active], themes->window_type[frame->theme_type][title_menu_text].state_p[i]
     , XWidthOfScreen(screen), themes->window_type[frame->theme_type][title_menu_text].h);
     
     //If this is mapped here, it might be shown in the wrong workspace,

@@ -48,15 +48,9 @@ enum Menubar_widget {
 }; 
 
 enum Popup_menu_widget {
-  small_menu_item_lhs,
-  small_menu_item_mid,  /* the middle will be tiled for wider or thinner popups */
-  small_menu_item_rhs,
-  medium_menu_item_lhs,
-  medium_menu_item_mid, /* the middle will be tiled for wider or thinner popups */
-  medium_menu_item_rhs,
-  large_menu_item_lhs,
-  large_menu_item_mid,  /* the middle will be tiled for wider or thinner popups */
-  large_menu_item_rhs,  
+  menu_item_lhs,
+  menu_item_mid, /* the middle will be tiled for wider or thinner popups */
+  menu_item_rhs,
   popup_t_edge,
   popup_l_edge,
   popup_b_edge,
@@ -114,6 +108,22 @@ enum Window_state {
   none
 };
 
+enum Window_type {
+  unknown,
+  splash,
+  file,
+  program,
+  dialog,  
+  modal_dialog,
+  utility,
+  status, 
+  system_program,
+  popup_menu,            
+  popup_menubar,  
+  menubar /* must be last */
+};
+
+
 /***********************
   Some clarification of widget state terminology.
   For a button, "active" is its pressed state.
@@ -148,7 +158,6 @@ struct Widget_theme {
   Pixmap state_p[inactive + 1];
 };
 
-
 struct Font_theme {
   char font_name[20];
   float size;
@@ -158,29 +167,11 @@ struct Font_theme {
   cairo_font_weight_t weight;
 };
 
-
-enum Window_type {
-  unknown,
-  splash,
-  file,
-  program,
-  dialog,  
-  modal_dialog,
-  utility,
-  status, 
-  system_program,
-  popup_menu,            
-  popup_menubar,  
-  menubar /* must be last */
-};
-
 struct Themes {
   struct Widget_theme *window_type[menubar + 1]; 
   struct Widget_theme *popup_menu; //this  may be implemented in the future
   struct Widget_theme *menubar;
-  struct Font_theme small_font_theme[inactive + 1]; 
-  struct Font_theme medium_font_theme[inactive + 1];
-  struct Font_theme large_font_theme[inactive + 1]; 
+  struct Font_theme font_theme[inactive + 1];
 };
 
 struct Popup_menu {

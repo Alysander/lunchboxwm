@@ -146,11 +146,8 @@ void create_mode_menu(Display *display, struct Mode_menu *mode_menu
   Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
 
-  //TODO get this from the theme somehow
-  const int menu_item = medium_menu_item_mid; /*Change the mode menu item size here */
-
   mode_menu->menu.inner_width = DEFAULT_MENU_ITEM_WIDTH;
-  mode_menu->menu.inner_height = themes->popup_menu[menu_item].h * (hidden + 1);
+  mode_menu->menu.inner_height = themes->popup_menu[menu_item_mid].h * (hidden + 1);
   
   create_popup_menu(display, &mode_menu->menu, themes, cursors);
 
@@ -158,8 +155,8 @@ void create_mode_menu(Display *display, struct Mode_menu *mode_menu
   for(int i = 0; i <= hidden; i++) {
 
     mode_menu->items[i].item = XCreateSimpleWindow(display, mode_menu->menu.widgets[popup_menu_parent].widget
-    , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[menu_item].h * i
-    , mode_menu->menu.inner_width, themes->popup_menu[menu_item].h, 0, black, black);
+    , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[menu_item_mid].h * i
+    , mode_menu->menu.inner_width, themes->popup_menu[menu_item_mid].h, 0, black, black);
 
     XSelectInput(display, mode_menu->items[i].item,  ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
     for(int j = 0; j <= inactive; j++) {
@@ -182,11 +179,11 @@ void create_mode_menu(Display *display, struct Mode_menu *mode_menu
         }
 
         mode_menu->items[i].state[j] = XCreateSimpleWindow(display, mode_menu->items[i].item
-        , 0, 0, mode_menu->menu.inner_width, themes->popup_menu[menu_item].h, 0, black, black);
+        , 0, 0, mode_menu->menu.inner_width, themes->popup_menu[menu_item_mid].h, 0, black, black);
 
-        create_text_background(display, mode_menu->items[i].state[j], label, &themes->small_font_theme[j]
-        , themes->popup_menu[menu_item].state_p[j]
-        , themes->popup_menu[menu_item].w, themes->popup_menu[menu_item].h);
+        create_text_background(display, mode_menu->items[i].state[j], label, &themes->font_theme[j]
+        , themes->popup_menu[menu_item_mid].state_p[j]
+        , themes->popup_menu[menu_item_mid].w, themes->popup_menu[menu_item_mid].h);
         XMapWindow(display, mode_menu->items[i].state[j]);
       }
 //      else printf("Warning:  Skipping state pixmap\n");
@@ -205,10 +202,9 @@ void create_mode_menu(Display *display, struct Mode_menu *mode_menu
 void create_workspaces_menu(Display *display, struct Workspace_list *workspaces
 , struct Themes *themes, struct Cursors *cursors) {
 
-  const int menu_item = medium_menu_item_mid;  //TODO this must come from the theme
   
   workspaces->workspace_menu.inner_width = DEFAULT_MENU_ITEM_WIDTH; //TODO this must come from the theme
-  workspaces->workspace_menu.inner_height = themes->popup_menu[menu_item].h;
+  workspaces->workspace_menu.inner_height = themes->popup_menu[menu_item_mid].h;
 
   create_popup_menu(display, &workspaces->workspace_menu, themes, cursors);
 }
@@ -220,10 +216,8 @@ Does it assume that titles have already been created?
 void create_title_menu(Display *display, struct Popup_menu *window_menu
 , struct Themes *themes, struct Cursors *cursors) {
 
-  const int menu_item = medium_menu_item_mid; //TODO this must come from the theme
-
   window_menu->inner_width = DEFAULT_MENU_ITEM_WIDTH;        //TODO this must come from the theme
-  window_menu->inner_height = themes->popup_menu[menu_item].h;
+  window_menu->inner_height = themes->popup_menu[menu_item_mid].h;
 
   create_popup_menu(display, window_menu, themes, cursors);
 }
@@ -235,8 +229,6 @@ void show_workspace_menu(Display *display, Window calling_widget, struct Workspa
 
   //TODO, do a loop and a resize things as in resize_frame
 
-  //TOOD medium_menu_item_mid + lhs + rhs
-  int menu_item = medium_menu_item_mid;
 
   for(int i = 0; i < workspaces->used; i++)  
   if(workspaces->list[i].workspace_menu.width > max_length) 
@@ -252,12 +244,12 @@ void show_workspace_menu(Display *display, Window calling_widget, struct Workspa
   for(int i = 0; i < workspaces->used; i++) if(workspaces->list[i].workspace_menu.item) {
     //TODO menu_item_mid + lhs +rhs
     XMoveWindow(display,  workspaces->list[i].workspace_menu.item
-    , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[menu_item].h * i);
-    XResizeWindow(display, workspaces->list[i].workspace_menu.item, max_length, themes->popup_menu[menu_item].h);
+    , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[menu_item_mid].h * i);
+    XResizeWindow(display, workspaces->list[i].workspace_menu.item, max_length, themes->popup_menu[menu_item_mid].h);
   }
 
   workspaces->workspace_menu.inner_width = max_length;
-  workspaces->workspace_menu.inner_height = themes->popup_menu[menu_item].h * workspaces->used;
+  workspaces->workspace_menu.inner_height = themes->popup_menu[menu_item_mid].h * workspaces->used;
    
   resize_popup_menu(display, &workspaces->workspace_menu, themes);
 
@@ -297,15 +289,15 @@ void show_title_menu(Display *display, struct Popup_menu *title_menu, Window cal
 
   for(int i = 0; i < frames->used; i++) {
     XMoveWindow(display, frames->list[i].menu.item
-    , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[medium_menu_item_mid].h * i);
-    XResizeWindow(display, frames->list[i].menu.item, max_length, themes->popup_menu[medium_menu_item_mid].h);
+    , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[menu_item_mid].h * i);
+    XResizeWindow(display, frames->list[i].menu.item, max_length, themes->popup_menu[menu_item_mid].h);
   }
   
 
   //printf("Showing title menu at %d %d\n", x,y);
 
   title_menu->inner_width = max_length;
-  title_menu->inner_height = themes->popup_menu[medium_menu_item_mid].h * frames->used;
+  title_menu->inner_height = themes->popup_menu[menu_item_mid].h * frames->used;
   XFlush(display);
   resize_popup_menu(display, title_menu, themes);
   place_popup_menu(display, calling_widget, title_menu->widgets[popup_menu_parent].widget, x, y);

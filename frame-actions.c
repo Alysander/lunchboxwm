@@ -813,13 +813,11 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
       if(*fs - overlap >= *fmin_size + frame_space 
       && *fs - overlap <= *fmax_size) {
         frames->list[i].indirect_resize.new_size = *fs - overlap;
-        printf("Success\n");
       }
       else if(size_change < 0
       &&  *fs - overlap >= *fmax_size) {
         frames->list[i].indirect_resize.new_size = *fmax_size; 
         frames->list[i].indirect_resize.new_position = *fp;
-        printf("This one\n");
       }   
       else { /* The adjacent window has reached its minimum size. Reduce the re*/
         int amount_over = 1; //OPTIMIZATION. Calculate the final answer.
@@ -832,14 +830,19 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
         if(position != *p) { //this is causing the position to change
           new_position = position + amount_over;
         }
-        printf("New position %d\n", new_position);
-        
+        #ifdef SHOW_EDGE_RESIZE
+        printf("New size %d, new position %d\n", new_size, new_position);
+        #endif        
         if(size_change > 0 &&  (new_size >= size || new_size <= *s)) {  
+          #ifdef SHOW_EDGE_RESIZE
           printf("Cannot resize, cancelling ENLARGE resize.");
+          #endif
           return;
         }
         else if(size_change < 0 && (new_size <= size  ||  new_size >= *s)) {  
+          #ifdef SHOW_EDGE_RESIZE
           printf("Cannot resize, cancelling SHRINK resize.");
+          #endif
           return;
         }
         

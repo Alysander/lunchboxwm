@@ -60,12 +60,11 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
   XLowerWindow(display, frames->virtual_desktop);
 
   unsigned int width = workspaces->workspace_menu.inner_width; //TODO when a workspace is added to the list, it must also be resized to the width of that list.
-  const int menu_item = medium_menu_item_mid;  
 
   frames->workspace_menu.item = XCreateSimpleWindow(display
   , workspaces->workspace_menu.widgets[popup_menu_parent].widget
   , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h
-  , width, themes->popup_menu[menu_item].h
+  , width, themes->popup_menu[menu_item_mid].h
   , 0, black, black);
 
   XSelectInput(display, frames->workspace_menu.item,  ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
@@ -74,19 +73,19 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
     frames->workspace_menu.state[i] = XCreateSimpleWindow(display
     , frames->workspace_menu.item
     , 0, 0
-    , XWidthOfScreen(screen), themes->popup_menu[menu_item].h
+    , XWidthOfScreen(screen), themes->popup_menu[menu_item_mid].h
     , 0, black, black);
 
     create_text_background(display, frames->workspace_menu.state[i], frames->workspace_name
-    , &themes->medium_font_theme[i], themes->popup_menu[menu_item].state_p[i]
-    , themes->popup_menu[menu_item].w, themes->popup_menu[menu_item].h);
+    , &themes->font_theme[i], themes->popup_menu[menu_item_mid].state_p[i]
+    , themes->popup_menu[menu_item_mid].w, themes->popup_menu[menu_item_mid].h);
 
     XMapWindow(display, frames->workspace_menu.state[i]);
   }
 
   XMapWindow(display, frames->workspace_menu.item);
 
-  frames->workspace_menu.width = get_text_width(display, frames->workspace_name, &themes->medium_font_theme[active]);
+  frames->workspace_menu.width = get_text_width(display, frames->workspace_name, &themes->font_theme[active]);
 
   //Create the frame_list
   frames->used = 0;

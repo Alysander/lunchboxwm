@@ -270,15 +270,9 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
     }
     else if(!strcmp(type, "popup_menu")) {
 //      printf("%s x %d, y %d, w %d, h %d\n", widget_name, x, y, w, h);
-           if(!strcmp(widget_name, "small_menu_item_lhs"))   current_widget = small_menu_item_lhs;
-      else if(!strcmp(widget_name, "small_menu_item_mid"))   current_widget = small_menu_item_mid;
-      else if(!strcmp(widget_name, "small_menu_item_rhs"))   current_widget = small_menu_item_rhs;
-      else if(!strcmp(widget_name, "medium_menu_item_lhs"))  current_widget = medium_menu_item_lhs;
-      else if(!strcmp(widget_name, "medium_menu_item_mid"))  current_widget = medium_menu_item_mid;
-      else if(!strcmp(widget_name, "medium_menu_item_rhs"))  current_widget = medium_menu_item_rhs;
-      else if(!strcmp(widget_name, "large_menu_item_lhs"))   current_widget = large_menu_item_lhs;
-      else if(!strcmp(widget_name, "large_menu_item_mid"))   current_widget = large_menu_item_mid;
-      else if(!strcmp(widget_name, "large_menu_item_rhs"))   current_widget = large_menu_item_rhs;
+           if(!strcmp(widget_name, "menu_item_lhs"))   current_widget = menu_item_lhs;
+      else if(!strcmp(widget_name, "menu_item_mid"))   current_widget = menu_item_mid;
+      else if(!strcmp(widget_name, "menu_item_rhs"))   current_widget = menu_item_rhs;
       else if(!strcmp(widget_name, "popup_t_edge"))      current_widget = popup_t_edge;
       else if(!strcmp(widget_name, "popup_l_edge"))      current_widget = popup_l_edge;
       else if(!strcmp(widget_name, "popup_b_edge"))      current_widget = popup_b_edge;
@@ -408,42 +402,14 @@ static void create_font_themes(struct Themes *restrict themes) {
   , .x = 3, .y = 15, .slant = CAIRO_FONT_SLANT_NORMAL, .weight = CAIRO_FONT_WEIGHT_NORMAL };
 
   for(int i = 0; i <= inactive; i++) {
-    memcpy(&themes->medium_font_theme[i], &font_theme, sizeof(struct Font_theme));
+    memcpy(&themes->font_theme[i], &font_theme, sizeof(struct Font_theme));
   }
 
-  font_theme.size = 11.5;
-  font_theme.y = 13;
-  font_theme.x = 3;
-  for(int i = 0; i <= inactive; i++) {
-    memcpy(&themes->small_font_theme[i], &font_theme, sizeof(struct Font_theme));
-  }
-
-  font_theme.size = 14.5;
-  font_theme.y = 15;
-  font_theme.x = 3;
-  for(int i = 0; i <= inactive; i++) {  
-    memcpy(&themes->large_font_theme[i], &font_theme, sizeof(struct Font_theme));
-  }
-
-  themes->large_font_theme[active].weight = CAIRO_FONT_WEIGHT_BOLD;
-  themes->large_font_theme[active_hover].weight = CAIRO_FONT_WEIGHT_BOLD;
-  themes->large_font_theme[inactive].r = 0.17;
-  themes->large_font_theme[inactive].g = 0.17;
-  themes->large_font_theme[inactive].b = 0.17;
-
-
-  themes->small_font_theme[active].weight = CAIRO_FONT_WEIGHT_BOLD;
-  themes->small_font_theme[active_hover].weight = CAIRO_FONT_WEIGHT_BOLD;
-  themes->small_font_theme[inactive].r = 0.17;
-  themes->small_font_theme[inactive].g = 0.17;
-  themes->small_font_theme[inactive].b = 0.17;
-
-
-  themes->medium_font_theme[active].weight = CAIRO_FONT_WEIGHT_BOLD;
-  themes->medium_font_theme[active_hover].weight = CAIRO_FONT_WEIGHT_BOLD;
-  themes->medium_font_theme[inactive].r = 0.17;
-  themes->medium_font_theme[inactive].g = 0.17;
-  themes->medium_font_theme[inactive].b = 0.17;
+  themes->font_theme[active].weight = CAIRO_FONT_WEIGHT_BOLD;
+  themes->font_theme[active_hover].weight = CAIRO_FONT_WEIGHT_BOLD;
+  themes->font_theme[inactive].r = 0.17;
+  themes->font_theme[inactive].g = 0.17;
+  themes->font_theme[inactive].b = 0.17;
 
 }
 
