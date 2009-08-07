@@ -708,11 +708,12 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
       else if( *p > position //find adjacent for enlarging
       &&  *p == *fp
       &&  size_change > 0 //enlarging
+      &&  !INTERSECTS(position, size, *fp, *fs)
       ) {
               
         overlap = -size_change;
         #ifdef SHOW_EDGE_RESIZE
-        printf("above/below LHS aligned, enlarging %d HEY\n", overlap);
+        printf("above/below LHS aligned, enlarging %d\n", overlap);
         #endif
         frames->list[i].indirect_resize.new_position = position;
       }
@@ -765,7 +766,7 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
       && position + size >= *fp + *fs       //New position/size completely surrounds other window
       && size_change > 0
       /* Need to double check that it intersects vertically in this special case */
-      && INTERSECTS(adj_position, adj_size, *fp, *fs)
+      && INTERSECTS(adj_position, adj_size, *fp_adj, *fs_adj)
       ) {
         printf("Oversize!\n");
         return; //restart with a more sensible value
