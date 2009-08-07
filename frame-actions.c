@@ -246,7 +246,8 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
       if(frame->h > frame->max_height) frame->h = frame->max_height;
       resize_frame(display, frame, themes);
     }
-    else change_frame_mode(display, frame, frame->mode, themes);
+    else if (frame->mode != tiling)  change_frame_mode(display, frame, frame->mode, themes);
+    else  change_frame_mode(display, frame, floating, themes);
   }
 
   if(free_spaces.list != NULL) free(free_spaces.list);

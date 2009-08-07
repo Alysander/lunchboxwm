@@ -139,70 +139,79 @@ int main (int argc, char* argv[]) {
 
   while(!done) {
     //always look for windows that have been destroyed first
-    //if(XCheckTypedEvent(display, DestroyNotify, &event)) ;
+    //if(XCheckTypedEvent(display, DestroyNotify, &event)) { ; }
     //then look for unmaps
-    if(XCheckTypedEvent(display, UnmapNotify, &event)) ; 
-    else XNextEvent(display, &event);
+    //else if(XCheckTypedEvent(display, UnmapNotify, &event)){ ; }
+    XNextEvent(display, &event);
 
     if(done) break;
     //these are from the StructureNotifyMask on the reparented window
     /* Resets clicked_frame, pulldown and clicked_widget and uses frames to remove a frame */
     switch(event.type) { 
       case DestroyNotify:  
-        #ifdef SHOW_DESTROY_NOTIFY_EVENT
-        printf("Destroyed window, ");
+        #ifdef SHOW_UNMAP_NOTIFY_EVENT
+        printf("Destroy window: %lu\n", (unsigned long)event.xdestroywindow.window);
         #endif
       case UnmapNotify:
         #ifdef SHOW_UNMAP_NOTIFY_EVENT
-        printf("Unmapping: %lu\n", (unsigned long)event.xdestroywindow.window);
+        printf("Unmapping window: %lu\n", (unsigned long)event.xunmap.window);
         #endif
         
-        for(int k = 0; k < workspaces.used; k++) {
-          struct Frame_list *frames = &workspaces.list[k];
-          for(i = 0; i < frames->used; i++) {
-            if(event.xany.window == frames->list[i].framed_window) {
-              #ifdef SHOW_UNMAP_NOTIFY_EVENT
-              printf("Unmapping window %s\n", frames->list[i].window_name);
-              #endif
-              XUngrabPointer(display, CurrentTime);
-              if(clicked_frame != -1) {
-                #ifdef SHOW_UNMAP_NOTIFY_EVENT
-                printf("Cancelling resize because a window was destroyed\n");
-                #endif
-                clicked_frame = -1;
-              }
-              if(pulldown) {
-                #ifdef SHOW_UNMAP_NOTIFY_EVENT
-                printf("Closing popup and cancelling grab\n");
-                #endif
-                XUnmapWindow(display, pulldown);
-                pulldown = 0;
-              }
-              clicked_widget = 0;
-              #ifdef SHOW_UNMAP_NOTIFY_EVENT
-              printf("Removed frame i:%d, framed_window %lu\n", i, (unsigned long)event.xany.window);
-              #endif
-              if(frames->focus.used > 0  
-              && frames->focus.list[frames->focus.used - 1] == frames->list[i].framed_window) { 
-                remove_focus(frames->list[i].framed_window, &frames->focus);
-                unfocus_frames(display, frames);
-              }
-              //don't bother the focussed window if it wasn't the window being unmapped
-              else if(frames->focus.used > 0) remove_focus(frames->list[i].framed_window, &frames->focus);
-              
-              remove_frame(display, frames, i, themes);
-              if(frames->used == 0) {
-                #ifdef SHOW_UNMAP_NOTIFY_EVENT
-                printf("Removed workspace %d, name %s\n", k, workspaces.list[k].workspace_name);
-                #endif
-                remove_frame_list(display, &workspaces, k, themes);
-                if(workspaces.used != 0) change_to_workspace(display, &workspaces, &current_workspace, 0, themes);
-                else change_to_workspace(display, &workspaces, &current_workspace, -1, themes);
-              }
-              break;
-            }
+        {
+          Window removed;
+          if(event.type == DestroyNotify) {
+            removed = event.xdestroywindow.window;
           }
-          if(i < frames->used) break;
+          else {
+            removed = event.xunmap.window;
+          }
+          for(int k = 0; k < workspaces.used; k++) {
+            struct Frame_list *frames = &workspaces.list[k];
+            for(i = 0; i < frames->used; i++) {
+              if(removed == frames->list[i].framed_window) {
+                #ifdef SHOW_UNMAP_NOTIFY_EVENT
+                printf("Unmapping window %s\n", frames->list[i].window_name);
+                #endif
+                XUngrabPointer(display, CurrentTime);
+                if(clicked_frame != -1) {
+                  #ifdef SHOW_UNMAP_NOTIFY_EVENT
+                  printf("Cancelling resize because a window was destroyed\n");
+                  #endif
+                  clicked_frame = -1;
+                }
+                if(pulldown) {
+                  #ifdef SHOW_UNMAP_NOTIFY_EVENT
+                  printf("Closing popup and cancelling grab\n");
+                  #endif
+                  XUnmapWindow(display, pulldown);
+                  pulldown = 0;
+                }
+                clicked_widget = 0;
+                #ifdef SHOW_UNMAP_NOTIFY_EVENT
+                printf("Removed frame i:%d, framed_window %lu\n", i, (unsigned long)removed);
+                #endif
+                if(frames->focus.used > 0  
+                && frames->focus.list[frames->focus.used - 1] == frames->list[i].framed_window) { 
+                  remove_focus(frames->list[i].framed_window, &frames->focus);
+                  unfocus_frames(display, frames);
+                }
+                //don't bother the focussed window if it wasn't the window being unmapped
+                else if(frames->focus.used > 0) remove_focus(frames->list[i].framed_window, &frames->focus);
+                
+                remove_frame(display, frames, i, themes);
+                if(frames->used == 0) {
+                  #ifdef SHOW_UNMAP_NOTIFY_EVENT
+                  printf("Removed workspace %d, name %s\n", k, workspaces.list[k].workspace_name);
+                  #endif
+                  remove_frame_list(display, &workspaces, k, themes);
+                  if(workspaces.used != 0) change_to_workspace(display, &workspaces, &current_workspace, 0, themes);
+                  else change_to_workspace(display, &workspaces, &current_workspace, -1, themes);
+                }
+                break;
+              }
+            }
+            if(i < frames->used) break;
+          }
         }
       break;
       
@@ -1001,8 +1010,10 @@ int main (int argc, char* argv[]) {
 
       case ConfigureRequest:
         #ifdef SHOW_CONFIGURE_REQUEST_EVENT
-        printf("ConfigureRequest window %lu, w: %d, h %d, ser %lu, send %d\n", 
+        printf("ConfigureRequest window %lu, x: %d: y: %d, w: %d, h %d, ser %lu, send %d\n", 
           event.xconfigurerequest.window,
+          event.xconfigurerequest.x,
+          event.xconfigurerequest.y,
           event.xconfigurerequest.width,
           event.xconfigurerequest.height,
           event.xconfigurerequest.serial, //last event processed
@@ -1016,34 +1027,33 @@ int main (int argc, char* argv[]) {
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
               printf("Configure window: %s\n", frames->list[i].window_name);
               #endif
-              if ((clicked_frame == i  &&  !pulldown) //this window is being resized
-              || frames->list[i].mode == tiling) {
+
+              if ( clicked_frame == i  &&  !pulldown ) { //this window is being resized
+              // || frames->list[i].mode == tiling 
                 //TODO  figure out how to handle tiled windows enlarging themselves.
                 #ifdef SHOW_CONFIGURE_REQUEST_EVENT
                 printf("Ignoring config req., due to ongoing resize operation or tiled window\n");
                 #endif
                 break;
               }
-
+               
               frames->list[i].w = event.xconfigurerequest.width + FRAME_HSPACE;
               frames->list[i].h = event.xconfigurerequest.height + FRAME_VSPACE;
+              if(frames->list[i].mode == tiling) drop_frame (display, frames, i, themes);
               check_frame_limits(display, &frames->list[i]);
-
+              
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
               printf("new width %d, new height %d\n", frames->list[i].w, frames->list[i].h);
               #endif
+              /* Raise Window if there has been a restack request */
               if(frames->list[i].mode != tiling
               && k == current_workspace
-              && (event.xconfigurerequest.detail == Above
-                 ||  event.xconfigurerequest.detail == TopIf)) {
+              && (event.xconfigurerequest.detail == Above || event.xconfigurerequest.detail == TopIf)) {
                 #ifdef SHOW_CONFIGURE_REQUEST_EVENT
                 printf("Recovering window in response to possible restack request\n");
-                //it would be better to try not to refocus unnecessaraly.
                 #endif
 
-                if(frames->list[i].mode == hidden) {
-                  change_frame_mode(display, &frames->list[i], floating, themes);
-                }
+                if(frames->list[i].mode == hidden) change_frame_mode(display, &frames->list[i], floating, themes);
                 stack_frame(display, &frames->list[i], &seps);
               }
               resize_frame(display, &frames->list[i], themes);
@@ -1113,17 +1123,25 @@ int main (int argc, char* argv[]) {
       case MapNotify:
       case ReparentNotify:
       case ConfigureNotify:
-      //ignore these events
+        #ifdef SHOW_CONFIGURE_NOTIFY_EVENT
+        printf("ConfigureNotify window %lu, x: %d, y %d, w: %d, h %d, ser %lu, send %d\n", 
+          event.xconfigure.window,
+          event.xconfigure.x,
+          event.xconfigure.y,
+          event.xconfigure.width,
+          event.xconfigure.height,
+          event.xconfigure.serial, //last event processed
+          event.xconfigure.send_event);
+        #endif
       break;
 
       default:
         //printf("Warning: Unhandled event %d\n", event.type);
       break;
     }
-  }
+  } //end main event loop
 
   if(pulldown) {
-    printf("pulldown 0\n");
     XUnmapWindow(display, pulldown);
     pulldown = 0;
   }
@@ -1133,7 +1151,9 @@ int main (int argc, char* argv[]) {
   free_cursors(display, &cursors);
 
   remove_themes(display,themes);
-  XCloseDisplay(display);  //this will close all open widnows, but not always free the allocated pixmaps. Valgrind won't pickup on leaked pixmaps.
+  
+  /* This will close all open windows, but not free any dangling pixmaps. Valgrind won't pickup on leaked pixmaps. */
+  XCloseDisplay(display);
 
   printf(".......... \n");
   return 1;

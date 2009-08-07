@@ -166,10 +166,12 @@ create_frame (Display *display, struct Frame_list* frames
   XSetErrorHandler(NULL);
   XUngrabServer(display);
 
-
-  XSelectInput(display, framed_window,  StructureNotifyMask | PropertyChangeMask);
-  //Property notify is used to update titles, structureNotify for destroyNotify events
-  XSelectInput(display, frame.widgets[window].widget, SubstructureRedirectMask | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  XSelectInput(display, framed_window,  PropertyChangeMask);
+  XSelectInput(display, frame.widgets[window].widget
+  , SubstructureRedirectMask | SubstructureNotifyMask | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  //Property notify is used to update titles, structureNotify for destroyNotify events. Some windows only send the destroy event (e.g., gimp splash screen)
+  XSync(display, False);  
+  
   //Intercept clicks so we can set the focus and possibly raise floating windows
   XGrabButton(display, AnyButton, 0, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
   XGrabButton(display, AnyButton, Mod2Mask, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None); //do it for numlock as well
@@ -177,10 +179,10 @@ create_frame (Display *display, struct Frame_list* frames
   XMoveResizeWindow(display, framed_window, 0, 0, frame.w - frame.hspace, frame.h - frame.vspace);  
   check_frame_limits(display, &frame);
   resize_frame(display, &frame, themes);
-  
-  
+   
   XMoveWindow(display, framed_window, 0, 0);
   XMapWindow(display, framed_window);  
+  XFlush(display);
   frames->list[frames->used] = frame;
   frames->used++;
   return (frames->used - 1);
@@ -190,8 +192,7 @@ create_frame (Display *display, struct Frame_list* frames
 void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) {
 
   XMoveResizeWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y, frame->w, frame->h);
-  XResizeWindow(display, frame->framed_window, frame->w - frame->hspace, frame->h - frame->vspace);
-
+  XMoveResizeWindow(display, frame->framed_window, 0, 0, frame->w - frame->hspace, frame->h - frame->vspace);
   /* Bit of a hack to make the title menu use only the minimum space required */
   int title_menu_text_diff = 0;
   int title_menu_rhs_w     = 0;
@@ -611,7 +612,7 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
     , &themes->font_theme[active], themes->window_type[frame->theme_type][title_menu_text].state_p[i]
     , XWidthOfScreen(screen), themes->window_type[frame->theme_type][title_menu_text].h);
     
-    //If this is mapped here, it might be shown in the wrong workspace: //XMapWindow(display, temp.menu.item);
+    //If this is mapped here, it might be shown in the wrong workspace, //XMapWindow(display, temp.menu.item);
     /* Show changes to background pixmaps */
     XMapWindow(display, temp.menu.state[i]);
     XMapWindow(display, temp.widgets[title_menu_text].state[i]);    

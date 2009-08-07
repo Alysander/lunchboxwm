@@ -2,14 +2,14 @@
 /* These control which printfs are shown */
 #define SHOW_SIG
 #define SHOW_STARTUP
-#define SHOW_EDGE_RESIZE
-#define SHOW_EDGE_RESIZE
-#define SHOW_FREE_SPACE_STEPS
-#define SHOW_FRAME_DROP  
+#define SHOW_CONFIGURE_REQUEST_EVENT
+#define SHOW_CONFIGURE_NOTIFY_EVENT
+#define SHOW_UNMAP_NOTIFY_EVENT
 /*
 #define SHOW_DESTROY_NOTIFY_EVENT     
 #define SHOW_UNMAP_NOTIFY_EVENT       
 #define SHOW_MAP_REQUEST_EVENT       
+#define SHOW_EDGE_RESIZE
 #define SHOW_FRAME_HINTS 
 #define SHOW_CONFIGURE_REQUEST_EVENT  
 #define SHOW_BUTTON_PRESS_EVENT       
