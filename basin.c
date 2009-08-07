@@ -1216,7 +1216,7 @@ void create_hints (Display *display, struct Atoms *atoms) {
   number_of_atoms++; atoms->supporting_wm_check        = XInternAtom(display, "_NET_SUPPORTING_WM_CHECK", False);
   number_of_atoms++; atoms->number_of_desktops         = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);
   number_of_atoms++; atoms->desktop_geometry           = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);
-  number_of_atoms++; atoms->wm_full_placement          = XInternAtom(display, "_NET_WM_FULL_PLACEMENT", False);
+//  number_of_atoms++; atoms->wm_full_placement          = XInternAtom(display, "_NET_WM_FULL_PLACEMENT", False);
   number_of_atoms++; atoms->frame_extents              = XInternAtom(display, "_NET_FRAME_EXTENTS", False);
   number_of_atoms++; atoms->wm_window_type             = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
   number_of_atoms++; atoms->wm_window_type_normal      = XInternAtom(display, "_NET_WM_WINDOW_TYPE_NORMAL", False);
