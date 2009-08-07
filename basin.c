@@ -401,8 +401,8 @@ int main (int argc, char* argv[]) {
 
                 if(themes->window_type[frames->list[i].theme_type][mode_dropdown_hotspot].x < 0) pointer_start_x += frames->list[i].w;
                 if(themes->window_type[frames->list[i].theme_type][mode_dropdown_hotspot].y < 0) pointer_start_y += frames->list[i].h;
-                pointer_start_x += themes->window_type[frames->list[i].type][mode_dropdown_hotspot].x;
-                pointer_start_y += themes->window_type[frames->list[i].type][mode_dropdown_hotspot].y;
+                pointer_start_x += themes->window_type[frames->list[i].theme_type][mode_dropdown_hotspot].x;
+                pointer_start_y += themes->window_type[frames->list[i].theme_type][mode_dropdown_hotspot].y;
 
 
                 #ifdef SHOW_BUTTON_PRESS_EVENT
