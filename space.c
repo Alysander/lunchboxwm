@@ -47,8 +47,7 @@ struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_lis
   return free_spaces;
 }
 
-/* This implements "Free space modeling for placing rectangles without overlapping" by Marc Bernard and Francois Jacquenet.
-It frees the used space */
+/* This implements "Free space modeling for placing rectangles without overlapping" by Marc Bernard and Francois Jacquenet. */
 struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spaces, int w, int h) {
 
   struct Rectangle_list free_spaces  = {.used = 0, .max = 8, .list = NULL};
@@ -80,14 +79,16 @@ struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spac
       free(used_spaces->list);
       used_spaces->list = NULL;
       //probably could do something more intelligent here
-      //printf("Error: out of memory for calculating free spaces on the screen.\n");
+      #ifdef SHOW_FREE_SPACE_STEPS     
+      printf("Error: out of memory for calculating free spaces on the screen.\n");
+      #endif
       return free_spaces;
     }
     printf("\nPlacing next rectangle\n");    
     for(j = 0; j < free_spaces.used; j++) {
       struct Rectangle new = {0, 0, 0, 0};
       #ifdef SHOW_FREE_SPACE_STEPS
-      //printf("j %d, free_spaces.used %d, free_spaces.max %d\n", j, free_spaces.used, free_spaces.max);
+      printf("j %d, free_spaces.used %d, free_spaces.max %d\n", j, free_spaces.used, free_spaces.max);
       #endif
       //if an edge intersects, modify opposing edge.  add modified to new_spaces and original to old_spaces
       if(INTERSECTS_OUTSIDE(free_spaces.list[j].y, free_spaces.list[j].h, used_spaces->list[i].y, used_spaces->list[i].h)
@@ -121,7 +122,7 @@ struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spac
         else if(INTERSECTS_BEFORE(free_spaces.list[j].x, free_spaces.list[j].w, used_spaces->list[i].x, used_spaces->list[i].w) ) {
           //the free space comes after the placed rectangle, modify it's LHS
           #ifdef SHOW_FREE_SPACE_STEPS         
-          printf("RHS of free space modified\n", j, free_spaces.list[j].w, new.w);
+          printf("RHS of free space modified\n");
           #endif
           new = free_spaces.list[j];
           new.w = used_spaces->list[i].x - new.x;          
@@ -145,7 +146,7 @@ struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spac
       }
       if(INTERSECTS(free_spaces.list[j].x, free_spaces.list[j].w, used_spaces->list[i].x, used_spaces->list[i].w) ) {
         #ifdef SHOW_FREE_SPACE_STEPS
-        //printf("i %d intersects j %d in y\n", i, j);
+        printf("i %d intersects j %d in y\n", i, j);
         #endif
         if(INTERSECTS_WITHIN(free_spaces.list[j].y, free_spaces.list[j].h, used_spaces->list[i].y, used_spaces->list[i].h) ) {
           #ifdef SHOW_FREE_SPACE_STEPS
@@ -249,19 +250,23 @@ void add_rectangle(struct Rectangle_list *list, struct Rectangle new) {
   }
 
   //start from the end in case it was just added. Don't add rectangles which are already covered/included
+
   for(int i = list->used - 1; i >= 0; i--) {
     if(list->list[i].x <= new.x 
     && list->list[i].y <= new.y
     && list->list[i].w + list->list[i].x >= new.w + new.x
     && list->list[i].h + list->list[i].y >= new.h + new.y) {
+      #ifdef SHOW_FREE_SPACE_STEPS     
       printf("list %p\n", (void *)list->list);
       printf("adding space: x %d, y %d, w %d, h %d\n", new.x, new.y, new.w, new.h);
-      printf("container %d: x %d, y %d, w %d, h %d\n", i, list->list[i].x, list->list[i].y, list->list[i].w, list->list[i].h);
+      printf("but container %d: x %d, y %d, w %d, h %d\n", i, list->list[i].x, list->list[i].y, list->list[i].w, list->list[i].h);
+      #endif
       return;
     }
   }
-  
+  #ifdef SHOW_FREE_SPACE_STEPS     
   printf("Have added space: x %d, y %d, w %d, h %d\n", new.x, new.y, new.w, new.h);
+  #endif
   list->list[list->used] = new;
   list->used++;
 }
@@ -297,7 +302,7 @@ double calculate_displacement(struct Rectangle source, struct Rectangle dest, in
   
   if(source.w > dest.w
   || source.h > dest.h) {
-   // printf("Doesn't fit: source w %d, dest w %d, source h %d, dest h %d\n", source.w, dest.w, source.h, dest.h);
+    printf("Doesn't fit: source w %d, dest w %d, source h %d, dest h %d\n", source.w, dest.w, source.h, dest.h);
     return -1;
   }
    

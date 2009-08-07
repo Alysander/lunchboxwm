@@ -5,7 +5,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/Xatom.h>
-
+#include <limits.h>
 #include "xcheck.h"
 #include "basin.h"
 #include "menus.h"
@@ -133,6 +133,8 @@ a best-fit algorithm is used to determine the closest size.
 If all spaces are smaller than the window's minimum size 
 (which can only happen if the window's mode is being changed) the window
 remains in it's previous mode. Otherwise the window's mode is changed to tiling.
+
+TODO This frame 
 ********/
 void 
 drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, struct Themes *themes) {
@@ -160,7 +162,8 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
   else free_spaces = get_free_screen_spaces (display, frames);
 
   if(free_spaces.list == NULL) return;
-  
+  printf("end result\n");
+  /* Try and fit the window into a space. */
   for(unsigned int k = 0; k < free_spaces.used; k++) {
     double displacement = 0;
     int dx = 0;
@@ -181,28 +184,42 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
   
   //the window is too large to fit in any current spaces.
   //find the space which is the closest size
-  if(min == -1) { 
+  if(min != -1) {
+    #ifdef SHOW_FRAME_DROP  
+    printf("Found min_dx %d, min_dy %d, distance %f\n", min_dx, min_dy, (float)min_displacement);
+    #endif
+    change_frame_mode(display, frame, tiling, themes);
+    frame->x += min_dx;
+    frame->y += min_dy;
+    XMoveWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y);
+    XFlush(display);
+  }
+  else { 
     #ifdef SHOW_FRAME_DROP  
     printf("move failed - finding the nearest size\n");
     #endif
-    double w_proportion, h_proportion, current_fit;
-    double best_fit = -1;
+    //double w_proportion, h_proportion, current_fit;
+    int w_over = 0, h_over = 0;
+    int current_over_total;
+    int best_fit = INT_MAX;
     int best_space = -1;
     for(unsigned int k = 0; k < free_spaces.used; k++) {
       if(free_spaces.list[k].w == 0
       || free_spaces.list[k].h == 0) {
-        //printf("Error: FOUND ZERO AREA FREE SPACE\n");
+        #ifdef SHOW_FRAME_DROP  
+        printf("Error: FOUND ZERO AREA FREE SPACE\n");
+        #endif
         continue;
       }
-      w_proportion = (double)frame->w / free_spaces.list[k].w;
-      h_proportion = (double)frame->h / free_spaces.list[k].h;
-      if(w_proportion > 1) w_proportion = 1;
-      if(h_proportion > 1) h_proportion = 1;
-      current_fit = w_proportion * h_proportion;
-      if(current_fit > best_fit
+      if(frame->w > free_spaces.list[k].w) w_over = frame->w - free_spaces.list[k].w;
+      if(frame->h > free_spaces.list[k].h) h_over = frame->h - free_spaces.list[k].h;
+      
+      current_over_total = w_over + h_over;
+      printf("Current total over %d for space %d\n", current_over_total, k);
+      if(current_over_total < best_fit
       && free_spaces.list[k].w >= frame->min_width
       && free_spaces.list[k].h >= frame->min_height) {
-        best_fit = current_fit;
+        best_fit = current_over_total;
         best_space = k;
       }
     }
@@ -230,16 +247,6 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
       resize_frame(display, frame, themes);
     }
     else change_frame_mode(display, frame, frame->mode, themes);
-  }
-  else {
-    #ifdef SHOW_FRAME_DROP  
-    printf("Found min_dx %d, min_dy %d, distance %f\n", min_dx, min_dy, (float)min_displacement);
-    #endif
-    change_frame_mode(display, frame, tiling, themes);
-    frame->x += min_dx;
-    frame->y += min_dy;
-    XMoveWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y);
-    XFlush(display);
   }
 
   if(free_spaces.list != NULL) free(free_spaces.list);

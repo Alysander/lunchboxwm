@@ -4,6 +4,8 @@
 #define SHOW_STARTUP
 #define SHOW_EDGE_RESIZE
 #define SHOW_EDGE_RESIZE
+#define SHOW_FREE_SPACE_STEPS
+#define SHOW_FRAME_DROP  
 /*
 #define SHOW_DESTROY_NOTIFY_EVENT     
 #define SHOW_UNMAP_NOTIFY_EVENT       

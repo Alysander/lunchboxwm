@@ -136,14 +136,15 @@ create_frame (Display *display, struct Frame_list* frames
   frame.transient = 0;
   frame.x = get_attributes.x - themes->window_type[frame.theme_type][window].x;
   frame.y = get_attributes.y - themes->window_type[frame.theme_type][window].y;
-  frame.w = get_attributes.width;  
-  frame.h = get_attributes.height;
 
   frame.hspace = 0 - themes->window_type[frame.theme_type][window].w;
   frame.vspace = 0 - themes->window_type[frame.theme_type][window].h;
 
-  //TODO icon support  get_frame_wm_hints(display, &frame); 
+  frame.w = get_attributes.width; 
+  frame.h = get_attributes.height;
 
+  //TODO icon support  get_frame_wm_hints(display, &frame); 
+  
   get_frame_hints(display, &frame);
   get_frame_type_and_mode (display, &frame, atoms, themes);
   get_frame_state(display, &frame, atoms);
@@ -151,7 +152,6 @@ create_frame (Display *display, struct Frame_list* frames
   create_frame_name(display, window_menu, &frame, themes);
   change_frame_mode(display, &frame, unset, themes);
   
-  XMoveResizeWindow(display, framed_window, 0, 0, frame.w - frame.hspace, frame.h - frame.vspace);
   XSetWindowBorderWidth(display, framed_window, 0);
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);
@@ -173,10 +173,13 @@ create_frame (Display *display, struct Frame_list* frames
   //Intercept clicks so we can set the focus and possibly raise floating windows
   XGrabButton(display, AnyButton, 0, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
   XGrabButton(display, AnyButton, Mod2Mask, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None); //do it for numlock as well
-    
+  
+  XMoveResizeWindow(display, framed_window, 0, 0, frame.w - frame.hspace, frame.h - frame.vspace);  
   check_frame_limits(display, &frame);
   resize_frame(display, &frame, themes);
   
+  
+  XMoveWindow(display, framed_window, 0, 0);
   XMapWindow(display, framed_window);  
   frames->list[frames->used] = frame;
   frames->used++;
@@ -608,8 +611,7 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
     , &themes->font_theme[active], themes->window_type[frame->theme_type][title_menu_text].state_p[i]
     , XWidthOfScreen(screen), themes->window_type[frame->theme_type][title_menu_text].h);
     
-    //If this is mapped here, it might be shown in the wrong workspace,
-    //XMapWindow(display, temp.menu.item);
+    //If this is mapped here, it might be shown in the wrong workspace: //XMapWindow(display, temp.menu.item);
     /* Show changes to background pixmaps */
     XMapWindow(display, temp.menu.state[i]);
     XMapWindow(display, temp.widgets[title_menu_text].state[i]);    
@@ -617,9 +619,6 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
   xcheck_raisewin(display, temp.menu.state[active]);
   //these are the items for inside the menu
   //need to create all these windows.
-
-  //TODO map new titles 
-
   
   {
     XWindowAttributes attr;
