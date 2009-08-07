@@ -302,7 +302,7 @@ void show_title_menu(Display *display, struct Popup_menu *title_menu, Window cal
   }
   
 
-  printf("Showing title menu at %d %d\n", x,y);
+  //printf("Showing title menu at %d %d\n", x,y);
 
   title_menu->inner_width = max_length;
   title_menu->inner_height = themes->popup_menu[medium_menu_item_mid].h * frames->used;
@@ -315,7 +315,7 @@ void show_title_menu(Display *display, struct Popup_menu *title_menu, Window cal
 void show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *mode_menu
 , struct Frame *active_frame, int x, int y) {
 
-  printf("Showing mode mode\n");
+  //printf("Showing mode mode\n");
   if(active_frame->mode == floating) 
     xcheck_raisewin(display, mode_menu->items[floating].state[active]);
   else xcheck_raisewin(display, mode_menu->items[floating].state[normal]);

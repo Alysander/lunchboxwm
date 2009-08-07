@@ -32,30 +32,33 @@ supress_xerror(Display *display, XErrorEvent *event) {
 /* This function reparents a framed window to root and then destroys the frame as well as cleaning up the frames drawing surfaces */
 /* It is used when the framed window has been unmapped or destroyed, or is about to be*/
 void 
-remove_frame(Display* display, struct Frame_list* frames, int index) {
+remove_frame(Display* display, struct Frame_list* frames, int index, struct Themes *themes) {
   XWindowChanges changes;
   Window root = DefaultRootWindow(display);
   unsigned int mask = CWSibling | CWStackMode;  
 
   changes.stack_mode = Below;
   changes.sibling = frames->list[index].widgets[frame_parent].widget;
-
+  struct Frame *frame = &frames->list[index];
   //free_frame_icon_size(display, &frames->list[index]);
   //always unmap the title pulldown before removing the frame or else it will crash
   //XDestroyWindow(display, frames->list[index].menu_item.backing);
-  
+
+  XDestroyWindow(display, frames->list[index].menu.item);  
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);  
-  XReparentWindow(display, frames->list[index].framed_window, root, frames->list[index].x, frames->list[index].y);
-  XConfigureWindow(display, frames->list[index].framed_window, mask, &changes);  //keep the stacking order
-  XRemoveFromSaveSet (display, frames->list[index].framed_window); //this will not destroy the window because it has been reparented to root
-  XDestroyWindow(display, frames->list[index].widgets[frame_parent].widget);
+  XReparentWindow(display, frame->framed_window, root
+  , frame->x + themes->window_type[frame->theme_type][window].x
+  , frame->y + themes->window_type[frame->theme_type][window].y);
+  //TODO need to change the frame w,h attributes here
+  XConfigureWindow(display, frame->framed_window, mask, &changes);  //keep the stacking order
+  XRemoveFromSaveSet (display, frame->framed_window); //this will not destroy the window because it has been reparented to root
+  XDestroyWindow(display, frame->widgets[frame_parent].widget);
   XSync(display, False);
   XSetErrorHandler(NULL);    
   XUngrabServer(display);
 
   free_frame_name(&frames->list[index]);
-  XDestroyWindow(display, frames->list[index].menu.item);
   if((frames->used != 1) && (index != frames->used - 1)) { //the frame is not alone or the last
     frames->list[index] = frames->list[frames->used - 1]; //swap the deleted frame with the last frame
   }
@@ -115,7 +118,7 @@ create_frame (Display *display, struct Frame_list* frames
     else return -1;
     frames->max *= 2;
   }
-  printf("Creating frames->list[%d] with window %lu, connection %lu\n", frames->used, (unsigned long)framed_window, (unsigned long)display);
+  //printf("Creating frames->list[%d] with window %lu, connection %lu\n", frames->used, (unsigned long)framed_window, (unsigned long)display);
   //add this window to the save set as soon as possible so that if an error occurs it is still available
 
   XAddToSaveSet(display, framed_window); 
@@ -131,8 +134,8 @@ create_frame (Display *display, struct Frame_list* frames
   frame.mode = unset;
   frame.state = none;
   frame.transient = 0;
-  frame.x = get_attributes.x;
-  frame.y = get_attributes.y;
+  frame.x = get_attributes.x - themes->window_type[frame.theme_type][window].x;
+  frame.y = get_attributes.y - themes->window_type[frame.theme_type][window].y;
   frame.w = get_attributes.width;  
   frame.h = get_attributes.height;
 
@@ -217,7 +220,6 @@ void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) 
     }
   }
   XFlush(display);
-  XSync(display, False);
 }
 
 

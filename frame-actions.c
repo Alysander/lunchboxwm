@@ -359,12 +359,12 @@ move_frame (Display *display, struct Frame *frame
   // and this is then used to decide when to stretch the window from the edge.
 
   Screen* screen = DefaultScreenOfDisplay(display);
-  printf("Got a move frame\n");
+
   int new_width = 0;
   int new_height = 0;
   int new_x = mouse_root_x - *pointer_start_x;
   int new_y = mouse_root_y - *pointer_start_y;
-  printf("move frame %s\n", frame->window_name);
+
   //do not attempt to resize if the window is larger than the screen
   if(frame->min_width <= XWidthOfScreen(screen)
   && frame->min_height <= XHeightOfScreen(screen) - MENUBAR_HEIGHT
@@ -532,7 +532,9 @@ stack_frame(Display *display, struct Frame *frame, struct Seperators *seps) {
   unsigned int mask = CWSibling | CWStackMode;  
   changes.stack_mode = Below;
 
+  #ifdef SHOW_BUTTON_PRESS_EVENT
   printf("stacking window %s\n", frame->window_name);
+  #endif
   
   if(frame->mode == tiling) 
   changes.sibling = seps->tiling_seperator;
@@ -546,11 +548,16 @@ stack_frame(Display *display, struct Frame *frame, struct Seperators *seps) {
 }
 
 /******
-maybe remove overlap variable and instead simply set the indirect resize parameters
-and just reset them is something goes wrong?
+
+
+axis is either x or y
+size is the requested size
+position is the requested position
+
 ******/
-void resize_tiling_frame(Display *display, struct Frame_list *frames, int index, char axis, int position, int size, struct Themes *themes) {
-  printf("Got a resize_tilting_frame\n");
+void resize_tiling_frame(Display *display, struct Frame_list *frames, int index, char axis
+, int position, int size, struct Themes *themes) {
+
   /******
   Purpose:  
     Resizes a window and enlarges any adjacent tiled windows in either axis
@@ -562,21 +569,24 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
     size is the new width or height 
     position is the new x or y co-ordinate and is within a valid range.
   *****/
-  
+  /****
+    BUG frame space might be frame dependent
+    BUG if a window can't be enlarged indirectly, (reached its max) that is fine, don't try to enlarge
+  ****/  
   int shrink_margin = 1;
   
-  int size_change;
-  int overlap;
-  int adj_position, adj_size;
-  int frame_space;
+  int size_change;            //size change of selected frame
+  int overlap;                //amount of requested overlap between selected frame and adjacent/aligned frame
+  int adj_position, adj_size; //position/size in OTHER direction
+  int frame_space;            //amount of space used by theme.
       
   //variables for the index frame and variables for the iterated frame
   int *min_size, *fmin_size;
   int *max_size, *fmax_size;
-  int *s, *fs;  //size
-  int *p, *fp;  //position
-  int *fs_adj;  //size of range of values of adjacent frames in perpendicular axis
-  int *fp_adj;  //position of range of values of range of adjacent frames in perpendicular axis
+  int *s, *fs;  //size of adjacent/aligned frame
+  int *p, *fp;  //position of adjacent/aligned frame
+  int *fs_adj;  //size of range of values of adjacent/aligned frame in perpendicular axis
+  int *fp_adj;  //position of range of values of adjacent/aligned frame in perpendicular axis
   
   #ifdef SHOW_EDGE_RESIZE
   printf("resize tiling frame %s\n", frames->list[index].window_name);
@@ -584,8 +594,8 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
   if(axis == 'x') {
     min_size = &frames->list[index].min_width;
     max_size = &frames->list[index].max_width;
-    s = &frames->list[index].w;
     p = &frames->list[index].x;
+    s = &frames->list[index].w;
     adj_position = frames->list[index].y;
     adj_size = frames->list[index].h;
     frame_space = frames->list[index].hspace;
@@ -593,18 +603,24 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
   else if(axis == 'y') {
     min_size = &frames->list[index].min_height;
     max_size = &frames->list[index].max_height;
-    s = &frames->list[index].h;
     p = &frames->list[index].y;
+    s = &frames->list[index].h;
     adj_position = frames->list[index].x;
     adj_size = frames->list[index].w;
     frame_space = frames->list[index].vspace;
   }
-
-  size_change = size - *s; //the size difference for the specified frame
   
-  if(size < *min_size + frame_space  
-  || size > *max_size
-  || size_change == 0) return;
+  if(size < *min_size + frame_space) {
+    size = *min_size + frame_space;
+    printf("Set size to minimum size + frame space\n%d\n", size);
+  }
+  if(size > *max_size) {
+    size = *max_size; //should this have a frame space added to it??
+    printf("Set size to maximum size %d\n", size);
+  }
+
+  size_change = size - *s; //the size difference for the specified frame  
+  if (size_change == 0) return;
   
   if(size_change > 0) shrink_margin = 0;
 
@@ -613,7 +629,6 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
   #endif
   while(True) {  
     int i = 0;
-    if(size < *min_size + frame_space  ||  size > *max_size) return;
     
     for(; i < frames->used; i++) {
       if(i == index) {
@@ -622,223 +637,235 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
         continue;
       }
 
-      if(frames->list[i].mode == tiling) {
+      if(frames->list[i].mode != tiling) continue;
 
-        if(axis == 'x') {
-          fs = &frames->list[i].w;
-          fp = &frames->list[i].x;
-          fmin_size = &frames->list[i].min_width;
-          fmax_size = &frames->list[i].max_width;
-          fs_adj = &frames->list[i].h;
-          fp_adj = &frames->list[i].y;
+      /* Reset per frame variables */
+      if(axis == 'x') {
+        fs = &frames->list[i].w;
+        fp = &frames->list[i].x;
+        fmin_size = &frames->list[i].min_width;
+        fmax_size = &frames->list[i].max_width;
+        fs_adj = &frames->list[i].h;
+        fp_adj = &frames->list[i].y;
+      }
+      else if(axis == 'y') {
+        fs = &frames->list[i].h;
+        fp = &frames->list[i].y;
+        fmin_size = &frames->list[i].min_height;
+        fmax_size = &frames->list[i].max_height;
+        fs_adj = &frames->list[i].w;
+        fp_adj = &frames->list[i].x;
+      }
+      //if not within perpendicular range
+      if(!((adj_position + adj_size > *fp_adj  &&  adj_position <= *fp_adj)
+           || (adj_position < *fp_adj + *fs_adj   &&  adj_position >= *fp_adj)
+           || (adj_position <= *fp_adj  &&  adj_position + adj_size >= *fp_adj + *fs_adj)
+        )) {
+        frames->list[i].indirect_resize.new_size = 0; //vertically out of the way
+        continue;
+      }
+        
+      #ifdef SHOW_EDGE_RESIZE
+      printf("Frame \" %s \" inside perp range. \n", frames->list[i].window_name);
+      #endif
+      //the size_change < 0 test determines the direction of the drag and which side is affected
+      if( *p == position
+      &&  *p + *s >= *fp + *fs
+      &&  *p + *s <= *fp + *fs - size_change
+      &&  size_change < 0 //shrinking
+      ) {
+        overlap = (*fp + *fs) - (size + position);
+        #ifdef SHOW_EDGE_RESIZE
+        printf("above/below RHS aligned, shrinking %d\n", overlap);
+        #endif
+        frames->list[i].indirect_resize.new_position = *fp;
+      }
+      
+      else if(*p < position
+      &&  *p <= *fp
+      &&  *p - size_change >= *fp
+      &&  size_change < 0 //shrinking
+      ) {           
+        overlap = position - *fp;
+        #ifdef SHOW_EDGE_RESIZE
+        printf("above/below LHS aligned, shrinking %d\n", overlap);
+        #endif
+        frames->list[i].indirect_resize.new_position = *fp + overlap;
+      }
+
+      else if( *p == position //find adjacent for enlarging (indirect enlarge)
+      &&  *p + *s == *fp + *fs
+      &&  *fp <= *p + *s
+      &&  size_change > 0 //enlarging
+      ) {
+        overlap = -size_change;
+        #ifdef SHOW_EDGE_RESIZE
+        printf("above/below RHS aligned, enlarging %d \n", overlap);
+        #endif
+        frames->list[i].indirect_resize.new_position = *fp;
+      }
+      
+      else if( *p > position //find adjacent for enlarging
+      &&  *p == *fp
+      &&  size_change > 0 //enlarging
+      ) {
+              
+        overlap = -size_change;
+        #ifdef SHOW_EDGE_RESIZE
+        printf("above/below LHS aligned, enlarging %d HEY\n", overlap);
+        #endif
+        frames->list[i].indirect_resize.new_position = position;
+      }
+      
+      else if(*p + *s + shrink_margin > *fp //find adjacent for shrinking
+      &&  *p + *s <= *fp 
+      &&  size_change < 0 //shrinking
+      &&  *p == position) {
+
+        overlap = position + size - *fp;
+        #ifdef SHOW_EDGE_RESIZE
+        printf("found window adjacent to RHS, shrinking %d\n", overlap);
+        #endif
+        frames->list[i].indirect_resize.new_position = *fp + overlap;
+      }
+      else if(position + size  > *fp //find overlapped for enlarging
+      &&  position < *fp
+      &&  size_change > 0 //enlarging       
+      &&  *p == position) {
+        overlap = position + size - *fp;
+        #ifdef SHOW_EDGE_RESIZE
+        printf("found window overlapped on RHS, enlarging %d\n", overlap);
+        #endif
+        frames->list[i].indirect_resize.new_position = *fp + overlap;          
+      }
+
+      else if(*p < *fp + *fs + shrink_margin //find adjacent for shrinking
+      &&  *p > *fp
+      &&  size_change < 0 //shrinking
+      &&  *p < position) { 
+        overlap = *fp + *fs - position;
+        #ifdef SHOW_EDGE_RESIZE
+        printf("found window adjacent to LHS shrinking %d\n", overlap);
+        #endif
+        frames->list[i].indirect_resize.new_position = *fp;                  
+      }
+      else if(position < *fp + *fs //find overlapped for enlarging
+      &&  position > *fp  //new position on other side of window
+      &&  *p > position   //moving left
+      &&  *fp < *p        //initial position on RHS of window
+      &&  size_change > 0 //enlarging
+      ) {
+        overlap = *fp + *fs - position;
+        #ifdef SHOW_EDGE_RESIZE
+        printf("found window overlapped on LHS, enlarging %d\n", overlap);
+        #endif
+        frames->list[i].indirect_resize.new_position = *fp;                              
+      }
+      else if(position <= *fp 
+      && position + size >= *fp + *fs       //New position/size completely surrounds other window
+      && size_change > 0
+      /* Need to double check that it intersects vertically in this special case */
+      && INTERSECTS(adj_position, adj_size, *fp, *fs)
+      ) {
+        printf("Oversize!\n");
+        return; //restart with a more sensible value
+      }
+      else {
+        frames->list[i].indirect_resize.new_size = 0; //horizontally out of the way
+        continue;
+      }
+
+      /* if windows are adjacent and being affected, 
+         we need to check if we need to increase the size of opposing axis potentential range
+         in order to get indirect resizes of other windows */            
+      if(*fp_adj < adj_position  &&  *fp_adj + *fs_adj - adj_position > adj_size) {
+        #ifdef SHOW_EDGE_RESIZE
+        printf("enlarging adjacency area\n");
+        #endif
+        //completely encloses the area that encloses the adjacent windows
+        
+        adj_position = *fp_adj;
+        adj_size = *fs_adj;
+        break; //this will cause the loop to reset with the new values
+      }
+      else if(*fp_adj + *fs_adj - adj_position > adj_size) {
+        //extends below the area that encloses the adjacent windows
+        #ifdef SHOW_EDGE_RESIZE
+        printf("enlarging adjacency area in h\n");
+        #endif
+        adj_size = *fp_adj + *fs_adj - adj_position;
+        #ifdef SHOW_EDGE_RESIZE
+        printf("adj_position %d, adj_size %d \n", adj_position, adj_size);
+        #endif
+        break; //this will cause the loop to reset with the new value
+      }
+      else if(*fp_adj < adj_position) {
+        //extends above the adjacency area
+        #ifdef SHOW_EDGE_RESIZE
+        printf("enlarging adjacency area in position \n");
+        #endif
+        adj_size = adj_position + adj_size - *fp_adj;
+        adj_position = *fp_adj;
+        break; //this will cause the loop to reset with the new values
+      }
+
+      if(*fs - overlap >= *fmin_size + frame_space 
+      && *fs - overlap <= *fmax_size) {
+        frames->list[i].indirect_resize.new_size = *fs - overlap;
+        printf("Success\n");
+      }
+      else if(size_change < 0
+      &&  *fs - overlap >= *fmax_size) {
+        frames->list[i].indirect_resize.new_size = *fmax_size; 
+        frames->list[i].indirect_resize.new_position = *fp;
+        printf("This one\n");
+      }   
+      else { /* The adjacent window has reached its minimum size. Reduce the re*/
+        int amount_over = 1; //OPTIMIZATION. Calculate the final answer.
+        /* Already Positive */                          //if the selected window is growing, increase its size until it fits
+        if(size_change < 0) amount_over = -amount_over; //if the selected window is shrinking, reduce its size until it fits
+        
+        int new_size = size - amount_over;
+        int new_position = position;
+        
+        if(position != *p) { //this is causing the position to change
+          new_position = position + amount_over;
         }
-        else if(axis == 'y') {
-          fs = &frames->list[i].h;
-          fp = &frames->list[i].y;
-          fmin_size = &frames->list[i].min_height;
-          fmax_size = &frames->list[i].max_height;
-          fs_adj = &frames->list[i].w;
-          fp_adj = &frames->list[i].x;
+        printf("New position %d\n", new_position);
+        
+        if(size_change > 0 &&  (new_size >= size || new_size <= *s)) {  
+          printf("Cannot resize, cancelling ENLARGE resize.");
+          return;
         }
-        //if within perpendicular range
-        if((adj_position + adj_size > *fp_adj  &&  adj_position <= *fp_adj)
-        || (adj_position < *fp_adj + *fs_adj   &&  adj_position >= *fp_adj)
-        || (adj_position <= *fp_adj  &&  adj_position + adj_size >= *fp_adj + *fs_adj)
-        ) {
-          
-          #ifdef SHOW_EDGE_RESIZE
-          printf("Frame \" %s \" inside perp range. \n", frames->list[i].window_name);
-          #endif
-          //the size_change < 0 test determines the direction of the drag and which side is affected
-          if( *p == position
-          &&  *p + *s >= *fp + *fs
-          &&  *p + *s <= *fp + *fs - size_change
-          &&  size_change < 0 //shrinking
-          ) {
-            overlap = (*fp + *fs) - (size + position);
-            #ifdef SHOW_EDGE_RESIZE
-            printf("above/below RHS aligned, shrinking %d\n", overlap);
-            #endif
-            frames->list[i].indirect_resize.new_position = *fp;
-          }
-          
-          else if(*p < position
-          &&  *p <= *fp
-          &&  *p - size_change >= *fp
-          &&  size_change < 0 //shrinking
-          ) {           
-            overlap = position - *fp;
-            #ifdef SHOW_EDGE_RESIZE
-            printf("above/below LHS aligned, shrinking %d\n", overlap);
-            #endif
-            frames->list[i].indirect_resize.new_position = *fp + overlap;
-          }
-
-         else if( *p == position //find adjacent for enlarging (indirect enlarge)
-          &&  *p + *s == *fp + *fs
-          &&  *fp <= *p + *s
-          &&  size_change > 0 //enlarging
-          ) {
-            overlap = -size_change;
-            #ifdef SHOW_EDGE_RESIZE
-            printf("above/below RHS aligned, enlarging %d \n", overlap);
-            #endif
-            frames->list[i].indirect_resize.new_position = *fp;
-          }
-          
-          else if( *p > position //find adjacent for enlarging
-          &&  *p == *fp
-          &&  size_change > 0 //enlarging
-          ) {
-                 
-            overlap = -size_change;
-            #ifdef SHOW_EDGE_RESIZE
-            printf("above/below LHS aligned, enlarging %d HEY\n", overlap);
-            #endif
-            frames->list[i].indirect_resize.new_position = position;
-          }
-          
-          else if(*p + *s + shrink_margin > *fp //find adjacent for shrinking
-          &&  *p + *s <= *fp 
-          &&  size_change < 0 //shrinking
-          &&  *p == position) {
-
-            overlap = position + size - *fp;
-            #ifdef SHOW_EDGE_RESIZE
-            printf("found window adjacent to RHS, shrinking %d\n", overlap);
-            #endif
-            frames->list[i].indirect_resize.new_position = *fp + overlap;
-          }
-          else if(position + size  > *fp //find overlapped for enlarging
-          &&  position < *fp
-          &&  size_change > 0 //enlarging       
-          &&  *p == position) {
-            overlap = position + size - *fp;
-            #ifdef SHOW_EDGE_RESIZE
-            printf("found window overlapped on RHS, enlarging %d\n", overlap);
-            #endif
-            frames->list[i].indirect_resize.new_position = *fp + overlap;          
-          }
-          else if(*p < *fp + *fs + shrink_margin //find adjacent for shrinking
-          &&  *p > *fp
-          &&  size_change < 0 //shrinking
-          &&  *p < position) { 
-            overlap = *fp + *fs - position;
-            #ifdef SHOW_EDGE_RESIZE
-            printf("found window adjacent to LHS shrinking %d\n", overlap);
-            #endif
-            frames->list[i].indirect_resize.new_position = *fp;                  
-          }
-          else if(position < *fp + *fs //find overlapped for enlarging
-          &&  position > *fp  //new position on other side of window
-          &&  *p > position   //moving left
-          &&  *fp < *p        //initial position on RHS of window
-          &&  size_change > 0 //enlarging
-          ) {
-            overlap = *fp + *fs - position;
-            #ifdef SHOW_EDGE_RESIZE
-            printf("found window overlapped on LHS, enlarging %d\n", overlap);
-            #endif
-            frames->list[i].indirect_resize.new_position = *fp;                              
-          }
-          else {
-            frames->list[i].indirect_resize.new_size = 0; //horizontally out of the way
-            continue;
-          }
-
-         /* if windows are adjacent and being affected, 
-             we need to check if we need to increase the size of opposing axis potentential range
-             in order to get indirect resizes of other windows */            
-          if(*fp_adj < adj_position  &&  *fp_adj + *fs_adj - adj_position > adj_size) {
-            #ifdef SHOW_EDGE_RESIZE
-            printf("enlarging adjacency area\n");
-            #endif
-            //completely encloses the area that encloses the adjacent windows
-            
-            adj_position = *fp_adj;
-            adj_size = *fs_adj;
-            break; //this will cause the loop to reset with the new values
-          }
-          else if(*fp_adj + *fs_adj - adj_position > adj_size) {
-            //extends below the area that encloses the adjacent windows
-            #ifdef SHOW_EDGE_RESIZE
-            printf("enlarging adjacency area in h\n");
-            #endif
-            adj_size = *fp_adj + *fs_adj - adj_position;
-            #ifdef SHOW_EDGE_RESIZE
-            printf("adj_position %d, adj_size %d \n", adj_position, adj_size);
-            #endif
-            break; //this will cause the loop to reset with the new value
-          }
-          else if(*fp_adj < adj_position) {
-            //extends above the adjacency area
-            #ifdef SHOW_EDGE_RESIZE
-            printf("enlarging adjacency area in position \n");
-            #endif
-            adj_size = adj_position + adj_size - *fp_adj;
-            adj_position = *fp_adj;
-            break; //this will cause the loop to reset with the new values
-          }
-
-          
-          if(*fs - overlap >= *fmin_size + frame_space &&
-             *fs - overlap <= *fmax_size) {
-            frames->list[i].indirect_resize.new_size = *fs - overlap;
-          }
-          else if (overlap > 0 ) {
-            #ifdef SHOW_EDGE_RESIZE
-            printf("not within min/max adjusting.. finding max allowed value \n");
-            #endif
-            int new_size;
-            if(position == *p) {
-              new_size = *fp + *fmin_size + frame_space - *p;
-            }
-            else if(position < *p) {
-              new_size = *p + *s - position;
-              position = *fp + *fmin_size + frame_space;
-            }
-
-            if(new_size >= size) {      
-              #ifdef SHOW_EDGE_RESIZE        
-              printf("Cannot resize, cancelling resize.");
-              #endif
-              return;
-            }
-            size = new_size;
-            break;
-          }
-          else if(frames->list[i].indirect_resize.new_size > *fmax_size) { //too big
-            #ifdef SHOW_EDGE_RESIZE 
-            printf("Setting size to max\n");
-            #endif
-            frames->list[i].indirect_resize.new_size = *fmax_size; //make it the maximum
-          }              
+        else if(size_change < 0 && (new_size <= size  ||  new_size >= *s)) {  
+          printf("Cannot resize, cancelling SHRINK resize.");
+          return;
         }
-        else {
-          frames->list[i].indirect_resize.new_size = 0; //vertically out of the way
-          continue;
-        }
+        
+        size = new_size;
+        position = new_position;
+        size_change = size - *s;
+        break;
       }
     }
-    
-    if(i == frames->used) break;
-  }
+    /* break out of infinite while loop when the for loop terminates */
+    if(i == frames->used) break; 
+  } /* end infinite while loop */
  
-  if(True) { //resize all modified windows.
-    *p = position;
-    *s = size;
-    for(int i = 0; i < frames->used; i++) {
-      if(frames->list[i].mode == tiling  &&  frames->list[i].indirect_resize.new_size) {
-        if(axis == 'x') {
-          frames->list[i].x = frames->list[i].indirect_resize.new_position;
-          frames->list[i].w = frames->list[i].indirect_resize.new_size;
-        } 
-        else if(axis == 'y') {
-          frames->list[i].y = frames->list[i].indirect_resize.new_position; 
-          frames->list[i].h = frames->list[i].indirect_resize.new_size;
-        }
-        resize_frame(display, &frames->list[i], themes);
+  //resize all modified windows.
+  *p = position;
+  *s = size;
+  for(int i = 0; i < frames->used; i++) {
+    if(frames->list[i].mode == tiling  &&  frames->list[i].indirect_resize.new_size) {
+      if(axis == 'x') {
+        frames->list[i].x = frames->list[i].indirect_resize.new_position;
+        frames->list[i].w = frames->list[i].indirect_resize.new_size;
+      } 
+      else if(axis == 'y') {
+        frames->list[i].y = frames->list[i].indirect_resize.new_position; 
+        frames->list[i].h = frames->list[i].indirect_resize.new_size;
       }
+      resize_frame(display, &frames->list[i], themes);
     }
   }
   

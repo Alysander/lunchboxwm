@@ -1,6 +1,6 @@
 #include <cairo/cairo.h> //because the Font_theme struct uses cairo types
 #include <cairo/cairo-xlib.h>
-
+#include "defs.h"
 #define M_PI 3.14159265359
 
 /*** Convenience Macros ***/
@@ -82,6 +82,7 @@ enum Frame_widget {
   selection_indicator,
   selection_indicator_hotspot,  
   title_menu_lhs,
+  title_menu_icon,
   title_menu_text,   //fill -- must be before rhs and hotspot for minimum size in resize frame
   title_menu_rhs,    //includes arrow
   title_menu_hotspot,

@@ -112,13 +112,13 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
 }
 
 /*  This is called when the wm is exiting, it doesn't close the open windows. */
-void remove_frame_list(Display *display, struct Workspace_list* workspaces, int index) {
+void remove_frame_list(Display *display, struct Workspace_list* workspaces, int index, struct Themes *themes) {
 
   if(index >= workspaces->used) return;
   struct Frame_list *frames = &workspaces->list[index];
   
   //close all the frames
-  for(int k = frames->used - 1; k >= 0; k--) remove_frame(display, frames, k);
+  for(int k = frames->used - 1; k >= 0; k--) remove_frame(display, frames, k, themes);
   free(frames->list);
   if(frames->workspace_name != NULL) {
     XFree(frames->workspace_name);
@@ -194,12 +194,12 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
     check_new_frame_focus (display, &workspaces->list[k], frame_index);
     stack_frame(display, &workspaces->list[k].list[frame_index], seps);
     if(k == current_workspace  &&  current_workspace != -1) {
-      printf("Created and mapped window in workspace %d\n", k);
+      //printf("Created and mapped window in workspace %d\n", k);
 
       XMapWindow(display, workspaces->list[k].list[frame_index].widgets[frame_parent].widget);
       XMapWindow(display, workspaces->list[k].list[frame_index].menu.item);
       if(workspaces->list[k].list[frame_index].selected != 0) {
-        printf("Set focus to window %s\n", workspaces->list[k].list[frame_index].window_name);
+        //printf("Set focus to window %s\n", workspaces->list[k].list[frame_index].window_name);
         XSetInputFocus(display, workspaces->list[k].list[frame_index].widgets[window].widget, RevertToPointerRoot, CurrentTime);
       }
     }

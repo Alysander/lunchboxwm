@@ -1,7 +1,10 @@
 
 /* These control which printfs are shown */
 #define SHOW_SIG
-#define SHOW_STARTUP                  
+#define SHOW_STARTUP
+#define SHOW_EDGE_RESIZE
+#define SHOW_EDGE_RESIZE
+/*
 #define SHOW_DESTROY_NOTIFY_EVENT     
 #define SHOW_UNMAP_NOTIFY_EVENT       
 #define SHOW_MAP_REQUEST_EVENT       
@@ -11,7 +14,6 @@
 #define SHOW_ENTER_NOTIFY_EVENTS      
 #define SHOW_LEAVE_NOTIFY_EVENTS      
 #define SHOW_FRAME_DROP  
-#define SHOW_EDGE_RESIZE
 #define SHOW_FOCUS_EVENT
 #define SHOW_BUTTON_RELEASE_EVENT     
 #define SHOW_PROPERTIES
@@ -19,7 +21,7 @@
 #define SHOW_PROPERTY_NOTIFY
 #define SHOW_CLIENT_MESSAGE
 #define SHOW_FREE_SPACE_STEPS
-
+*/
 /**** Configure behaviour *****/
 
 /* Sadly, many windows do have a minimum size but do not specify it.  

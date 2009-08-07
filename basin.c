@@ -12,7 +12,6 @@
 #include <errno.h>
 #include <unistd.h> //for sleep()
 
-#include "defs.h"
 #include "basin.h"
 
 #include "space.h"
@@ -191,12 +190,12 @@ int main (int argc, char* argv[]) {
               //don't bother the focussed window if it wasn't the window being unmapped
               else if(frames->focus.used > 0) remove_focus(frames->list[i].framed_window, &frames->focus);
               
-              remove_frame(display, frames, i);
+              remove_frame(display, frames, i, themes);
               if(frames->used == 0) {
                 #ifdef SHOW_UNMAP_NOTIFY_EVENT
                 printf("Removed workspace %d, name %s\n", k, workspaces.list[k].workspace_name);
                 #endif
-                remove_frame_list(display, &workspaces, k);
+                remove_frame_list(display, &workspaces, k, themes);
                 if(workspaces.used != 0) change_to_workspace(display, &workspaces, &current_workspace, 0, themes);
                 else change_to_workspace(display, &workspaces, &current_workspace, -1, themes);
               }
@@ -954,7 +953,7 @@ int main (int argc, char* argv[]) {
           else
           if(clicked_widget == frames->list[clicked_frame].widgets[title_menu_hotspot].widget) { //cancel the pulldown lists opening
             xcheck_raisewin(display, frames->list[clicked_frame].widgets[title_menu_lhs].state[normal]);
-//            xcheck_raisewin(display, frames->list[clicked_frame].widgets[title_menu_icon].state[normal]);
+            xcheck_raisewin(display, frames->list[clicked_frame].widgets[title_menu_icon].state[normal]);
             xcheck_raisewin(display, frames->list[clicked_frame].widgets[title_menu_text].state[normal]);
             xcheck_raisewin(display, frames->list[clicked_frame].widgets[title_menu_rhs].state[normal]);
 
@@ -963,7 +962,7 @@ int main (int argc, char* argv[]) {
           }
 
           while(XCheckTypedEvent(display, MotionNotify, &event)); //skip foward to the latest move event
-          printf("MotionNotify, clicked_widget = %lu, workspace %d\n", clicked_widget, current_workspace);
+
           XQueryPointer(display, root, &mouse_root, &mouse_child, &mouse_root_x, &mouse_root_y, &mouse_child_x, &mouse_child_y, &mask);
           if(!clicked_widget) { /*** Move ***/
             move_frame(display, &frames->list[clicked_frame]
@@ -1129,7 +1128,7 @@ int main (int argc, char* argv[]) {
     pulldown = 0;
   }
 
-  for(int k = 0; k < workspaces.used; k++) remove_frame_list(display, &workspaces, k);
+  for(int k = 0; k < workspaces.used; k++) remove_frame_list(display, &workspaces, k, themes);
 
   free_cursors(display, &cursors);
 

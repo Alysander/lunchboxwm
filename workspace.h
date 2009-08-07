@@ -1,6 +1,6 @@
 /*** workspaces.c ***/
 int create_frame_list        (Display *display, struct Workspace_list* workspaces, char *workspace_name, struct Themes *themes, struct Cursors *cursors);
-void remove_frame_list       (Display *display, struct Workspace_list* workspaces, int index);
+void remove_frame_list       (Display *display, struct Workspace_list* workspaces, int index, struct Themes *themes);
 int create_startup_workspaces(Display *display, struct Workspace_list *workspaces
 , struct Seperators *seps
 , struct Popup_menu *window_menu, struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms);
