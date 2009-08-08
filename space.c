@@ -6,7 +6,7 @@
 #include "basin.h"
 #include "space.h"
 
-struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_list *frames) {
+struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_list *frames, struct Themes *themes) {
   //the start variable is used to skip windows at the start 
   //in the handle_frame_retile function these are the intersecting tiled windows.
   

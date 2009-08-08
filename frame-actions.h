@@ -1,4 +1,4 @@
-void check_frame_limits     (Display *display, struct Frame *frame);
+void check_frame_limits     (Display *display, struct Frame *frame, struct Themes *themes);
 void change_frame_mode      (Display *display, struct Frame *frame, enum Window_mode mode, struct Themes *themes);
 void drop_frame             (Display *display, struct Frame_list *frames, int clicked_frame, struct Themes *themes);
 

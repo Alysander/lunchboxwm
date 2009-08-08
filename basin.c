@@ -348,7 +348,6 @@ int main (int argc, char* argv[]) {
                 #endif
                 //EnterNotify on the framed window triggered a grab which has now intercepted a click.
                 //pass on the event
-                XAllowEvents(display, ReplayPointer, event.xbutton.time);
                 do_click_to_focus = 0;
               }
 
@@ -567,7 +566,7 @@ int main (int argc, char* argv[]) {
         /* This makes click to focus work and alt click dragging to move windows */
         if(event.xcrossing.mode == NotifyGrab) {
           if((event.xcrossing.window == root)
-          && ((event.xcrossing.state & Mod1Mask) || (event.xcrossing.state & (Mod1Mask | Mod2Mask)))) { //allow other masks like numlock
+          && ((event.xcrossing.state & Mod1Mask) || (event.xcrossing.state & (Mod1Mask | Mod2Mask)))) { //allows numlock to be on or off
             #ifdef SHOW_ENTER_NOTIFY_EVENTS
             printf("set grab_move\n");
             #endif
@@ -580,6 +579,7 @@ int main (int argc, char* argv[]) {
             printf("set do_click_to_focus through enternotify\n");
             #endif
             do_click_to_focus = 1;
+            XAllowEvents(display, ReplayPointer, event.xbutton.time);
           }
           break;
         }
@@ -851,7 +851,7 @@ int main (int argc, char* argv[]) {
             , cursors.normal, CurrentTime);
             XFlush(display);
             show_workspace_menu(display, menubar.widgets[program_menu].widget, &workspaces, current_workspace
-            , event.xbutton.x_root - event.xbutton.x - EDGE_WIDTH, event.xbutton.y_root - event.xbutton.y, themes);
+            , event.xbutton.x_root - event.xbutton.x, event.xbutton.y_root - event.xbutton.y, themes);
           }
           else for(int k = 0; k < workspaces.used; k++) {
             struct Frame_list *frames = &workspaces.list[k];
@@ -1037,12 +1037,12 @@ int main (int argc, char* argv[]) {
                 break;
               }
                
-              frames->list[i].w = event.xconfigurerequest.width + FRAME_HSPACE;
-              frames->list[i].h = event.xconfigurerequest.height + FRAME_VSPACE;
+              frames->list[i].w = event.xconfigurerequest.width + frames->list[i].hspace;
+              frames->list[i].h = event.xconfigurerequest.height + frames->list[i].vspace;
               if(frames->list[i].mode == tiling) { 
                 drop_frame (display, frames, i, themes);
                 resize_frame(display, &frames->list[i], themes);
-                check_frame_limits(display, &frames->list[i]);
+                check_frame_limits(display, &frames->list[i], themes);
               }
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
               printf("new width %d, new height %d\n", frames->list[i].w, frames->list[i].h);
@@ -1059,7 +1059,7 @@ int main (int argc, char* argv[]) {
                 stack_frame(display, &frames->list[i], &seps);
               }
               resize_frame(display, &frames->list[i], themes);
-              check_frame_limits(display, &frames->list[i]);
+              check_frame_limits(display, &frames->list[i], themes);
               XFlush(display);
               break;
             }
@@ -1072,7 +1072,7 @@ int main (int argc, char* argv[]) {
             XGrabServer(display);
             XSetErrorHandler(supress_xerror);
             XGetWindowAttributes(display, event.xconfigurerequest.window, &attributes);
-            /** This one has me stumped, firefox and open office seem have these bogus 200x200 config requests after the "real" ones **/
+            /** Apparently firefox and open office seem have these bogus 200x200 config requests after the "real" ones **/
             if(!(event.xcreatewindow.width == 200  &&  event.xcreatewindow.height == 200)) {
               premap_config.width = event.xconfigurerequest.width;
               premap_config.height = event.xconfigurerequest.height;

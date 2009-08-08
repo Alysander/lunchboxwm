@@ -8,30 +8,11 @@
 #define PIXMAP_SIZE 16
 #define MINWIDTH 240 
 #define MINHEIGHT 80
-
+#define PATH_SIZE 400
+#define WIDGET_NAME_SIZE 50
 /****THEME DERIVED CONSTANTS******/
-#define LIGHT_EDGE_HEIGHT 7
-//#define PULLDOWN_WIDTH 100
-#define PULLDOWN_WIDTH 120
 
-#define BUTTON_SIZE 20
-#define V_SPACING 3
-#define H_SPACING 3
-#define TITLEBAR_HEIGHT (BUTTON_SIZE + (V_SPACING * 2))
-#define EDGE_WIDTH 1
-#define PIXMAP_SIZE 16
-#define SPOT_SIZE 14
-#define CORNER_GRIP_SIZE 32
-#define MENUBAR_ITEM_WIDTH 80 /* this needs to be larger than PIXMAP_SIZE */
-#define MENU_ITEM_HEIGHT 24
-#define MENU_ITEM_VS_BUTTON_Y_DIFF 2
-
-//this is the number of pixels the frame takes up from the top and bottom together of a window
-#define FRAME_VSPACE (TITLEBAR_HEIGHT + EDGE_WIDTH*4 + H_SPACING)
-//this is the number of pixels the frame takes up from either side of a window together
-#define FRAME_HSPACE (EDGE_WIDTH*2 + H_SPACING)*2
-
-#define MENUBAR_HEIGHT (TITLEBAR_HEIGHT - V_SPACING + EDGE_WIDTH)
+#define MENUBAR_HEIGHT themes->menubar[menubar_parent].h
 
 
 enum Splash_widget {

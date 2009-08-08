@@ -198,8 +198,7 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
       XMapWindow(display, workspaces->list[k].list[frame_index].widgets[frame_parent].widget);
       XMapWindow(display, workspaces->list[k].list[frame_index].menu.item);
       if(workspaces->list[k].list[frame_index].selected != 0) {
-        //printf("Set focus to window %s\n", workspaces->list[k].list[frame_index].window_name);
-        XSetInputFocus(display, workspaces->list[k].list[frame_index].widgets[window].widget, RevertToPointerRoot, CurrentTime);
+        recover_focus(display, &workspaces->list[k], themes);
       }
     }
     XFlush(display);

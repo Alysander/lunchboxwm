@@ -69,7 +69,7 @@ void remove_focus(Window old, struct Focus_list* focus) {
 }
 
 //this doesn't actually focus the window in case it is in the wrong workspace.
-//caller must determine that.
+//caller must determine that and then run recover focus.
 void check_new_frame_focus (Display *display, struct Frame_list *frames, int index) {
   struct Frame *frame = &frames->list[index];
   int set_focus = 0;
@@ -78,7 +78,7 @@ void check_new_frame_focus (Display *display, struct Frame_list *frames, int ind
   else 
   if(frames->focus.used > 0  
   && frame->transient == frames->focus.list[frames->focus.used - 1]) { //parent has focus
-    unfocus_frames(display, frames);
+    unfocus_frames(display, frames); //make frames look normal
     set_focus=1;
   }
   
@@ -112,7 +112,7 @@ void recover_focus(Display *display, struct Frame_list *frames, struct Themes *t
   if(frames->list[i].framed_window == frames->focus.list[frames->focus.used - 1]) {
     XGrabServer(display);
     XSetErrorHandler(supress_xerror);
-    //seems excessive but closing windows often causes 
+    //seems excessive but closing windows can cause bad window errors
     XSetInputFocus(display, frames->list[i].framed_window, RevertToPointerRoot, CurrentTime);
     XSync(display, False);
     XSetErrorHandler(NULL);    

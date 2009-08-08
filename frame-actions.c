@@ -14,15 +14,23 @@
 #include "space.h"
 #include "frame-actions.h"
 
+#define SHOW_EDGE_RESIZE
 /*****
-This function places moves the frame so that it is on-screen.
-Or if it is off the screen, has it's bottom right hand corner visible (for dialog boxes).
-It doesn't resize the frame.
+This function ensures that the window is within limits. 
+It moves and resizes the window to achieve this.
 ******/
 void 
-check_frame_limits(Display *display, struct Frame *frame) {
+check_frame_limits(Display *display, struct Frame *frame, struct Themes *themes) {
   Screen* screen = DefaultScreenOfDisplay(display);  
 
+  if(frame->mode != desktop) {
+    if(frame->w > XWidthOfScreen(screen)) 
+      frame->w = XWidthOfScreen(screen);
+      
+    if(frame->h > XHeightOfScreen(screen) - MENUBAR_HEIGHT)
+     frame->h = XHeightOfScreen(screen) - MENUBAR_HEIGHT;
+  }
+  
   if(frame->w < frame->min_width)  frame->w = frame->min_width;
   else 
   if(frame->w > frame->max_width)  frame->w = frame->max_width;
@@ -30,7 +38,7 @@ check_frame_limits(Display *display, struct Frame *frame) {
   if(frame->h < frame->min_height) frame->h = frame->min_height;
   else 
   if(frame->h > frame->max_height) frame->h = frame->max_height;  
-
+  
   if(frame->mode != desktop) {  
     if(frame->x < 0 ) frame->x = 0;
     if(frame->y < 0 ) frame->y = 0;
@@ -74,7 +82,8 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
     if(frame->mode == hidden) XMapWindow(display, frame->widgets[frame_parent].widget);
     else 
     if(frame->mode == desktop) {
-      check_frame_limits(display, frame); //bring the mode back
+      frame->mode = mode;
+      check_frame_limits(display, frame, themes);
       resize_frame(display, frame, themes);
     }
   }
@@ -106,20 +115,14 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
     xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs_desktop].widget);
     xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs_desktop].state[normal]);
     xcheck_raisewin(display, frame->widgets[mode_dropdown_rhs].state[normal]);
-    frame->x = 0 - themes->window_type[frame->type][window].x; //(EDGE_WIDTH*2 + H_SPACING);  TODO use themes coordinates
-    frame->y = 0 - themes->window_type[frame->type][window].y; //(TITLEBAR_HEIGHT + EDGE_WIDTH);
+    frame->x = 0 - themes->window_type[frame->type][window].x;
+    frame->y = 0 - themes->window_type[frame->type][window].y;
 
-    if(frame->max_width >= XWidthOfScreen(screen)) 
-      frame->w = XWidthOfScreen(screen) + frame->hspace;
-    else 
-      frame->w = frame->max_width;
-
-    if(frame->max_height >= XHeightOfScreen(screen) - MENUBAR_HEIGHT)
-      frame->h = XHeightOfScreen(screen) - MENUBAR_HEIGHT + frame->vspace;
-    else 
-      frame->h = frame->max_height;
+    frame->w = XWidthOfScreen(screen) + frame->hspace;
+    frame->h = XHeightOfScreen(screen) - MENUBAR_HEIGHT + frame->vspace;
     
     frame->mode = desktop;
+    check_frame_limits(display, frame, themes);
     resize_frame(display, frame, themes);
   }
   xcheck_raisewin(display, frame->widgets[mode_dropdown_hotspot].widget);
@@ -156,10 +159,10 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
   #endif
   if(frame->mode == tiling) {
     frame->mode = hidden;
-    free_spaces = get_free_screen_spaces (display, frames);
+    free_spaces = get_free_screen_spaces (display, frames, themes);
     frame->mode = tiling;
   }
-  else free_spaces = get_free_screen_spaces (display, frames);
+  else free_spaces = get_free_screen_spaces (display, frames, themes);
 
   if(free_spaces.list == NULL) return;
   printf("end result\n");
@@ -315,16 +318,6 @@ resize_using_frame_grip (Display *display, struct Frame_list *frames, int clicke
   else if(clicked_widget == frame->widgets[b_edge].widget) {
     new_height = mouse_root_y - frame->y + b_edge_dy;
   }
-
-  //check that the frame is not outside its min or max sizes
-  if(new_height < frame->min_height) new_height = frame->min_height;
-  if(new_height > frame->max_height) new_height = frame->max_height;
-  if(new_width < frame->min_width) new_width = frame->min_width;
-  if(new_width > frame->max_width) new_width = frame->max_width;
-
-  //undo movement if the height hasn't changed overall
-  if(new_height == frame->h) new_y = frame->y;
-  if(new_width == frame->w)  new_x = frame->x;
     
   if(frame->mode != desktop) {
     if(new_x + new_width > XWidthOfScreen(screen))
@@ -332,6 +325,27 @@ resize_using_frame_grip (Display *display, struct Frame_list *frames, int clicke
     if(new_y + new_height > XHeightOfScreen(screen) - MENUBAR_HEIGHT)
       new_height = XHeightOfScreen(screen)- new_y - MENUBAR_HEIGHT;
   }
+
+  //check that the frame is not outside its min or max sizes
+  //if height or width is then restricted, need to reduce the movement if it is moving
+  if(new_height < frame->min_height) { //decreasing
+    if(new_y > frame->y) new_y -= frame->min_height - new_height;
+    new_height = frame->min_height;
+  }
+  if(new_width < frame->min_width) { //decreasing
+    if(new_x > frame->x) new_x -= frame->min_width - new_width;
+    new_width = frame->min_width;
+  }
+  if(new_height > frame->max_height) { //increasing
+    if(new_y < frame->y) new_y += new_height - frame->max_height;
+    new_height = frame->max_height;
+  }
+  if(new_width > frame->max_width) {
+    if(new_x < frame->x) new_x += new_width  - frame->max_width;
+    new_width = frame->max_width;
+  }
+
+  
   //commit height changes
   if(frame->mode == tiling) {
     if(new_height != frame->h) resize_tiling_frame(display, frames, clicked_frame, 'y', new_y, new_height, themes);
@@ -563,6 +577,7 @@ size is the requested size
 position is the requested position
 
 ******/
+
 void resize_tiling_frame(Display *display, struct Frame_list *frames, int index, char axis
 , int position, int size, struct Themes *themes) {
 
@@ -617,15 +632,6 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
     adj_size = frames->list[index].w;
     frame_space = frames->list[index].vspace;
   }
-  
-  if(size < *min_size + frame_space) {
-    size = *min_size + frame_space;
-    printf("Set size to minimum size + frame space\n%d\n", size);
-  }
-  if(size > *max_size) {
-    size = *max_size; //should this have a frame space added to it??
-    printf("Set size to maximum size %d\n", size);
-  }
 
   size_change = size - *s; //the size difference for the specified frame  
   if (size_change == 0) return;
@@ -671,6 +677,37 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
         )) {
         frames->list[i].indirect_resize.new_size = 0; //vertically out of the way
         continue;
+      }
+
+      /* if windows are adjacent and being affected, 
+         we need to check if we need to increase the size of opposing axis potentential range
+         in order to get indirect resizes of other windows */            
+      if(*fp_adj < adj_position  &&  *fp_adj + *fs_adj - adj_position > adj_size) {
+        #ifdef SHOW_EDGE_RESIZE
+        printf("enlarging adjacency area\n");
+        #endif
+        //completely encloses the area that encloses the adjacent windows
+        
+        adj_position = *fp_adj;
+        adj_size = *fs_adj;
+        break; //this will cause the loop to reset with the new values
+      }
+      else if(*fp_adj + *fs_adj - adj_position > adj_size) {
+        //extends below the area that encloses the adjacent windows
+        #ifdef SHOW_EDGE_RESIZE
+        printf("enlarging adjacency area in h\n");
+        #endif
+        adj_size = *fp_adj + *fs_adj - adj_position;
+        break; //this will cause the loop to reset with the new value
+      }
+      else if(*fp_adj < adj_position) {
+        //extends above the adjacency area
+        #ifdef SHOW_EDGE_RESIZE
+        printf("enlarging adjacency area in position \n");
+        #endif
+        adj_size = adj_position + adj_size - *fp_adj;
+        adj_position = *fp_adj;
+        break; //this will cause the loop to reset with the new values
       }
         
       #ifdef SHOW_EDGE_RESIZE
@@ -776,7 +813,9 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
       /* Need to double check that it intersects vertically in this special case */
       && INTERSECTS(adj_position, adj_size, *fp_adj, *fs_adj)
       ) {
+        #ifdef SHOW_EDGE_RESIZE
         printf("Oversize!\n");
+        #endif
         return; //restart with a more sensible value
       }
       else {
@@ -784,41 +823,7 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
         continue;
       }
 
-      /* if windows are adjacent and being affected, 
-         we need to check if we need to increase the size of opposing axis potentential range
-         in order to get indirect resizes of other windows */            
-      if(*fp_adj < adj_position  &&  *fp_adj + *fs_adj - adj_position > adj_size) {
-        #ifdef SHOW_EDGE_RESIZE
-        printf("enlarging adjacency area\n");
-        #endif
-        //completely encloses the area that encloses the adjacent windows
-        
-        adj_position = *fp_adj;
-        adj_size = *fs_adj;
-        break; //this will cause the loop to reset with the new values
-      }
-      else if(*fp_adj + *fs_adj - adj_position > adj_size) {
-        //extends below the area that encloses the adjacent windows
-        #ifdef SHOW_EDGE_RESIZE
-        printf("enlarging adjacency area in h\n");
-        #endif
-        adj_size = *fp_adj + *fs_adj - adj_position;
-        #ifdef SHOW_EDGE_RESIZE
-        printf("adj_position %d, adj_size %d \n", adj_position, adj_size);
-        #endif
-        break; //this will cause the loop to reset with the new value
-      }
-      else if(*fp_adj < adj_position) {
-        //extends above the adjacency area
-        #ifdef SHOW_EDGE_RESIZE
-        printf("enlarging adjacency area in position \n");
-        #endif
-        adj_size = adj_position + adj_size - *fp_adj;
-        adj_position = *fp_adj;
-        break; //this will cause the loop to reset with the new values
-      }
-
-      if(*fs - overlap >= *fmin_size + frame_space 
+      if(*fs - overlap >= *fmin_size //+ frame_space 
       && *fs - overlap <= *fmax_size) {
         frames->list[i].indirect_resize.new_size = *fs - overlap;
       }
@@ -827,19 +832,24 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
         frames->list[i].indirect_resize.new_size = *fmax_size; 
         frames->list[i].indirect_resize.new_position = *fp;
       }   
-      else { /* The adjacent window has reached its minimum size. Reduce the re*/
-        int amount_over = 1; //OPTIMIZATION. Calculate the final answer.
-        /* Already Positive */                          //if the selected window is growing, increase its size until it fits
-        if(size_change < 0) amount_over = -amount_over; //if the selected window is shrinking, reduce its size until it fits
+      else { /* The adjacent window has reached its minimum size. Reduce the requested size */
+        //OPTIMIZATION. Calculate the final answer.
+        int amount_over = 1; //*fs - *fmin_size;
+        /* Already Positive */  //if the selected window is growing, increase its size until it fits
+                                //if the selected window is shrinking, reduce its size until it fits
+//        fs - (position + size - *fp) >= *fmin_size 
+//        fs - (fs - fmin_size) == fmin_size
+        
+        if(size_change < 0) amount_over = -amount_over;
         
         int new_size = size - amount_over;
         int new_position = position;
         
-        if(position != *p) { //this is causing the position to change
-          new_position = position + amount_over;
-        }
+  //      if(position != *p) { //this is causing the position to change
+  //        new_position = position + amount_over;
+  ///      }
         #ifdef SHOW_EDGE_RESIZE
-        printf("New size %d, new position %d\n", new_size, new_position);
+        printf("New size %d, new position %d, overlap was %d\n", new_size, new_position, overlap);
         #endif        
         if(size_change > 0 &&  (new_size >= size || new_size <= *s)) {  
           #ifdef SHOW_EDGE_RESIZE

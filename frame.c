@@ -151,7 +151,7 @@ create_frame (Display *display, struct Frame_list* frames
   create_frame_subwindows(display, &frame, themes, cursors);
   create_frame_name(display, window_menu, &frame, themes);
   change_frame_mode(display, &frame, unset, themes);
-  
+      
   XSetWindowBorderWidth(display, framed_window, 0);
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);
@@ -173,13 +173,13 @@ create_frame (Display *display, struct Frame_list* frames
   XSync(display, False);  
   
   //Intercept clicks so we can set the focus and possibly raise floating windows
-  XGrabButton(display, AnyButton, 0, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
-  XGrabButton(display, AnyButton, Mod2Mask, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None); //do it for numlock as well
+  XGrabButton(display, Button1, 0, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
+  XGrabButton(display, Button1, Mod2Mask, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None); //do it for numlock as well
+  
+  check_frame_limits(display, &frame, themes);
+  resize_frame(display, &frame, themes);
   
   XMoveResizeWindow(display, framed_window, 0, 0, frame.w - frame.hspace, frame.h - frame.vspace);  
-  check_frame_limits(display, &frame);
-  resize_frame(display, &frame, themes);
-   
   XMoveWindow(display, framed_window, 0, 0);
   XMapWindow(display, framed_window);  
   XFlush(display);
@@ -241,7 +241,6 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
   frame->max_height = XHeightOfScreen(screen) *2;
   frame->min_width  = MINWIDTH - frame->hspace;
   frame->min_height = MINHEIGHT - frame->vspace;
-
 
   #ifdef ALLOW_OVERSIZE_WINDOWS_WITHOUT_MINIMUM_HINTS
   /* Ugh Horrible.  */
@@ -314,7 +313,7 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
   printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n"
   , frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height, frame->x, frame->y);
   #endif
-  check_frame_limits(display, frame);
+  
 }
 
 static void 

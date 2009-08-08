@@ -48,10 +48,6 @@ static void swap_tiled_widget_themes(char *type, struct Widget_theme *themes, st
 static void create_widget_theme_pixmap(Display *display, struct Widget_theme *widget_theme, cairo_surface_t **theme_images);
 static void remove_widget_themes (Display *display, struct Widget_theme *themes, int length);
 
-
-#define PATH_SIZE 400
-#define WIDGET_NAME_SIZE 50
-
 /* strnadd concatinates s1 and s2 and writes the result into s0 provided the length of s1 and s2 
 is less that the limit, which is usually defined as the length of s0.  If any of the passed strings are NULL
 s0 is returned unmodified.  If the limit is less than the length of s2, s0 is returned unmodified. 
