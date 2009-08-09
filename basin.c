@@ -1027,10 +1027,8 @@ int main (int argc, char* argv[]) {
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
               printf("Configure window: %s\n", frames->list[i].window_name);
               #endif
-
+ 
               if ( clicked_frame == i  &&  !pulldown ) { //this window is being resized
-              // || frames->list[i].mode == tiling 
-                //TODO  figure out how to handle tiled windows enlarging themselves.
                 #ifdef SHOW_CONFIGURE_REQUEST_EVENT
                 printf("Ignoring config req., due to ongoing resize operation or tiled window\n");
                 #endif

@@ -14,7 +14,6 @@
 #include "frame-actions.h"
 
 static void create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *themes, struct Cursors *cursors);
-//static void get_frame_wm_hints      (Display *display, struct Frame *frame);
 static void get_frame_type_and_mode (Display *display, struct Frame *frame, struct Atoms *atoms, struct Themes *themes);
 static void get_frame_state         (Display *display, struct Frame *frame, struct Atoms *atoms);
 
@@ -27,6 +26,92 @@ supress_xerror(Display *display, XErrorEvent *event) {
   (void) event;
   //printf("Caught an error\n");
   return 0;
+}
+
+/*returns the frame index of the newly created window or -1 if out of memory */
+int
+create_frame (Display *display, struct Frame_list* frames
+, Window framed_window, struct Popup_menu *window_menu, struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
+  
+  XWindowAttributes get_attributes;
+  struct Frame frame;
+
+  if(frames->used == frames->max) {
+    struct Frame* temp = NULL;
+    temp = realloc(frames->list, sizeof(struct Frame) * frames->max * 2);
+    if(temp != NULL) frames->list = temp;
+    else return -1;
+    frames->max *= 2;
+  }
+  //printf("Creating frames->list[%d] with window %lu, connection %lu\n", frames->used, (unsigned long)framed_window, (unsigned long)display);
+  //add this window to the save set as soon as possible so that if an error occurs it is still available
+
+  XAddToSaveSet(display, framed_window); 
+  XSync(display, False);
+  XGetWindowAttributes(display, framed_window, &get_attributes);
+
+  /*** Set up defaults ***/
+  frame.selected = 0;
+  frame.window_name = NULL;
+  frame.framed_window = framed_window;
+  frame.type = unknown;
+  frame.theme_type = unknown;
+  frame.mode = unset;
+  frame.state = none;
+  frame.transient = 0;
+  frame.x = get_attributes.x - themes->window_type[frame.theme_type][window].x;
+  frame.y = get_attributes.y - themes->window_type[frame.theme_type][window].y;
+  frame.width_inc = 1;
+  frame.height_inc = 1;
+  frame.hspace = 0 - themes->window_type[frame.theme_type][window].w;
+  frame.vspace = 0 - themes->window_type[frame.theme_type][window].h;
+
+  frame.w = get_attributes.width; 
+  frame.h = get_attributes.height;
+
+  //TODO icon support  get_frame_wm_hints(display, &frame); 
+  
+  get_frame_hints(display, &frame);
+  get_frame_type_and_mode (display, &frame, atoms, themes);
+  get_frame_state(display, &frame, atoms);
+  create_frame_subwindows(display, &frame, themes, cursors);
+  create_frame_name(display, window_menu, &frame, themes);
+  change_frame_mode(display, &frame, unset, themes);
+      
+  XSetWindowBorderWidth(display, framed_window, 0);
+  XGrabServer(display);
+  XSetErrorHandler(supress_xerror);
+  XSelectInput(display, framed_window,  0);
+
+  //reparent the framed_window to frame.widgets[window].widget
+  XReparentWindow(display, framed_window, frame.widgets[window].widget, 0, 0);
+  //for some odd reason the reparent only reports an extra unmap event if the window was already unmapped
+  XRaiseWindow(display, framed_window);
+  XMapWindow(display, frame.widgets[window].widget);
+  XSync(display, False);
+  XSetErrorHandler(NULL);
+  XUngrabServer(display);
+
+  XSelectInput(display, framed_window,  PropertyChangeMask);
+  XSelectInput(display, frame.widgets[window].widget
+  , SubstructureRedirectMask | SubstructureNotifyMask | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
+  //Property notify is used to update titles, structureNotify for destroyNotify events. Some windows only send the destroy event (e.g., gimp splash screen)
+  XSync(display, False);  
+  
+  //Intercept clicks so we can set the focus and possibly raise floating windows
+  XGrabButton(display, Button1, 0, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
+  XGrabButton(display, Button1, Mod2Mask, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None); //do it for numlock as well
+  
+  check_frame_limits(display, &frame, themes);
+  resize_frame(display, &frame, themes);
+  
+  XMoveResizeWindow(display, framed_window, 0, 0, frame.w - frame.hspace, frame.h - frame.vspace);  
+  XMoveWindow(display, framed_window, 0, 0);
+  XMapWindow(display, framed_window);  
+  XFlush(display);
+  frames->list[frames->used] = frame;
+  frames->used++;
+  return (frames->used - 1);
 }
 
 /* This function reparents a framed window to root and then destroys the frame as well as cleaning up the frames drawing surfaces */
@@ -102,130 +187,6 @@ close_window(Display* display, Window framed_window) {
   } 
 }
 
-/*returns the frame index of the newly created window or -1 if out of memory */
-int
-create_frame (Display *display, struct Frame_list* frames
-, Window framed_window, struct Popup_menu *window_menu, struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
-  
-  XWindowAttributes get_attributes;
-  struct Frame frame;
-
-  if(frames->used == frames->max) {
-    //printf("reallocating, used %d, max%d\n", frames->used, frames->max);
-    struct Frame* temp = NULL;
-    temp = realloc(frames->list, sizeof(struct Frame) * frames->max * 2);
-    if(temp != NULL) frames->list = temp;
-    else return -1;
-    frames->max *= 2;
-  }
-  //printf("Creating frames->list[%d] with window %lu, connection %lu\n", frames->used, (unsigned long)framed_window, (unsigned long)display);
-  //add this window to the save set as soon as possible so that if an error occurs it is still available
-
-  XAddToSaveSet(display, framed_window); 
-  XSync(display, False);
-  XGetWindowAttributes(display, framed_window, &get_attributes);
-
-  /*** Set up defaults ***/
-  frame.selected = 0;
-  frame.window_name = NULL;
-  frame.framed_window = framed_window;
-  frame.type = unknown;
-  frame.theme_type = unknown;
-  frame.mode = unset;
-  frame.state = none;
-  frame.transient = 0;
-  frame.x = get_attributes.x - themes->window_type[frame.theme_type][window].x;
-  frame.y = get_attributes.y - themes->window_type[frame.theme_type][window].y;
-
-  frame.hspace = 0 - themes->window_type[frame.theme_type][window].w;
-  frame.vspace = 0 - themes->window_type[frame.theme_type][window].h;
-
-  frame.w = get_attributes.width; 
-  frame.h = get_attributes.height;
-
-  //TODO icon support  get_frame_wm_hints(display, &frame); 
-  
-  get_frame_hints(display, &frame);
-  get_frame_type_and_mode (display, &frame, atoms, themes);
-  get_frame_state(display, &frame, atoms);
-  create_frame_subwindows(display, &frame, themes, cursors);
-  create_frame_name(display, window_menu, &frame, themes);
-  change_frame_mode(display, &frame, unset, themes);
-      
-  XSetWindowBorderWidth(display, framed_window, 0);
-  XGrabServer(display);
-  XSetErrorHandler(supress_xerror);
-  XSelectInput(display, framed_window,  0);
-
-  //reparent the framed_window to frame.widgets[window].widget
-  XReparentWindow(display, framed_window, frame.widgets[window].widget, 0, 0);
-  //for some odd reason the reparent only reports an extra unmap event if the window was already unmapped
-  XRaiseWindow(display, framed_window);
-  XMapWindow(display, frame.widgets[window].widget);
-  XSync(display, False);
-  XSetErrorHandler(NULL);
-  XUngrabServer(display);
-
-  XSelectInput(display, framed_window,  PropertyChangeMask);
-  XSelectInput(display, frame.widgets[window].widget
-  , SubstructureRedirectMask | SubstructureNotifyMask | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-  //Property notify is used to update titles, structureNotify for destroyNotify events. Some windows only send the destroy event (e.g., gimp splash screen)
-  XSync(display, False);  
-  
-  //Intercept clicks so we can set the focus and possibly raise floating windows
-  XGrabButton(display, Button1, 0, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
-  XGrabButton(display, Button1, Mod2Mask, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None); //do it for numlock as well
-  
-  check_frame_limits(display, &frame, themes);
-  resize_frame(display, &frame, themes);
-  
-  XMoveResizeWindow(display, framed_window, 0, 0, frame.w - frame.hspace, frame.h - frame.vspace);  
-  XMoveWindow(display, framed_window, 0, 0);
-  XMapWindow(display, framed_window);  
-  XFlush(display);
-  frames->list[frames->used] = frame;
-  frames->used++;
-  return (frames->used - 1);
-}
-
-/*** Moves and resizes the subwindows of the frame ***/
-void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) {
-
-  XMoveResizeWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y, frame->w, frame->h);
-  XMoveResizeWindow(display, frame->framed_window, 0, 0, frame->w - frame->hspace, frame->h - frame->vspace);
-  /* Bit of a hack to make the title menu use only the minimum space required */
-  int title_menu_text_diff = 0;
-  int title_menu_rhs_w     = 0;
-  if(themes->window_type[frame->theme_type][title_menu_rhs].exists) 
-    title_menu_rhs_w = themes->window_type[frame->theme_type][title_menu_rhs].w;
-    
-  for(int i = 0; i < frame_parent; i++) {
-    int x = themes->window_type[frame->theme_type][i].x;
-    int y = themes->window_type[frame->theme_type][i].y;
-    int w = themes->window_type[frame->theme_type][i].w;
-    int h = themes->window_type[frame->theme_type][i].h;
-    if(!themes->window_type[frame->theme_type][i].exists) continue; //the exists variable is -1 for hotspots
-    
-    if(x < 0  ||  y < 0  ||  w <= 0  ||  h <= 0) { //only resize those which are dependent on the width
-      if(x <  0) x += frame->w;
-      if(y <  0) y += frame->h;
-      if(w <= 0) w += frame->w;
-      if(h <= 0) h += frame->h;
-
-      /* Bit of a hack to make the title menu use only the minimum space required */
-      if(i == title_menu_text  &&  (frame->menu.width + title_menu_rhs_w) < w) {
-        title_menu_text_diff = w - (frame->menu.width + title_menu_rhs_w);
-        w = frame->menu.width;
-      }
-      else if(i == title_menu_rhs      &&  title_menu_text_diff) x -= title_menu_text_diff;
-      else if(i == title_menu_hotspot  &&  title_menu_text_diff) w -= title_menu_text_diff;
-
-      XMoveResizeWindow(display, frame->widgets[i].widget, x, y, w, h);
-    }
-  }
-  XFlush(display);
-}
-
 
 /*** Update frame with available resizing information ***/
 void 
@@ -237,8 +198,8 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
 /*  printf("BEFORE: width %d, height %d, x %d, y %d\n", frame->w, frame->h, frame->x, frame->y); */
   
   //prevent overly large windows, but allow one larger than the screen by default (think eee pc)
-  frame->max_width  = XWidthOfScreen(screen) * 2; 
-  frame->max_height = XHeightOfScreen(screen) *2;
+  frame->max_width  = XWidthOfScreen(screen); 
+  frame->max_height = XHeightOfScreen(screen);
   frame->min_width  = MINWIDTH - frame->hspace;
   frame->min_height = MINHEIGHT - frame->vspace;
 
@@ -295,8 +256,13 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
       frame->max_width = specified.max_width;
       frame->max_height = specified.max_height;
     }
+    if(specified.flags & PResizeInc) {
+      printf("got inc hints, w %d, h %d\n", specified.width_inc, specified.height_inc);
+      frame->width_inc = specified.width_inc;
+      frame->height_inc = specified.height_inc;
+    }
   }
-
+  
   //all of the initial values are sans the frame 
   //increase the size of the window for the frame to be drawn in 
   //this means that the attributes must be saved without the extra width and height
@@ -309,6 +275,30 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
   frame->min_width  += frame->hspace; 
   frame->min_height += frame->vspace; 
 
+  /* Ensure that the specified sizes all correspond to usable sizes for the client.
+     If they set incremental resize hints */
+  if(frame->width_inc != 1  ||  frame->height_inc != 1) {
+    if(frame->min_width  % frame->width_inc)
+    frame->min_width  += frame->width_inc  - ((frame->min_width  - frame->hspace)% frame->width_inc);
+
+    if(frame->min_height % frame->height_inc)
+    frame->min_height += frame->height_inc - ((frame->min_height - frame->vspace)% frame->height_inc);
+  
+    if(frame->max_width  % frame->width_inc)
+    frame->max_width  += frame->width_inc  - ((frame->max_width  - frame->hspace)% frame->width_inc);
+
+    if(frame->max_height % frame->height_inc)
+    frame->max_height += frame->height_inc - ((frame->max_height - frame->vspace)% frame->height_inc);
+    
+    if(frame->w  % frame->width_inc)
+    frame->w          += frame->width_inc  - ((frame->w - frame->hspace)% frame->width_inc);
+
+    if(frame->h  % frame->width_inc)
+    frame->h          += frame->height_inc  -((frame->h - frame->vspace)% frame->height_inc);
+  }
+  
+  
+    
   #ifdef SHOW_FRAME_HINTS      
   printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n"
   , frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height, frame->x, frame->y);
@@ -649,73 +639,3 @@ free_frame_name(struct Frame* frame) {
     frame->window_name = NULL;
   }
 } 
-
-
-/** Update frame with available wm hints (icon, window "group", focus wanted, urgency) **/
-
-  /*
-void get_frame_wm_hints(Display *display, struct Frame *frame) {
-  XWMHints *wm_hints = XGetWMHints(display, frame->framed_window);
-  //WM_ICON_SIZE  in theory we can ask for set of specific icon sizes.
-
-  //Set defaults
-  Pixmap icon_p = 0;
-  Pixmap icon_mask_p = 0;
-
-  if(wm_hints != NULL) {
-    if(wm_hints->flags & IconPixmapHint
-    && wm_hints->icon_pixmap != 0) {
-      icon_p = wm_hints->icon_pixmap;
-      XSetWindowBackgroundPixmap(display, frame->menu_item.icon.item_icon, icon_p);
-    }
-
-    if(wm_hints->flags & IconMaskHint  
-    && wm_hints->icon_pixmap != 0) {
-      icon_mask_p = wm_hints->icon_mask;
-      XShapeCombineMask (display, frame->menu_item.icon.item_icon, ShapeBounding //ShapeClip or ShapeBounding
-      ,0, 0, icon_mask_p, ShapeSet); 
-      //Shapeset or ShapeUnion, ShapeIntersect, ShapeSubtract, ShapeInvert
-      XMapWindow(display, frame->menu_item.icon.item_icon);
-    }
-    XSync(display, False);
-    //get the icon sizes
-    //find out it is urgent
-    //get the icon if it has one.
-    //icon window is for the systray
-    //window group is for mass minimization
-    XFree(wm_hints);
-  }
-}
-*/
-
-
-/* This function sets the icon size property on the window so that the program that created it
-knows what size to make the icon it provides when we call XGetWMHints.  But I don't understand
-why XSetIconSize provides a method to specify a variety of sizes when only one size is returned.
-So instead I set the size to one value and change it for each subsequent call to XGetWMHints.
-If this fails, it doesn't really matter.  We will still get the icon and just resize it.
-*/
-/*
-void create_frame_icon_size (Display *display, struct Frame *frame, int new_size) {
-  if(frame->icon_size != NULL) {
-    if(frame->icon_size->min_width = new_size) return;
-    free_frame_icon_size(display, frame);
-  }
-  //XIconSize *icon_size; //this allows us to specify a size for icons when we request them
-
-  frame->icon_size = XAllocIconSize();
-  if(frame->icon_size == NULL) return;
-  frame->icon_size->min_width = 16;
-  frame->icon_size->max_width = 16;
-  frame->icon_size->min_height = 16;
-  frame->icon_size->max_height = 16;
-  //inc amount are already zero from XAlloc
-  XSetIconSizes(display, frame->window, frame->icon_size, 1); 
-}
-void 
-free_frame_icon_size(Display *display, struct Frame *frame) {
-  if(frame->icon_size != NULL) XFree(frame->icon_size);
-  frame->icon_size = NULL;
-}
-
-*/

@@ -2,6 +2,8 @@ void check_frame_limits     (Display *display, struct Frame *frame, struct Theme
 void change_frame_mode      (Display *display, struct Frame *frame, enum Window_mode mode, struct Themes *themes);
 void drop_frame             (Display *display, struct Frame_list *frames, int clicked_frame, struct Themes *themes);
 
+void resize_frame           (Display *display, struct Frame *frame, struct Themes *themes);
+
 void resize_using_frame_grip (Display *display, struct Frame_list *frames, int clicked_frame
 , int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y
 , int r_edge_dx, int b_edge_dy, Window clicked_widget, struct Themes *themes);

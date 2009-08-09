@@ -41,9 +41,9 @@ struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_lis
       add_rectangle(&used_spaces, current);
     }
   }
-  printf("Finding free spaces. Width %d, Height %d\n", XWidthOfScreen(screen), XHeightOfScreen(screen) - MENUBAR_HEIGHT);
+  printf("Finding free spaces. Width %d, Height %d\n", XWidthOfScreen(screen), XHeightOfScreen(screen) - themes->menubar[menubar_parent].h);
  
-  free_spaces = largest_available_spaces(&used_spaces, XWidthOfScreen(screen), XHeightOfScreen(screen) - MENUBAR_HEIGHT);
+  free_spaces = largest_available_spaces(&used_spaces, XWidthOfScreen(screen), XHeightOfScreen(screen) - themes->menubar[menubar_parent].h);
   return free_spaces;
 }
 

@@ -7,7 +7,7 @@ void remove_frame           (Display *display, struct Frame_list* frames, int in
 void close_window           (Display *display, Window framed_window);
 void free_frame_name        (struct Frame *frame);
 void create_frame_name      (Display *display, struct Popup_menu *window_menu, struct Frame* frame, struct Themes *themes);
-void resize_frame           (Display *display, struct Frame *frame, struct Themes *themes);
+
 //void create_frame_icon_size (Display *display, struct Frame *frame, int new_size);
 //void free_frame_icon_size   (Display *display, struct Frame *frame);
 

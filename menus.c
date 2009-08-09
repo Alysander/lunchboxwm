@@ -114,18 +114,16 @@ void create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes 
     , menu->widgets[popup_menu_parent].widget
     , x, y, w, h, 0, black, black);
     
+    if(themes->popup_menu[i].w <= 0) w = XWidthOfScreen(screen);
+    if(themes->popup_menu[i].h <= 0) h = XWidthOfScreen(screen);    
     for(int j = 0; j <= inactive; j++) {
       if(themes->popup_menu[i].state_p[j]) {
         menu->widgets[i].state[j] = XCreateSimpleWindow(display, menu->widgets[i].widget
         , 0, 0, w, h, 0, black, black);
-
         XSetWindowBackgroundPixmap(display, menu->widgets[i].state[j]
         , themes->popup_menu[i].state_p[j]);
-
-        //TODO
         if(j == normal) XMapWindow(display, menu->widgets[i].state[j]);
       }
-    //  else printf("Warning:  Skipping state pixmap\n");
     }
 
     XMapWindow(display, menu->widgets[i].widget);
@@ -334,9 +332,9 @@ void resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes 
 
   XResizeWindow(display, menu->widgets[popup_menu_parent].widget, width, height);
 
-  //Currently, this is the "base" of the popup menu.
+  //This resizes the "base" of the popup menu.
   //A similar loop will be needed for the actual menu items but not in this function
-  for(int i = popup_t_edge; i < popup_menu_parent; i++) { //popup_menu_parent already done
+  for(int i = popup_t_edge; i < popup_menu_parent; i++) if(themes->popup_menu[i].exists) { //popup_menu_parent already done
 
     int x = themes->popup_menu[i].x;
     int y = themes->popup_menu[i].y;
@@ -351,13 +349,6 @@ void resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes 
       if(h <= 0) h += height;
 
       XMoveResizeWindow(display, menu->widgets[i].widget, x, y, w, h);
-
-      for(int j = 0; j <= inactive; j++) {
-        if(themes->popup_menu[i].state_p[j]) {
-          XResizeWindow(display, menu->widgets[i].state[j], w, h);
-        }
-//        else printf("Warning:  Skipping state pixmap\n");
-      }
     }
   } 
 

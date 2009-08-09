@@ -12,8 +12,6 @@
 #define WIDGET_NAME_SIZE 50
 /****THEME DERIVED CONSTANTS******/
 
-#define MENUBAR_HEIGHT themes->menubar[menubar_parent].h
-
 
 enum Splash_widget {
   splash_parent
@@ -199,8 +197,13 @@ struct Frame {
   int min_height, max_height;
   int vspace; //dependent on the window type.
   int hspace;
+  int width_inc;  //increments for incremental resize
+  int height_inc; //increments for incremental resize
+
   Window transient; //the calling window of this dialog box - not structural
+
   Window framed_window; //the window which is reparented.
+
   struct Widget widgets[frame_parent + 1];
 
   struct Menu_item menu; //this contains icons used in the window menu and the title menu
