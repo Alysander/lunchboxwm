@@ -337,9 +337,13 @@ resize_using_frame_grip (Display *display, struct Frame_list *frames, int clicke
   int new_height = frame->h;
   int new_x = frame->x; 
   int new_y = frame->y; 
-  /* precalculated potential values for x and y */ 
-  /* This is done so that the they can be tested and altered in one place */
 
+  //review this
+  if(W_INC_REM < 0) new_width = frame->hspace;
+  if(H_INC_REM < 0) new_height = frame->vspace;
+
+  /* precalculated potential values for x and y */ 
+  /* This is done so that the they can be tested and altered in one place */  
   int pot_x = mouse_root_x - pointer_start_x;
   int pot_y = mouse_root_y - pointer_start_y;
   if(frame->mode != desktop) {
@@ -858,7 +862,7 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
       }
       else if( /* This function is prone to false positives. It can trigger when another window is below it. */
          (position <= *fp)
-      && ((position + size) > (*fp + *fs))       //New position/size completely surrounds other window
+      && ((position + size) >= (*fp + *fs))       //New position/size completely surrounds other window
       && (size_change > 0)
       && (INTERSECTS(adj_position, adj_size, *fp_adj, *fs_adj))
       ) {

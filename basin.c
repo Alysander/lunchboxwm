@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 #include <X11/extensions/shape.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>  //This is used for the size hints structure
@@ -1000,7 +1001,17 @@ int main (int argc, char* argv[]) {
                 resize_frame(display, &frames->list[i], themes);
               }
               else if ( event.xproperty.atom == XA_WM_NORMAL_HINTS) {
-                get_frame_hints(display, &frames->list[i]);
+                /* Ignore normal hints notification for a resizing window. */
+                /* For some reason the gimp 2.6.3 on intrepid kept on resetting it's size hints for the toolbox 
+                   This lead to the window moving and resizing unpredictably.  */
+                if ( clicked_frame != i ) {
+                  get_frame_hints(display, &frames->list[i]); 
+                  if(frames->list[i].mode == tiling) { 
+                    drop_frame (display, frames, i, themes);
+                    resize_frame(display, &frames->list[i], themes);
+                    check_frame_limits(display, &frames->list[i], themes);
+                  }
+                }
               }
               break;
             }
@@ -1027,14 +1038,17 @@ int main (int argc, char* argv[]) {
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
               printf("Configure window: %s\n", frames->list[i].window_name);
               #endif
- 
+                /*
               if ( clicked_frame == i  &&  !pulldown ) { //this window is being resized
                 #ifdef SHOW_CONFIGURE_REQUEST_EVENT
                 printf("Ignoring config req., due to ongoing resize operation or tiled window\n");
                 #endif
                 break;
               }
-               
+                */
+              /* TODO, should we allow programs to change their position? */
+              //frames->list[i].y = event.xconfigurerequest.x; //leads to gimp-toolbox jumpiness
+              //frames->list[i].x = event.xconfigurerequest.y; //leads to gimp-toolbox jumpiness
               frames->list[i].w = event.xconfigurerequest.width + frames->list[i].hspace;
               frames->list[i].h = event.xconfigurerequest.height + frames->list[i].vspace;
               if(frames->list[i].mode == tiling) { 
@@ -1062,7 +1076,7 @@ int main (int argc, char* argv[]) {
               break;
             }
           }
-          //this window hasn't been mapped yet, let it update it's size
+          //this window hasn't been mapped yet, let it update it's size and position
           if(i == frames->used) {
             XWindowAttributes attributes;
             XWindowChanges premap_config; 
@@ -1121,7 +1135,7 @@ int main (int argc, char* argv[]) {
         printf("Warning: Unhandled client message.\n");
         #endif
       break;
-      //From StructureNotifyMask on the reparented window, typically self-generated
+      //From [Sub]structureNotifyMask on the reparented window, typically self-generated
       case MapNotify:
       case ReparentNotify:
       case ConfigureNotify:
@@ -1230,6 +1244,9 @@ void create_hints (Display *display, struct Atoms *atoms) {
   unsigned char *ewmh_atoms = (unsigned char *)&(atoms->supporting_wm_check);
   int number_of_atoms = 0;
   static int desktops = 1;
+
+  int32_t desktop_geometry[2] = {XWidthOfScreen(screen), XHeightOfScreen(screen)};
+
   //this window is closed automatically by X11 when the connection is closed.
   //this is supposed to be used to save the required flags. TODO review this
   Window program_instance = XCreateSimpleWindow(display, root, 0, 0, 1, 1, 0, BlackPixelOfScreen(screen), BlackPixelOfScreen(screen));
@@ -1238,7 +1255,8 @@ void create_hints (Display *display, struct Atoms *atoms) {
   number_of_atoms++; atoms->supporting_wm_check        = XInternAtom(display, "_NET_SUPPORTING_WM_CHECK", False);
   number_of_atoms++; atoms->number_of_desktops         = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);
   number_of_atoms++; atoms->desktop_geometry           = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);
-//  number_of_atoms++; atoms->wm_full_placement          = XInternAtom(display, "_NET_WM_FULL_PLACEMENT", False);
+  //_NET_WORKAREA
+  //number_of_atoms++; atoms->wm_full_placement          = XInternAtom(display, "_NET_WM_FULL_PLACEMENT", False);
   number_of_atoms++; atoms->frame_extents              = XInternAtom(display, "_NET_FRAME_EXTENTS", False);
   number_of_atoms++; atoms->wm_window_type             = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
   number_of_atoms++; atoms->wm_window_type_normal      = XInternAtom(display, "_NET_WM_WINDOW_TYPE_NORMAL", False);
@@ -1257,6 +1275,9 @@ void create_hints (Display *display, struct Atoms *atoms) {
   //let clients know that a ewmh complient window manager is running
   XChangeProperty(display, root, atoms->supporting_wm_check, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&program_instance, 1);
   XChangeProperty(display, root, atoms->number_of_desktops, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&desktops, 1);
+  XChangeProperty(display, root, atoms->desktop_geometry, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)desktop_geometry, 2);
+
+
   #ifdef SHOW_STARTUP
   list_properties(display, root);
   #endif

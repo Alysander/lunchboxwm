@@ -77,7 +77,16 @@ create_frame (Display *display, struct Frame_list* frames
   create_frame_subwindows(display, &frame, themes, cursors);
   create_frame_name(display, window_menu, &frame, themes);
   change_frame_mode(display, &frame, unset, themes);
-      
+ 
+  //_NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32 - done per window!      
+  int32_t ewmh_frame_extents[4] = { themes->window_type[frame.theme_type][window].x
+  , themes->window_type[frame.theme_type][window].y
+  , - themes->window_type[frame.theme_type][window].x - themes->window_type[frame.theme_type][window].w
+  , - themes->window_type[frame.theme_type][window].y - themes->window_type[frame.theme_type][window].h
+  };
+  XChangeProperty(display, framed_window, XInternAtom(display, "_NET_FRAME_EXTENTS", False), XA_CARDINAL
+  , 32, PropModeReplace, (unsigned char *)ewmh_frame_extents, 4);
+  
   XSetWindowBorderWidth(display, framed_window, 0);
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);
@@ -277,28 +286,31 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
 
   /* Ensure that the specified sizes all correspond to usable sizes for the client.
      If they set incremental resize hints */
-  if(frame->width_inc != 1  ||  frame->height_inc != 1) {
-    if(frame->min_width  % frame->width_inc)
-    frame->min_width  += frame->width_inc  - ((frame->min_width  - frame->hspace)% frame->width_inc);
-
-    if(frame->min_height % frame->height_inc)
-    frame->min_height += frame->height_inc - ((frame->min_height - frame->vspace)% frame->height_inc);
   
-    if(frame->max_width  % frame->width_inc)
-    frame->max_width  += frame->width_inc  - ((frame->max_width  - frame->hspace)% frame->width_inc);
+  /* */ 
 
-    if(frame->max_height % frame->height_inc)
+  if(frame->width_inc != 1) {
+    if((frame->min_width  - frame->hspace)  % frame->width_inc)
+    frame->min_width  += frame->width_inc  - ((frame->min_width  - frame->hspace)% frame->width_inc);
+  
+    if((frame->max_width  - frame->hspace) % frame->width_inc)
+    frame->max_width  += frame->width_inc  - ((frame->max_width  - frame->hspace)% frame->width_inc);
+    
+    if((frame->w - frame->hspace)  % frame->width_inc)
+    frame->w          += frame->width_inc  - ((frame->w          - frame->hspace)% frame->width_inc);
+  }
+
+  if( frame->height_inc != 1) {
+    if((frame->min_height - frame->vspace) % frame->height_inc)
+    frame->min_height += frame->height_inc - ((frame->min_height - frame->vspace)% frame->height_inc);
+
+    if((frame->max_height - frame->vspace) % frame->height_inc)
     frame->max_height += frame->height_inc - ((frame->max_height - frame->vspace)% frame->height_inc);
     
-    if(frame->w  % frame->width_inc)
-    frame->w          += frame->width_inc  - ((frame->w - frame->hspace)% frame->width_inc);
-
-    if(frame->h  % frame->width_inc)
-    frame->h          += frame->height_inc  -((frame->h - frame->vspace)% frame->height_inc);
+    if((frame->h          - frame->vspace) % frame->width_inc)
+    frame->h          += frame->height_inc - ((frame->h          - frame->vspace)% frame->height_inc);  
   }
-  
-  
-    
+
   #ifdef SHOW_FRAME_HINTS      
   printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n"
   , frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height, frame->x, frame->y);

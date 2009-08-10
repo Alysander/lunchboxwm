@@ -110,6 +110,7 @@ void recover_focus(Display *display, struct Frame_list *frames, struct Themes *t
   //printf("Recovering focus\n");
   for(int i = frames->used - 1; i >= 0; i--) 
   if(frames->list[i].framed_window == frames->focus.list[frames->focus.used - 1]) {
+    //_NET_ACTIVE_WINDOW
     XGrabServer(display);
     XSetErrorHandler(supress_xerror);
     //seems excessive but closing windows can cause bad window errors

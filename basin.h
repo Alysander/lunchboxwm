@@ -6,8 +6,8 @@
 /*** Convenience Macros ***/
 
 #define PIXMAP_SIZE 16
-#define MINWIDTH 240 
-#define MINHEIGHT 80
+#define MINWIDTH 200
+#define MINHEIGHT 24
 #define PATH_SIZE 400
 #define WIDGET_NAME_SIZE 50
 /****THEME DERIVED CONSTANTS******/
@@ -254,7 +254,7 @@ struct Atoms {
   , number_of_desktops         // "_NET_NUMBER_OF_DESKTOPS" //always 1
   , desktop_geometry           // "_NET_DESKTOP_GEOMETRY" //this is currently the same size as the screen
   
-  , wm_full_placement          // "_NET_WM_FULL_PLACEMENT"
+  //, wm_full_placement          // "_NET_WM_FULL_PLACEMENT"
   , frame_extents              // "_NET_FRAME_EXTENTS"
   , wm_window_type             // "_NET_WM_WINDOW_TYPE"
   , wm_window_type_normal      // "_NET_WM_WINDOW_TYPE_NORMAL"
