@@ -99,7 +99,7 @@ struct Themes *create_themes(Display *display, char *theme_name) {
 
 //TODO check if file exists, otherwise use program_frame theme
   themes->window_type[unknown]        = create_component_theme(display, "program_frame");
-
+  if(!themes->window_type[unknown]) goto error;
 /*****
   themes->window_type[splash]         = create_component_theme(display, "program_frame");
   themes->window_type[file]           = create_component_theme(display, "program_frame");
@@ -126,10 +126,8 @@ frame_parent                   x == 0, y == 0, w == 0, h == 0
 title_menu_rhs                 w > 0
 ****/
   themes->popup_menu = create_component_theme(display, "popup_menu");
-  themes->menubar = create_component_theme(display, "menubar");
-
-  if(!themes->window_type[unknown]) goto error;
   if(!themes->popup_menu) goto error;
+  themes->menubar = create_component_theme(display, "menubar");
   if(!themes->menubar) goto error;
 
   free(path);
@@ -215,7 +213,8 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
     int was_tile = 0;
     returned = fscanf(regions, "%s %d %d %d %d\n", widget_name, &x, &y, &w, &h);
     if(returned != 5) {
-      fprintf(stderr, "Error in theme format, required \"string int int int int\", which represent the widget name, x position, y position, width and height");
+      fprintf(stderr, "Error in theme format, required string int int int int\n");
+      fprintf(stderr, "which represent the widget name, x position, y position, width and height repectively\n");
       goto error;
     }
     else fprintf(stderr, "Loading theme for %s\n", widget_name);
@@ -524,6 +523,7 @@ void remove_themes(Display *display, struct Themes *themes) {
   for(int i = 0; i <= menubar; i++)  remove_widget_themes(display, themes->window_type[i], frame_parent + 1);
   remove_widget_themes(display, themes->popup_menu, popup_menu_parent + 1);
   remove_widget_themes(display, themes->menubar, menubar_parent + 1);
+  free(themes);
   XFlush(display);
 }
 
@@ -573,7 +573,8 @@ void create_text_background(Display *display, Window window, const char *restric
   cairo_fill(cr);
   cairo_surface_flush(surface);
   cairo_surface_destroy(background);
-
+  cairo_pattern_destroy(background_pattern);
+  
   cairo_select_font_face(cr, font_theme->font_name, font_theme->slant, font_theme->weight);
   cairo_set_font_size(cr, font_theme->size);
   cairo_set_source_rgba(cr, font_theme->r, font_theme->g, font_theme->b, font_theme->a);
@@ -601,7 +602,8 @@ unsigned int get_text_width(Display* display, const char *title, struct Font_the
   cairo_text_extents_t extents;
   int width;
   
-  temp = XCreateSimpleWindow(display, DefaultRootWindow(display), 0, 0, PIXMAP_SIZE, PIXMAP_SIZE, 0, WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
+  temp = XCreateSimpleWindow(display, DefaultRootWindow(display), 0, 0, PIXMAP_SIZE, PIXMAP_SIZE, 0
+  , WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));
   surface = cairo_xlib_surface_create(display, temp, colours,  PIXMAP_SIZE, PIXMAP_SIZE);
   cr = cairo_create(surface);
 

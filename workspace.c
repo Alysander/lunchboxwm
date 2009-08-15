@@ -59,7 +59,8 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
   , CWOverrideRedirect | CWBackPixmap | CWCursor , &attributes);
   XLowerWindow(display, frames->virtual_desktop);
 
-  unsigned int width = workspaces->workspace_menu.inner_width; //TODO when a workspace is added to the list, it must also be resized to the width of that list.
+  //TODO when a workspace is added to the list, it must also be resized to the width of that list.
+  unsigned int width = workspaces->workspace_menu.inner_width;
 
   frames->workspace_menu.item = XCreateSimpleWindow(display
   , workspaces->workspace_menu.widgets[popup_menu_parent].widget
@@ -121,6 +122,11 @@ void remove_frame_list(Display *display, struct Workspace_list* workspaces, int 
   free(frames->list);
   if(frames->workspace_name != NULL) {
     XFree(frames->workspace_name);
+    frames->workspace_name = NULL;
+  }
+  if(frames->focus.list !=  NULL) {
+    free(frames->focus.list);
+    frames->focus.list = NULL;
   }
   //remove the focus list
   //close the background window

@@ -27,7 +27,8 @@ struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_lis
       struct Rectangle current = 
         {frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h};
 
-      //printf("Tiled window %s, x %d, y %d, w %d, h %d\n", frames->list[i].window_name, frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h);
+      //printf("Tiled window %s, x %d, y %d, w %d, h %d\n", frames->list[i].window_name
+      //, frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h);
       for(unsigned int j = 0; j < used_spaces.used; j++) 
       if(INTERSECTS(current.x, current.w, used_spaces.list[j].x, used_spaces.list[j].w)
       && INTERSECTS(current.y, current.h, used_spaces.list[j].y, used_spaces.list[j].h)) {

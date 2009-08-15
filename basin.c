@@ -394,7 +394,8 @@ int main (int argc, char* argv[]) {
 
               if(event.xbutton.window == frames->list[i].widgets[mode_dropdown_hotspot].widget) {
                 #ifdef SHOW_BUTTON_PRESS_EVENT
-                printf("pressed mode pulldown %lu on window %lu\n", frames->list[i].widgets[mode_dropdown_hotspot].widget, frames->list[i].framed_window);
+                printf("pressed mode pulldown %lu on window %lu\n", frames->list[i].widgets[mode_dropdown_hotspot].widget
+                , frames->list[i].framed_window);
                 #endif
                 clicked_widget = frames->list[i].widgets[mode_dropdown_hotspot].widget;
                 /**** These are used when the popup is cancelled and a frame move starts ***/
@@ -445,16 +446,20 @@ int main (int argc, char* argv[]) {
 
             else if(event.xbutton.window == frames->list[i].widgets[close_button_hotspot].widget) {
               #ifdef SHOW_BUTTON_PRESS_EVENT
-              printf("pressed closebutton %lu on window %lu\n", frames->list[i].widgets[close_button_hotspot].widget, frames->list[i].widgets[frame_parent].widget);
+              printf("pressed closebutton %lu on window %lu\n", frames->list[i].widgets[close_button_hotspot].widget
+              , frames->list[i].widgets[frame_parent].widget);
               #endif
 
               clicked_widget = frames->list[i].widgets[close_button_hotspot].widget;
               //XSelectInput(display, frames->list[i].close_button.close_hotspot, 0);
+              XFlush(display);
+              XSync(display, False);              
               XGrabPointer(display,  root, True
               , PointerMotionMask | ButtonReleaseMask
               , GrabModeAsync,  GrabModeAsync, None, None, CurrentTime);
               XSync(display, True); //this is required in order to supress the leavenotify event from the grab window
-              //XSelectInput(display, frames->list[i].close_button.close_hotspot,  ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);              
+              //XSelectInput(display, frames->list[i].close_button.close_hotspot,  ButtonPressMask | ButtonReleaseMask 
+              //| EnterWindowMask | LeaveWindowMask);              
               #ifdef SHOW_BUTTON_PRESS_EVENT
               printf("raising window\n");
               #endif
@@ -859,7 +864,8 @@ int main (int argc, char* argv[]) {
             for(i = 0; i < frames->used; i++) {
               if(clicked_widget == frames->list[i].widgets[close_button_hotspot].widget) {
                 #ifdef SHOW_BUTTON_RELEASE_EVENT
-                printf("released closebutton %lu, window %lu\n", frames->list[i].widgets[close_button_hotspot].widget, frames->list[i].widgets[frame_parent].widget);
+                printf("released closebutton %lu, window %lu\n", frames->list[i].widgets[close_button_hotspot].widget
+                , frames->list[i].widgets[frame_parent].widget);
                 #endif
                 xcheck_raisewin(display, frames->list[i].widgets[close_button].state[normal]);
                 close_window(display, frames->list[i].framed_window);
@@ -1162,8 +1168,9 @@ int main (int argc, char* argv[]) {
     pulldown = 0;
   }
 
-  for(int k = 0; k < workspaces.used; k++) remove_frame_list(display, &workspaces, k, themes);
-
+  while( workspaces.used > 0 ) remove_frame_list(display, &workspaces, workspaces.used - 1, themes);
+  free(workspaces.list);
+  
   free_cursors(display, &cursors);
 
   remove_themes(display,themes);

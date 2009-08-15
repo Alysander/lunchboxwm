@@ -79,7 +79,7 @@ create_frame (Display *display, struct Frame_list* frames
   change_frame_mode(display, &frame, unset, themes);
  
   //_NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32 - done per window!      
-  int32_t ewmh_frame_extents[4] = { themes->window_type[frame.theme_type][window].x
+  Window ewmh_frame_extents[4] = { themes->window_type[frame.theme_type][window].x
   , themes->window_type[frame.theme_type][window].y
   , - themes->window_type[frame.theme_type][window].x - themes->window_type[frame.theme_type][window].w
   , - themes->window_type[frame.theme_type][window].y - themes->window_type[frame.theme_type][window].h
@@ -97,19 +97,20 @@ create_frame (Display *display, struct Frame_list* frames
   //for some odd reason the reparent only reports an extra unmap event if the window was already unmapped
   XRaiseWindow(display, framed_window);
   XMapWindow(display, frame.widgets[window].widget);
-  XSync(display, False);
   XSetErrorHandler(NULL);
   XUngrabServer(display);
 
   XSelectInput(display, framed_window,  PropertyChangeMask);
   XSelectInput(display, frame.widgets[window].widget
   , SubstructureRedirectMask | SubstructureNotifyMask | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-  //Property notify is used to update titles, structureNotify for destroyNotify events. Some windows only send the destroy event (e.g., gimp splash screen)
+  //Property notify is used to update titles, structureNotify for destroyNotify events. 
+  //Some windows only send the destroy event (e.g., gimp splash screen)
   XSync(display, False);  
   
   //Intercept clicks so we can set the focus and possibly raise floating windows
   XGrabButton(display, Button1, 0, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
-  XGrabButton(display, Button1, Mod2Mask, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None); //do it for numlock as well
+  //do it for numlock as well
+  XGrabButton(display, Button1, Mod2Mask, frame.widgets[window].widget, False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
   
   check_frame_limits(display, &frame, themes);
   resize_frame(display, &frame, themes);
@@ -209,8 +210,8 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
   //prevent overly large windows, but allow one larger than the screen by default (think eee pc)
   frame->max_width  = XWidthOfScreen(screen); 
   frame->max_height = XHeightOfScreen(screen);
-  frame->min_width  = MINWIDTH - frame->hspace;
-  frame->min_height = MINHEIGHT - frame->vspace;
+  frame->min_width  = MINWIDTH  ;
+  frame->min_height = MINHEIGHT ;
 
   #ifdef ALLOW_OVERSIZE_WINDOWS_WITHOUT_MINIMUM_HINTS
   /* Ugh Horrible.  */
