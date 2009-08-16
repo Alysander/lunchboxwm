@@ -38,6 +38,7 @@ void create_menubar(Display *display, struct Menubar *menubar, struct Themes *th
   , themes->menubar[menubar_parent].state_p[normal]);
   
   for(int i = 0; i < menubar_parent; i++) {
+        
     menubar->widgets[i].widget = XCreateSimpleWindow(display, menubar->widgets[menubar_parent].widget
     , spacing*i, 0, themes->menubar[i].w, themes->menubar[i].h, 0, black, black);
     XSelectInput(display, menubar->widgets[i].widget,  Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
@@ -46,8 +47,37 @@ void create_menubar(Display *display, struct Menubar *menubar, struct Themes *th
       if(themes->menubar[i].state_p[j]) {
         menubar->widgets[i].state[j] = XCreateSimpleWindow(display, menubar->widgets[i].widget
         , 0, 0, themes->menubar[i].w, themes->menubar[i].h, 0, black, black);
+
+        char *label = NULL;
+        char Program[] = "Program";
+        char Window[] = "Window";
+        char Options[] = "Options";
+        char Links[] = "Links";
+        char Tool[] = "Tool";
         
-        xcheck_setpixmap(display, menubar->widgets[i].state[j], themes->menubar[i].state_p[j]);
+        switch(i) {
+          case program_menu: label = Program;
+          break;
+          case window_menu: label = Window;
+          break;
+          case options_menu: label = Options;
+          break;
+          case links_menu: label = Links;
+          break;
+          case tool_menu: label = Tool;
+          break;
+        }
+
+        
+        if(label) {
+          create_text_background(display, menubar->widgets[i].state[j], label
+          , &themes->font_theme[j], themes->menubar[i].state_p[j]
+          , themes->menubar[i].w,  themes->menubar[i].h);
+        }
+        else {
+          xcheck_setpixmap(display, menubar->widgets[i].state[j], themes->menubar[i].state_p[j]);
+        }
+       
         xcheck_map(display, menubar->widgets[i].state[j]);
       }
       //else printf("Warning:  Skipping state pixmap\n");

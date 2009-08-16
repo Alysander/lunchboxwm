@@ -124,6 +124,8 @@ title_menu_text: all states exist for all defined window types
 window                         x >= 0,  y >= 0, w <= 0, h <= 0
 frame_parent                   x == 0, y == 0, w == 0, h == 0
 title_menu_rhs                 w > 0
+
+all menubar item width and heights are greater than zero
 ****/
   themes->popup_menu = create_component_theme(display, "popup_menu");
   if(!themes->popup_menu) goto error;
