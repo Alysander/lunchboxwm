@@ -42,8 +42,9 @@ struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_lis
       add_rectangle(&used_spaces, current);
     }
   }
+  #ifdef SHOW_FREE_SPACE_STEPS   
   printf("Finding free spaces. Width %d, Height %d\n", XWidthOfScreen(screen), XHeightOfScreen(screen) - themes->menubar[menubar_parent].h);
- 
+  #endif
   free_spaces = largest_available_spaces(&used_spaces, XWidthOfScreen(screen), XHeightOfScreen(screen) - themes->menubar[menubar_parent].h);
   return free_spaces;
 }
@@ -193,7 +194,9 @@ struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spac
         break;
       }
     }
+    #ifdef SHOW_FREE_SPACE_STEPS     
     printf("Integrating Changes\n");
+    #endif
     if(new_spaces.used != 0) {
       //remove the spaces which were modified. O(N*M)
       for(unsigned int k = 0; k < old_spaces.used; k++) remove_rectangle(&free_spaces, old_spaces.list[k]);
@@ -232,7 +235,9 @@ struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spac
 void add_rectangle(struct Rectangle_list *list, struct Rectangle new) {
 
   if(list->list == NULL) {
+    #ifdef SHOW_FREE_SPACE_STEPS     
     printf("NULL list was passed to add_rectangle\n");
+    #endif
     return;
   }
   
@@ -276,7 +281,9 @@ void add_rectangle(struct Rectangle_list *list, struct Rectangle new) {
 void remove_rectangle(struct Rectangle_list *list, struct Rectangle old) {
   unsigned int i;
   if(list->list == NULL) {
+    #ifdef SHOW_FREE_SPACE_STEPS     
     printf("NULL list was passed to remove_rectangle\n");
+    #endif
     return;
   }
 
@@ -289,7 +296,9 @@ void remove_rectangle(struct Rectangle_list *list, struct Rectangle old) {
     if((list->used != 1) && (i != list->used - 1)) { //not the first or the last
       list->list[i] = list->list[list->used - 1];    
     }
+    #ifdef SHOW_FREE_SPACE_STEPS     
     printf("rem'd space: w %d, h %d\n", old.w, old.h);    
+    #endif
     list->used--;
     return;
   }
@@ -303,7 +312,9 @@ double calculate_displacement(struct Rectangle source, struct Rectangle dest, in
   
   if(source.w > dest.w
   || source.h > dest.h) {
+    #ifdef SHOW_FREE_SPACE_STEPS     
     printf("Doesn't fit: source w %d, dest w %d, source h %d, dest h %d\n", source.w, dest.w, source.h, dest.h);
+    #endif
     return -1;
   }
    

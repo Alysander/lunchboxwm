@@ -97,7 +97,7 @@ struct Themes *create_themes(Display *display, char *theme_name) {
     goto error;
   }
 
-//TODO check if file exists, otherwise use program_frame theme
+//TODO make the file name come from another theme file in case things are being reused.
   themes->window_type[unknown]        = create_component_theme(display, "program_frame");
   if(!themes->window_type[unknown]) goto error;
 /*****

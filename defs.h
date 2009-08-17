@@ -22,10 +22,10 @@
 //#define SHOW_FOCUS_EVENT
 #define SHOW_BUTTON_RELEASE_EVENT     
 //#define SHOW_PROPERTIES
-//#define SHOW_FRAME_DROP  
+#define SHOW_FRAME_DROP  
 //#define SHOW_PROPERTY_NOTIFY
 //#define SHOW_CLIENT_MESSAGE
-//#define SHOW_FREE_SPACE_STEPS
+#define SHOW_FREE_SPACE_STEPS
 
 /**** Configure behaviour *****/
 

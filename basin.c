@@ -100,9 +100,9 @@ int main (int argc, char* argv[]) {
     return -1;
   }
   
-  #ifdef ALLOW_XLIB_DEBUG
+  //#ifdef ALLOW_XLIB_DEBUG
   XSynchronize(display, True);
-  #endif
+  //#endif
   
   root = DefaultRootWindow(display);
 
@@ -352,6 +352,7 @@ int main (int argc, char* argv[]) {
                 do_click_to_focus = 0;
               }
 
+              /* lurking mode has not been implemented
               if(frames->list[i].state == lurking) {
                 if(event.xbutton.window == frames->list[i].widgets[mode_dropdown_hotspot].widget
                 || event.xbutton.window == frames->list[i].widgets[close_button_hotspot].widget)
@@ -361,8 +362,9 @@ int main (int argc, char* argv[]) {
                 i = frames->used;
                 clicked_frame = -1; 
               }
-
-              if(frames->list[i].mode != hidden  &&  frames->list[i].state != lurking) { //above code may not have been able to tile the window
+              */
+              //above code may not have been able to tile the window
+              if(frames->list[i].mode != hidden /* &&  frames->list[i].state != lurking */ ) {
                 //FOCUS
                 add_focus(frames->list[i].framed_window, &frames->focus);
                 unfocus_frames(display, frames);

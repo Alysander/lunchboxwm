@@ -4,6 +4,8 @@
 
 #define M_PI 3.14159265359
 
+#define M_DOUBLE_MAX 1.7e+308 
+
 #define MAX_WM_NAME_LENGTH 200
 #define PIXMAP_SIZE 16
 #define MINWIDTH 200
@@ -83,7 +85,7 @@ enum Window_mode {
 enum Window_state {
   fullscreen,
   demands_attention,
-  lurking,       /* The lurking modes are used when the window attemps to tile and fails*/  
+  //lurking,       /* The lurking modes are used when the window attemps to tile and fails*/  
   none
 };
 
@@ -195,8 +197,8 @@ struct Frame {
   int selected;
   int min_width, max_width;
   int min_height, max_height;
-  int vspace; //dependent on the window type.
-  int hspace;
+  int vspace; //dependent on the window type
+  int hspace; //dependent on the window type
   int width_inc;  //increments for incremental resize
   int height_inc; //increments for incremental resize
 
@@ -229,14 +231,12 @@ struct Frame_list {
   struct Menu_item workspace_menu; //this is a menu item
   
   Window virtual_desktop;
-//  struct Popup_menu title_menu;
 };
 
 struct Workspace_list {
   int used, max; //this must be an int because index may intially be set as -1
   struct Frame_list* list;
   struct Popup_menu workspace_menu;
-  //Window menu; this will be the popup_menu_parent 
 };
 
 struct Cursors {

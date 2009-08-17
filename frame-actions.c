@@ -146,7 +146,7 @@ If all spaces are smaller than the window's minimum size
 (which can only happen if the window's mode is being changed) the window
 remains in it's previous mode. Otherwise the window's mode is changed to tiling.
 
-TODO This frame 
+
 ********/
 void 
 drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, struct Themes *themes) {
@@ -174,7 +174,7 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
   else free_spaces = get_free_screen_spaces (display, frames, themes);
 
   if(free_spaces.list == NULL) return;
-  printf("end result\n");
+  printf("End result\n");
   /* Try and fit the window into a space. */
   for(unsigned int k = 0; k < free_spaces.used; k++) {
     double displacement = 0;
@@ -194,8 +194,7 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
     }
   }
   
-  //the window is too large to fit in any current spaces.
-  //find the space which is the closest size
+
   if(min != -1) {
     #ifdef SHOW_FRAME_DROP  
     printf("Found min_dx %d, min_dy %d, distance %f\n", min_dx, min_dy, (float)min_displacement);
@@ -206,14 +205,14 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
     XMoveWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y);
     XFlush(display);
   }
+  /*The window is too large to fit in any current spaces, calculate a better fit. */
   else { 
     #ifdef SHOW_FRAME_DROP  
-    printf("move failed - finding the nearest size\n");
+    printf("Move failed - finding the nearest size\n");
     #endif
-    //double w_proportion, h_proportion, current_fit;
-    int w_over = 0, h_over = 0;
-    int current_over_total;
-    int best_fit = INT_MAX;
+    int w_over = 1, h_over = 1;
+    double current_over_total = 0;
+    double best_fit = M_DOUBLE_MAX;
     int best_space = -1;
     for(unsigned int k = 0; k < free_spaces.used; k++) {
       if(free_spaces.list[k].w == 0
@@ -226,8 +225,11 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
       if(frame->w > free_spaces.list[k].w) w_over = frame->w - free_spaces.list[k].w;
       if(frame->h > free_spaces.list[k].h) h_over = frame->h - free_spaces.list[k].h;
       
-      current_over_total = w_over + h_over;
-      printf("Current total over %d for space %d\n", current_over_total, k);
+      current_over_total = w_over * h_over;
+
+      #ifdef SHOW_FRAME_DROP  
+      printf("Current total over %f for space %d\n", current_over_total, k);
+      #endif
       if(current_over_total < best_fit
       && free_spaces.list[k].w >= frame->min_width
       && free_spaces.list[k].h >= frame->min_height) {
@@ -273,10 +275,10 @@ void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) 
   XMoveResizeWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y, frame->w, frame->h);
   XMoveResizeWindow(display, frame->framed_window, 0, 0, frame->w - frame->hspace, frame->h - frame->vspace);
   if((frame->w - frame->hspace) % frame->width_inc) 
-    printf("Width remainder of %d inc %d", (frame->w - frame->hspace) % frame->width_inc, frame->width_inc);
+    printf("Width remainder of %d inc %d   ", (frame->w - frame->hspace) % frame->width_inc, frame->width_inc);
 
   if((frame->h - frame->vspace) % frame->height_inc) 
-    printf("Height remainder of %d inc %d", (frame->h - frame->vspace) % frame->height_inc, frame->height_inc);
+    printf("Height remainder of %d inc %d  ", (frame->h - frame->vspace) % frame->height_inc, frame->height_inc);
 
   if(((frame->h - frame->vspace) % frame->height_inc) || ((frame->w - frame->hspace) % frame->width_inc))
     printf("\n");
@@ -864,8 +866,10 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
          (position <= *fp)
       && ((position + size) >= (*fp + *fs))       //New position/size completely surrounds other window
       && (size_change > 0)
-      && (INTERSECTS(adj_position, adj_size, *fp_adj, *fs_adj))
-      ) {
+      //Do they intersect vertically?
+      && (!(
+      (adj_position + adj_size <= *fp_adj  &&  adj_position <= *fp_adj)  ||  (*fp_adj + *fs_adj <= adj_position  &&  *fp_adj <= adj_position )
+      ))) {
         #ifdef SHOW_EDGE_RESIZE
         printf("Oversize!\n");
         #endif
@@ -907,7 +911,7 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
       }
       /** end adjancency enlargement tests **/
 
-      if(*fs - overlap >= *fmin_size //+ frame_space 
+      if(*fs - overlap >= *fmin_size
       && *fs - overlap <= *fmax_size) {
         frames->list[i].indirect_resize.new_size = *fs - overlap;
       }
