@@ -117,8 +117,8 @@ int main (int argc, char* argv[]) {
     return -1;
   }
 
-  create_cursors (display, &cursors); 
-  create_hints(display, &atoms);      
+  create_cursors (display, &cursors); //load a bunch of XCursors
+  create_hints(display, &atoms);      //Create EWMH hints which are atoms
   create_seperators(display, &seps);
   create_menubar(display, &menubar, themes, &cursors);
   create_mode_menu(display, &mode_menu, themes, &cursors);
@@ -140,10 +140,10 @@ int main (int argc, char* argv[]) {
 
   while(!done) {
     //always look for windows that have been destroyed first
-    //if(XCheckTypedEvent(display, DestroyNotify, &event)) { ; }
-    //then look for unmaps
-    //else if(XCheckTypedEvent(display, UnmapNotify, &event)){ ; }
-    XNextEvent(display, &event);
+    /* Sometimes closing multiple windows (e.g., exiting GIMP) can cause BadWindows otherwise */
+    if(XCheckTypedEvent(display, DestroyNotify, &event)) { ; }
+    else if(XCheckTypedEvent(display, UnmapNotify, &event)){ ; }
+    else XNextEvent(display, &event);
 
     if(done) break;
     //these are from the StructureNotifyMask on the reparented window
@@ -999,11 +999,8 @@ int main (int argc, char* argv[]) {
           struct Frame_list *frames = &workspaces.list[k];
           for(i = 0; i < frames->used; i++) {
             if(event.xproperty.window == frames->list[i].framed_window) {
-              if( event.xproperty.atom == XA_WM_NAME) {
-                create_frame_name(display, &title_menu, &frames->list[i], themes);
-                #ifdef SHOW_PROPERTY_NOTIFY
-                printf("resize property\n");
-                #endif
+              if( event.xproperty.atom == XA_WM_NAME  ||  event.xproperty.atom == atoms.name) {
+                create_frame_name(display, &title_menu, &frames->list[i], themes, &atoms);
                 resize_frame(display, &frames->list[i], themes);
               }
               else if ( event.xproperty.atom == XA_WM_NORMAL_HINTS) {
@@ -1257,11 +1254,11 @@ void create_hints (Display *display, struct Atoms *atoms) {
   //this window is closed automatically by X11 when the connection is closed.
   //this is supposed to be used to save the required flags. TODO review this
   Window program_instance = XCreateSimpleWindow(display, root, 0, 0, 1, 1, 0, BlackPixelOfScreen(screen), BlackPixelOfScreen(screen));
-  
+  atoms->name  = XInternAtom(display, "_NET_WM_NAME", False);
   number_of_atoms++; atoms->supported                  = XInternAtom(display, "_NET_SUPPORTED", False);
   number_of_atoms++; atoms->supporting_wm_check        = XInternAtom(display, "_NET_SUPPORTING_WM_CHECK", False);
   number_of_atoms++; atoms->number_of_desktops         = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);
-  number_of_atoms++; atoms->desktop_geometry           = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);
+  number_of_atoms++; atoms->desktop_geometry           = XInternAtom(display, "_NET_DESKTOP_GEOMETRY", False);
   //_NET_WORKAREA
   //number_of_atoms++; atoms->wm_full_placement          = XInternAtom(display, "_NET_WM_FULL_PLACEMENT", False);
   number_of_atoms++; atoms->frame_extents              = XInternAtom(display, "_NET_FRAME_EXTENTS", False);
@@ -1276,9 +1273,13 @@ void create_hints (Display *display, struct Atoms *atoms) {
   number_of_atoms++; atoms->wm_state_demands_attention = XInternAtom(display, "_NET_WM_STATE_DEMANDS_ATTENTION", False);
   number_of_atoms++; atoms->wm_state_modal             = XInternAtom(display, "_NET_WM_STATE_MODAL", False);
   number_of_atoms++; atoms->wm_state_fullscreen        = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", False);
-  
+
   //list all ewmh hints supported.
   XChangeProperty(display, root, atoms->supported, XA_ATOM, 32, PropModeReplace, ewmh_atoms, number_of_atoms);
+    
+  //this is a type
+  atoms->utf8 = XInternAtom(display, "UTF8_STRING", False);
+
   //let clients know that a ewmh complient window manager is running
   XChangeProperty(display, root, atoms->supporting_wm_check, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&program_instance, 1);
   XChangeProperty(display, root, atoms->number_of_desktops, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&desktops, 1);

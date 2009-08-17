@@ -75,7 +75,7 @@ create_frame (Display *display, struct Frame_list* frames
   get_frame_type_and_mode (display, &frame, atoms, themes);
   get_frame_state(display, &frame, atoms);
   create_frame_subwindows(display, &frame, themes, cursors);
-  create_frame_name(display, window_menu, &frame, themes);
+  create_frame_name(display, window_menu, &frame, themes, atoms);
   change_frame_mode(display, &frame, unset, themes);
  
   //_NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32 - done per window!      
@@ -84,7 +84,7 @@ create_frame (Display *display, struct Frame_list* frames
   , - themes->window_type[frame.theme_type][window].x - themes->window_type[frame.theme_type][window].w
   , - themes->window_type[frame.theme_type][window].y - themes->window_type[frame.theme_type][window].h
   };
-  XChangeProperty(display, framed_window, XInternAtom(display, "_NET_FRAME_EXTENTS", False), XA_CARDINAL
+  XChangeProperty(display, framed_window, atoms->frame_extents, XA_CARDINAL
   , 32, PropModeReplace, (unsigned char *)ewmh_frame_extents, 4);
   
   XSetWindowBorderWidth(display, framed_window, 0);
@@ -301,7 +301,7 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
     frame->w          += frame->width_inc  - ((frame->w          - frame->hspace)% frame->width_inc);
   }
 
-  if( frame->height_inc != 1) {
+  if(frame->height_inc != 1) {
     if((frame->min_height - frame->vspace) % frame->height_inc)
     frame->min_height += frame->height_inc - ((frame->min_height - frame->vspace)% frame->height_inc);
 
@@ -552,16 +552,29 @@ TODO check if the name is just whitespace  ***/
    different title menus so perhaps this should just make a pixmap. */
 
 void
-create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame *frame, struct Themes *themes) {
-  char untitled[10] = "noname";
-//  char untitled[10] = "untitled";
+create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame *frame, struct Themes *themes, struct Atoms *atoms) {
+  char untitled[] = "noname";
 
   struct Frame temp = *frame; 
 
   Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
-  XFetchName(display, temp.framed_window, &temp.window_name);
 
+  { /* Recover EWMH UTF8 name first. If none exists, get the ICCCM ASCII name */
+    /* If this succeeds, previous names will be freed if they exists later on */
+    Atom ret_type;
+    int  ret_format;
+    unsigned long ret_nitems;
+    unsigned long ret_trailing_bytes;
+    
+    XGetWindowProperty (display, temp.framed_window, atoms->name, (long)0, (long)MAX_WM_NAME_LENGTH
+    , False, atoms->utf8
+    , &ret_type, &ret_format, &ret_nitems, &ret_trailing_bytes
+    , (unsigned char **)&temp.window_name );
+    
+    if(!temp.window_name) XFetchName(display, temp.framed_window, &temp.window_name);
+  } 
+  
   if(temp.window_name == NULL 
   && frame->window_name != NULL
   && strcmp(frame->window_name, untitled) == 0) {
@@ -626,7 +639,7 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
   {
     XWindowAttributes attr;
     XGetWindowAttributes(display, temp.menu.item, &attr);
-    //destroy old title if it had one
+    /* Destroy/Free old title if it had one */
     free_frame_name(frame);
     
     if(attr.map_state != IsUnmapped) { //remap all the state pixmaps

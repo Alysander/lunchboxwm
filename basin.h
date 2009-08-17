@@ -1,10 +1,10 @@
 #include <cairo/cairo.h> //because the Font_theme struct uses cairo types
 #include <cairo/cairo-xlib.h>
 #include "defs.h"
+
 #define M_PI 3.14159265359
 
-/*** Convenience Macros ***/
-
+#define MAX_WM_NAME_LENGTH 200
 #define PIXMAP_SIZE 16
 #define MINWIDTH 200
 #define MINHEIGHT 24
@@ -267,6 +267,8 @@ struct Atoms {
   , wm_state_demands_attention // "_NET_WM_STATE_DEMANDS_ATTENTION"
   , wm_state_modal             // "_NET_WM_STATE_MODAL"  //can be transient - for the specified window
   , wm_state_fullscreen;       // "_NET_WM_STATE_FULLSCREEN"
-
   //make sure this comes last  
+
+  //this is a type
+  Atom utf8; 
 };
