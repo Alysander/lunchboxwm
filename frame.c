@@ -229,7 +229,7 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
     #ifdef SHOW_FRAME_HINTS
     printf("Managed to recover size hints\n");
     #endif
-    #ifdef ALLOW_POSITION_HINTS
+    
     if((specified.flags & PPosition) 
     || (specified.flags & USPosition)) {
       #ifdef SHOW_FRAME_HINTS
@@ -239,7 +239,7 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
       frame->x = specified.x;
       frame->y = specified.y;
     }
-    #endif
+
     if((specified.flags & PSize) 
     || (specified.flags & USSize)) {
       #ifdef SHOW_FRAME_HINTS    

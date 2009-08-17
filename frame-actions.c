@@ -917,18 +917,15 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
         frames->list[i].indirect_resize.new_position = *fp;
       }   
       else { /* The adjacent window has reached its minimum size. Reduce the requested size */
-        //OPTIMIZATION. Calculate the final answer.
-        int amount_over = 1; //*fs - *fmin_size;
-        /* Already Positive */  //if the selected window is growing, increase its size until it fits
-                                //if the selected window is shrinking, reduce its size until it fits
-//        fs - (position + size - *fp) >= *fmin_size 
-//        fs - (fs - fmin_size) == fmin_size
-        
-        if(size_change < 0) amount_over = -amount_over;
-        
-        int new_size = size - amount_over;
+        //TODO OPTIMIZATION. Calculate the final answer rather than trying until it works.
+        int amount_over = 1;
+
+        int new_size;
         int new_position = position;
-        
+                
+        if(size_change < 0) amount_over = -amount_over;
+        else if (size_change > 0  &&  position < *p) new_position++;
+        new_size = size - amount_over;
         #ifdef SHOW_EDGE_RESIZE
         printf("New size %d, new position %d, overlap was %d\n", new_size, new_position, overlap);
         #endif        
