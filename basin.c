@@ -100,9 +100,7 @@ int main (int argc, char* argv[]) {
     return -1;
   }
   
-  //#ifdef ALLOW_XLIB_DEBUG
   XSynchronize(display, True);
-  //#endif
   
   root = DefaultRootWindow(display);
 
@@ -120,7 +118,7 @@ int main (int argc, char* argv[]) {
   create_cursors (display, &cursors); //load a bunch of XCursors
   create_hints(display, &atoms);      //Create EWMH hints which are atoms
   create_seperators(display, &seps);
-  create_menubar(display, &menubar, themes, &cursors);
+  create_menubar(display, &menubar, &seps, themes, &cursors);
   create_mode_menu(display, &mode_menu, themes, &cursors);
   create_title_menu(display, &title_menu, themes, &cursors);
   create_startup_workspaces(display, &workspaces, &seps, &title_menu, themes, &cursors, &atoms);
@@ -279,6 +277,10 @@ int main (int argc, char* argv[]) {
               current_workspace = k;
               pointer_start_x = event.xbutton.x - frames->list[i].x;
               pointer_start_y = event.xbutton.y - frames->list[i].y;
+
+              if(frames->list[i].state == fullscreen) //cancel the fullscreen
+                change_frame_state(display, &frames->list[i], none, &seps, themes, &atoms);
+                
               break;
             }
             if(i != frames->used) break;
@@ -1001,11 +1003,11 @@ int main (int argc, char* argv[]) {
           struct Frame_list *frames = &workspaces.list[k];
           for(i = 0; i < frames->used; i++) {
             if(event.xproperty.window == frames->list[i].framed_window) {
-              if( event.xproperty.atom == XA_WM_NAME  ||  event.xproperty.atom == atoms.name) {
+              if(event.xproperty.atom == XA_WM_NAME  ||  event.xproperty.atom == atoms.name) {
                 create_frame_name(display, &title_menu, &frames->list[i], themes, &atoms);
                 resize_frame(display, &frames->list[i], themes);
               }
-              else if ( event.xproperty.atom == XA_WM_NORMAL_HINTS) {
+              else if (event.xproperty.atom == XA_WM_NORMAL_HINTS) {
                 /* Ignore normal hints notification for a resizing window. */
                 /* For some reason the gimp 2.6.3 on intrepid kept on resetting it's size hints for the toolbox 
                    This lead to the window moving and resizing unpredictably.  */
@@ -1136,9 +1138,67 @@ int main (int argc, char* argv[]) {
 
       break;
       case ClientMessage:
-        #ifdef SHOW_CLIENT_MESSAGE
-        printf("Warning: Unhandled client message.\n");
-        #endif
+        /*  FULLSCREEN REQUEST RESPONSE
+          window  = the respective client window
+          message_type = _NET_WM_STATE
+          format = 32
+          data.l[0] = the action, as listed below
+          data.l[1] = first property to alter
+          data.l[2] = second property to alter
+          data.l[3] = source indication
+          other data.l[] elements = 0
+          
+          _NET_WM_STATE_REMOVE        0     remove/unset property 
+          _NET_WM_STATE_ADD           1     add/set property
+          _NET_WM_STATE_TOGGLE        2     toggle property  
+          ////
+          There should be only one window in fullscreen as overrideredirect windows often appear.
+        */
+        if(event.xclient.message_type == atoms.wm_state) {
+          printf("It is a state change\n");
+          for(int k = 0; k < workspaces.used; k++) {
+            struct Frame_list *frames = &workspaces.list[k];
+            for(i = 0; i < frames->used; i++) {
+              if(event.xclient.window == frames->list[i].framed_window) {
+                if(event.xclient.data.l[0] == 1) {
+                  if((Atom)event.xclient.data.l[1] == atoms.wm_state_fullscreen) {
+                    change_frame_state(display, &frames->list[i], fullscreen, &seps, themes, &atoms);
+                  }
+                  #ifdef SHOW_CLIENT_MESSAGE
+                  printf("Adding state\n");
+                  #endif
+                }
+                else if(event.xclient.data.l[0] == 0) {
+                  if((Atom)event.xclient.data.l[1] == atoms.wm_state_fullscreen) {
+                    change_frame_state(display, &frames->list[i], none, &seps, themes, &atoms);
+                  }
+                  #ifdef SHOW_CLIENT_MESSAGE
+                  printf("Removing state\n");
+                  #endif
+                }
+                else if(event.xclient.data.l[0] == 2) {
+                  if((Atom)event.xclient.data.l[1] == atoms.wm_state_fullscreen) {
+                    if(frames->list[i].state == none) 
+                    change_frame_state(display, &frames->list[i], fullscreen, &seps, themes, &atoms);
+                    else if (frames->list[i].state == fullscreen) 
+                    change_frame_state(display, &frames->list[i], none, &seps, themes, &atoms);
+                  }
+                  #ifdef SHOW_CLIENT_MESSAGE
+                  printf("Toggling state\n");
+                  #endif
+                }
+                break;
+              }  
+            }
+            if(i < frames->used) break;
+          }
+        }
+        else {
+          #ifdef SHOW_CLIENT_MESSAGE
+          printf("Warning: Unhandled client message.\n");
+          #endif
+          ;
+        }
       break;
       //From [Sub]structureNotifyMask on the reparented window, typically self-generated
       case MapNotify:
@@ -1181,6 +1241,9 @@ int main (int argc, char* argv[]) {
   return 1;
 }
 
+/* When windows are created they are placed under one of these seperators (but on top of previous windows at that level
+   The seperators are lowered in case of pre-exising override redirect windows which should be on top.
+*/
 void create_seperators(Display *display, struct Seperators *seps) {
   XSetWindowAttributes set_attributes;
   Window root = DefaultRootWindow(display);
@@ -1192,14 +1255,19 @@ void create_seperators(Display *display, struct Seperators *seps) {
   , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
   seps->floating_seperator = XCreateWindow(display, root, 0, 0
   , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
-
+  seps->panel_seperator = XCreateWindow(display, root, 0, 0
+  , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
+  
   set_attributes.override_redirect = True;
-  XChangeWindowAttributes(display, seps->sinking_seperator, CWOverrideRedirect, &set_attributes);
-  XChangeWindowAttributes(display, seps->tiling_seperator, CWOverrideRedirect, &set_attributes);
+  XChangeWindowAttributes(display, seps->sinking_seperator, CWOverrideRedirect,  &set_attributes);
+  XChangeWindowAttributes(display, seps->tiling_seperator, CWOverrideRedirect,   &set_attributes);
   XChangeWindowAttributes(display, seps->floating_seperator, CWOverrideRedirect, &set_attributes);
-  XRaiseWindow(display, seps->sinking_seperator);
-  XRaiseWindow(display, seps->tiling_seperator);
-  XRaiseWindow(display, seps->floating_seperator);
+  XChangeWindowAttributes(display, seps->panel_seperator, CWOverrideRedirect,    &set_attributes);  
+  XLowerWindow(display, seps->panel_seperator);
+  XLowerWindow(display, seps->floating_seperator);
+  XLowerWindow(display, seps->tiling_seperator);
+  XLowerWindow(display, seps->sinking_seperator);
+
   XFlush(display);
 }
 
@@ -1247,7 +1315,7 @@ void create_hints (Display *display, struct Atoms *atoms) {
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
 
-  unsigned char *ewmh_atoms = (unsigned char *)&(atoms->supporting_wm_check);
+  Atom *ewmh_atoms = &(atoms->supporting_wm_check);
   int number_of_atoms = 0;
   static int desktops = 1;
 
@@ -1277,7 +1345,7 @@ void create_hints (Display *display, struct Atoms *atoms) {
   number_of_atoms++; atoms->wm_state_fullscreen        = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", False);
 
   //list all ewmh hints supported.
-  XChangeProperty(display, root, atoms->supported, XA_ATOM, 32, PropModeReplace, ewmh_atoms, number_of_atoms);
+  XChangeProperty(display, root, atoms->supported, XA_ATOM, 32, PropModeReplace, (unsigned char *)ewmh_atoms, number_of_atoms);
     
   //this is a type
   atoms->utf8 = XInternAtom(display, "UTF8_STRING", False);

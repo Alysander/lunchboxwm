@@ -23,6 +23,8 @@ void
 check_frame_limits(Display *display, struct Frame *frame, struct Themes *themes) {
   Screen* screen = DefaultScreenOfDisplay(display);  
 
+  if(frame->state == fullscreen) return;
+  
   if(frame->mode != desktop) {
     if(frame->w > XWidthOfScreen(screen)) 
       frame->w = XWidthOfScreen(screen);
@@ -136,6 +138,45 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
   }
   xcheck_raisewin(display, frame->widgets[mode_dropdown_hotspot].widget);
   XFlush(display);
+}
+
+/*This function makes a window fullscreen.  It resizes it, but resets the values back to their originals */
+void 
+change_frame_state (Display *display, struct Frame *frame, enum Window_state state
+, struct Seperators *seps, struct Themes *themes, struct Atoms *atoms) {
+  Screen* screen = DefaultScreenOfDisplay(display);  
+  
+  if(state == fullscreen) {
+    int x = frame->x;
+    int y = frame->y;
+    int w = frame->w;
+    int h = frame->h;
+    frame->x = 0 - themes->window_type[frame->type][window].x;
+    frame->y = 0 - themes->window_type[frame->type][window].y;
+    frame->w = XWidthOfScreen(screen)  + frame->hspace;
+    frame->h = XHeightOfScreen(screen) + frame->vspace;    
+
+    resize_frame(display, frame, themes);
+    frame->state = state;
+    stack_frame(display,  frame, seps);    
+    
+    frame->x = x;
+    frame->y = y;
+    frame->w = w;
+    frame->h = h;    
+    
+  }
+
+  if(state == none) {
+    frame->state = none;
+    //make sure that the property is removed
+    XDeleteProperty(display, frame->framed_window, atoms->wm_state);
+    stack_frame(display,  frame, seps); 
+    resize_frame(display, frame, themes);
+
+  }
+  //if(atoms) return;
+ 
 }
 
 /*******
@@ -271,7 +312,9 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
 
 /*** Moves and resizes the subwindows of the frame ***/
 void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) {
-
+  /*Do not move or resize fullscreen windows */
+  if(frame->state == fullscreen) return;
+  
   XMoveResizeWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y, frame->w, frame->h);
   XMoveResizeWindow(display, frame->framed_window, 0, 0, frame->w - frame->hspace, frame->h - frame->vspace);
   if((frame->w - frame->hspace) % frame->width_inc) 
@@ -640,6 +683,7 @@ stack_frame(Display *display, struct Frame *frame, struct Seperators *seps) {
   unsigned int mask = CWSibling | CWStackMode;  
   changes.stack_mode = Below;
 
+
   #ifdef SHOW_BUTTON_PRESS_EVENT
   printf("stacking window %s\n", frame->window_name);
   #endif
@@ -650,7 +694,11 @@ stack_frame(Display *display, struct Frame *frame, struct Seperators *seps) {
   changes.sibling = seps->floating_seperator;  
   else 
   changes.sibling = seps->sinking_seperator;
-  
+
+  if(frame->state == fullscreen ) {
+    changes.sibling = seps->panel_seperator;        
+    changes.stack_mode = Above;
+  }
   XConfigureWindow(display, frame->widgets[frame_parent].widget, mask, &changes);
   XFlush(display);
 }

@@ -85,7 +85,8 @@ enum Window_mode {
 enum Window_state {
   fullscreen,
   demands_attention,
-  //lurking,       /* The lurking modes are used when the window attemps to tile and fails*/  
+
+  //lurking,       /* The lurking state is used when the window attemps to tile and fails*/  
   none
 };
 
@@ -183,6 +184,7 @@ struct Seperators {
   Window sinking_seperator;  //this window is always above desktop windows.
   Window tiling_seperator;   //this window is always above tiled windows.
   Window floating_seperator; //this window is always above floating windows.
+  Window panel_seperator;    //this window is always above panels and taskbars.
 };
 
 struct Frame {

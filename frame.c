@@ -499,7 +499,7 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
 
   frame->widgets[frame_parent].widget = XCreateSimpleWindow(display, root
   , frame->x, frame->y,  frame->w, frame->h, 0, black, black);
-
+  XFlush(display);
   for(int i = 0; i < frame_parent; i++) {
     frame->widgets[i].widget = 0;
     for(int j = 0; j <= inactive; j++)  frame->widgets[i].state[j] = 0;
@@ -526,10 +526,10 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
       , x, y, w, h, 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
       XMapWindow(display, frame->widgets[i].widget);
     }
-    else if (themes->window_type[frame->theme_type][i].exists) { //otherwise if it isn't an inputonly hotspot
+    else if(themes->window_type[frame->theme_type][i].exists) { //otherwise if it isn't an inputonly hotspot
       frame->widgets[i].widget = XCreateSimpleWindow(display, frame->widgets[frame_parent].widget
       , x, y, w, h, 0, black, black);
-      
+      XFlush(display);
       if(i != window) { //dont create state windows for the framed window 
         //OPTIMIZATION: This makes the cropped state windows large so that they don't need to be resized
         if(themes->window_type[frame->theme_type][i].w <= 0) w = XWidthOfScreen(screen);
@@ -543,6 +543,7 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
         }
       }
       //map windows
+      //TODO double check y i need to check this
       XMapWindow(display, frame->widgets[i].widget);
     }
   }

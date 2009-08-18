@@ -1,5 +1,6 @@
 void check_frame_limits     (Display *display, struct Frame *frame, struct Themes *themes);
-void change_frame_mode      (Display *display, struct Frame *frame, enum Window_mode mode, struct Themes *themes);
+void change_frame_mode      (Display *display, struct Frame *frame, enum Window_mode mode,   struct Themes *themes);
+void change_frame_state     (Display *display, struct Frame *frame, enum Window_state state, struct Seperators *seps, struct Themes *themes, struct Atoms *atoms);
 void drop_frame             (Display *display, struct Frame_list *frames, int clicked_frame, struct Themes *themes);
 
 void resize_frame           (Display *display, struct Frame *frame, struct Themes *themes);

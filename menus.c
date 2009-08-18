@@ -20,7 +20,8 @@ todo:  Text needs to be drawn on the theme pixmaps, rater than having text on th
 todo:  Possibly have an extra parameter that determines whether the menubar is a popup menu and use the shape
        extention.
 ********************/
-void create_menubar(Display *display, struct Menubar *menubar, struct Themes *themes, struct Cursors *cursors) {
+void 
+create_menubar(Display *display, struct Menubar *menubar, struct Seperators *seps, struct Themes *themes, struct Cursors *cursors) {
   /* create new window structure, using theme pixmaps */
   XSetWindowAttributes set_attributes;
   Window root = DefaultRootWindow(display);
@@ -90,6 +91,13 @@ void create_menubar(Display *display, struct Menubar *menubar, struct Themes *th
   XChangeWindowAttributes(display, menubar->widgets[menubar_parent].widget
   , CWOverrideRedirect, &set_attributes);
 
+  {
+    XWindowChanges changes;  
+    unsigned int mask = CWSibling | CWStackMode;  
+    changes.stack_mode = Below;
+    changes.sibling = seps->panel_seperator;
+    XConfigureWindow(display, menubar->widgets[menubar_parent].widget, mask, &changes);
+  }
   /* Show initial state. */
   xcheck_raisewin(display, menubar->widgets[program_menu].state[normal]);
   xcheck_raisewin(display, menubar->widgets[window_menu].state[normal]);
@@ -108,7 +116,8 @@ Prec: display is valid, themes is valid, cursors is valid.
 Post: Menu with borders and background but no items is created but not mapped.
 Desc: This function is used to create a blank and generic menu.  Items must be added by caller.
 ********************/
-void create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *themes, struct Cursors *cursors) {
+void 
+create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *themes, struct Cursors *cursors) {
 
   XSetWindowAttributes set_attributes;
   Window root = DefaultRootWindow(display);
@@ -168,7 +177,8 @@ void create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes 
 
 }
 
-void create_mode_menu(Display *display, struct Mode_menu *mode_menu
+void 
+create_mode_menu(Display *display, struct Mode_menu *mode_menu
 , struct Themes *themes, struct Cursors *cursors) {
 
   Screen* screen = DefaultScreenOfDisplay(display);
@@ -227,7 +237,8 @@ void create_mode_menu(Display *display, struct Mode_menu *mode_menu
    it should also check to see it it is bigger than the current width and enlarge it
    if required.
 *********************/
-void create_workspaces_menu(Display *display, struct Workspace_list *workspaces
+void 
+create_workspaces_menu(Display *display, struct Workspace_list *workspaces
 , struct Themes *themes, struct Cursors *cursors) {
 
   
@@ -241,7 +252,8 @@ void create_workspaces_menu(Display *display, struct Workspace_list *workspaces
 The title menu is used for both the window menu and the dropdown list that appears at the top of the window.
 Does it assume that titles have already been created? 
 ***************/
-void create_title_menu(Display *display, struct Popup_menu *window_menu
+void 
+create_title_menu(Display *display, struct Popup_menu *window_menu
 , struct Themes *themes, struct Cursors *cursors) {
 
   window_menu->inner_width = DEFAULT_MENU_ITEM_WIDTH;        //TODO this must come from the theme
@@ -250,13 +262,11 @@ void create_title_menu(Display *display, struct Popup_menu *window_menu
   create_popup_menu(display, window_menu, themes, cursors);
 }
 
-void show_workspace_menu(Display *display, Window calling_widget, struct Workspace_list* workspaces
+/* Shows */
+void 
+show_workspace_menu(Display *display, Window calling_widget, struct Workspace_list* workspaces
 , int index, int x, int y, struct Themes *themes) {
   int max_length = 100;
-
-
-  //TODO, do a loop and a resize things as in resize_frame
-
 
   for(int i = 0; i < workspaces->used; i++)  
   if(workspaces->list[i].workspace_menu.width > max_length) 
@@ -292,7 +302,8 @@ void show_workspace_menu(Display *display, Window calling_widget, struct Workspa
   This function is also the window menu, which is done by setting the index to -1. 
 **********************/
 
-void show_title_menu(Display *display, struct Popup_menu *title_menu, Window calling_widget, struct Frame_list* frames
+void 
+show_title_menu(Display *display, struct Popup_menu *title_menu, Window calling_widget, struct Frame_list* frames
 , int index, int x, int y, struct Themes *themes) {
 
   //TODO this does not consider what to do if a window is created when the menu is open
@@ -332,7 +343,8 @@ void show_title_menu(Display *display, struct Popup_menu *title_menu, Window cal
   XFlush(display);
 }
 
-void show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *mode_menu
+void 
+show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *mode_menu
 , struct Frame *active_frame, int x, int y) {
 
   //printf("Showing mode mode\n");
@@ -355,7 +367,8 @@ void show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *m
   place_popup_menu(display, calling_widget, mode_menu->menu.widgets[popup_menu_parent].widget, x, y);
 }
 
-void resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *themes) {
+void 
+resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *themes) {
 
   const int width  = menu->inner_width  + themes->popup_menu[popup_l_edge].w + themes->popup_menu[popup_r_edge].w;
   const int height = menu->inner_height + themes->popup_menu[popup_t_edge].h + themes->popup_menu[popup_b_edge].h;
@@ -391,8 +404,8 @@ It is placed above the widget to prevent it going off the bottom of the screen.
 The x,y needs to be supplied because the x,y of the calling widget will be relative to its parent
 , not the screen.
 ****/
-void place_popup_menu(Display *display, Window calling_widget, Window popup_menu
-, int x, int y) {
+void 
+place_popup_menu(Display *display, Window calling_widget, Window popup_menu, int x, int y) {
   Screen* screen = DefaultScreenOfDisplay(display);
   XWindowAttributes details;
   XWindowAttributes popup_details;
