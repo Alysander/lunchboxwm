@@ -1011,7 +1011,7 @@ int main (int argc, char* argv[]) {
                 /* Ignore normal hints notification for a resizing window. */
                 /* For some reason the gimp 2.6.3 on intrepid kept on resetting it's size hints for the toolbox 
                    This lead to the window moving and resizing unpredictably.  */
-                if ( clicked_frame != i ) {
+                if(clicked_frame != i) {
                   get_frame_hints(display, &frames->list[i]); 
                   if(frames->list[i].mode == tiling) { 
                     drop_frame (display, frames, i, themes);
@@ -1041,7 +1041,13 @@ int main (int argc, char* argv[]) {
           struct Frame_list *frames = &workspaces.list[k];          
           for(i = 0; i < frames->used; i++) { 
             if(event.xconfigurerequest.window == frames->list[i].framed_window) {
-              //ignore programs resize request if
+              if(frames->list[i].state == fullscreen) {
+                #ifdef SHOW_CONFIGURE_REQUEST_EVENT
+                printf("Skipping Configure on fullscreen window: %s\n", frames->list[i].window_name);
+                #endif
+                break;
+              }
+
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
               printf("Configure window: %s\n", frames->list[i].window_name);
               #endif
