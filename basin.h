@@ -9,7 +9,7 @@
 #define MAX_WM_NAME_LENGTH 200
 #define PIXMAP_SIZE 16
 #define MINWIDTH 200
-#define MINHEIGHT 24
+#define MINHEIGHT 40
 #define PATH_SIZE 400
 #define WIDGET_NAME_SIZE 50
 /****THEME DERIVED CONSTANTS******/
@@ -62,10 +62,10 @@ enum Frame_widget {
   title_menu_rhs,    //includes arrow
   title_menu_hotspot,
 
-  mode_dropdown_lhs_floating,
-  mode_dropdown_lhs_tiling,
-  mode_dropdown_lhs_desktop,
-
+  mode_dropdown_lhs, //sets the title and the icon
+  mode_dropdown_lhs_floating, //this is not directly loaded from the theme, but are based on the mode_dropdown_lhs plus text and icon
+  mode_dropdown_lhs_tiling,   //this is not directly loaded from the theme, but are based on the mode_dropdown_lhs plus text and icon
+  mode_dropdown_lhs_desktop,  //this is not directly loaded from the theme, but are based on the mode_dropdown_lhs plus text and icon
   mode_dropdown_rhs, //includes arrow
   mode_dropdown_hotspot,
   close_button,
@@ -78,7 +78,7 @@ enum Window_mode {
   floating,
   tiling,
   desktop,
-  hidden, /* add new modes above this line (which is hidden mode) */
+  hidden, /* add new modes above this line (this line is hidden mode) */
   unset   /* must be after hidden */ /* This is required for the first change_frame_mode */
 };
 
@@ -92,18 +92,15 @@ enum Window_state {
 
 enum Window_type {
   unknown,
-  splash,
   file,
   program,
   dialog,  
   modal_dialog,
   utility,
   status, 
-  system_program,
-  popup_menu,            
-  popup_menubar, 
-  menubar, /* must be last */
-  panel //this is ignored in the themes
+  system_program, /* must be last, items following this will not be included in themes */
+  splash, //this is ignored in the themes as splash screens are not managed
+  panel   //this is ignored in the themes as splash screens are not managed
 };
 
 
@@ -150,11 +147,12 @@ struct Font_theme {
   cairo_font_weight_t weight;
 };
 
-struct Themes {
-  struct Widget_theme *window_type[menubar + 1]; 
-  struct Widget_theme *popup_menu; //this  may be implemented in the future
+struct Themes { //these are all individually malloc'd, and window type is an array of malloc'd arrays
+  struct Widget_theme *window_type[system_program + 1]; 
   struct Widget_theme *menubar;
+  struct Widget_theme *popup_menu;
   struct Font_theme font_theme[inactive + 1];
+  unsigned int mode_pulldown_width;
 };
 
 struct Popup_menu {

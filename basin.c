@@ -103,9 +103,9 @@ int main (int argc, char* argv[]) {
   #if 0
   XSynchronize(display, True);
   #endif
-#ifndef CRASH_ON_BUG  
+  #ifndef CRASH_ON_BUG  
   XSetErrorHandler(supress_xerror);  
-#endif
+  #endif
   root = DefaultRootWindow(display);
   
   XSelectInput(display, root, SubstructureRedirectMask | ButtonMotionMask 
@@ -417,14 +417,7 @@ int main (int argc, char* argv[]) {
                 #ifdef SHOW_BUTTON_PRESS_EVENT
                 printf("changing mode pulldown pixmaps\n");
                 #endif
-
-                if(frames->list[i].mode == floating)
-                  xcheck_raisewin(display, frames->list[i].widgets[mode_dropdown_lhs_floating].state[active]);
-                else if(frames->list[i].mode == tiling)
-                  xcheck_raisewin(display, frames->list[i].widgets[mode_dropdown_lhs_tiling].state[active]);
-                else if(frames->list[i].mode == desktop)
-                  xcheck_raisewin(display, frames->list[i].widgets[mode_dropdown_lhs_desktop].state[active]);
-
+                xcheck_raisewin(display, frames->list[i].widgets[mode_dropdown_lhs].state[active]);
                 xcheck_raisewin(display, frames->list[i].widgets[mode_dropdown_rhs].state[active]);
               }
               else if(event.xbutton.window == frames->list[i].widgets[title_menu_hotspot].widget) {
@@ -1102,8 +1095,10 @@ int main (int argc, char* argv[]) {
             XWindowAttributes attributes;
             XWindowChanges premap_config; 
 
+            #ifdef CRASH_ON_BUG
             XGrabServer(display);
             XSetErrorHandler(supress_xerror);
+            #endif
             XGetWindowAttributes(display, event.xconfigurerequest.window, &attributes);
             /** Apparently firefox and open office seem have these bogus 200x200 config requests after the "real" ones **/
             if(!(event.xcreatewindow.width == 200  &&  event.xcreatewindow.height == 200)) {
@@ -1129,8 +1124,10 @@ int main (int argc, char* argv[]) {
             XConfigureWindow(display, event.xconfigurerequest.window
             , CWX | CWY | CWWidth | CWHeight | CWBorderWidth, &premap_config);
             XSync(display, False);
+            #ifdef CRASH_ON_BUG
             XSetErrorHandler(NULL);
             XUngrabServer(display);
+            #endif
             XFlush(display);
           }
           if(i != frames->used) break;

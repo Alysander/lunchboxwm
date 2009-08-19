@@ -113,8 +113,10 @@ create_frame (Display *display, struct Frame_list* frames
   , 32, PropModeReplace, (unsigned char *)ewmh_frame_extents, 4);
   
   XSetWindowBorderWidth(display, framed_window, 0);
+#ifdef CRASH_ON_BUG
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);
+#endif
   XSelectInput(display, framed_window,  0);
 
   //reparent the framed_window to frame.widgets[window].widget
@@ -124,8 +126,8 @@ create_frame (Display *display, struct Frame_list* frames
   XMapWindow(display, frame.widgets[window].widget);
 #ifdef CRASH_ON_BUG
   XSetErrorHandler(NULL);
-#endif
   XUngrabServer(display);
+#endif
 
   XSelectInput(display, framed_window,  PropertyChangeMask);
   XSelectInput(display, frame.widgets[window].widget
@@ -172,8 +174,10 @@ remove_frame(Display* display, struct Frame_list* frames, int index, struct Them
   //XDestroyWindow(display, frames->list[index].menu_item.backing);
 
   XDestroyWindow(display, frames->list[index].menu.item);  
+#ifdef CRASH_ON_BUG
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);  
+#endif
   XReparentWindow(display, frame->framed_window, root
   , frame->x + themes->window_type[frame->theme_type][window].x
   , frame->y + themes->window_type[frame->theme_type][window].y);
@@ -184,9 +188,10 @@ remove_frame(Display* display, struct Frame_list* frames, int index, struct Them
   //this will not destroy the window because it has been reparented to root
   XDestroyWindow(display, frame->widgets[frame_parent].widget);
   XSync(display, False);
+#ifdef CRASH_ON_BUG
   XSetErrorHandler(NULL);    
   XUngrabServer(display);
-
+#endif
   free_frame_name(&frames->list[index]);
   if((frames->used != 1) && (index != frames->used - 1)) { //the frame is not alone or the last
     frames->list[index] = frames->list[frames->used - 1]; //swap the deleted frame with the last frame
@@ -551,20 +556,20 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
       frame->widgets[i].widget = XCreateSimpleWindow(display, frame->widgets[frame_parent].widget
       , x, y, w, h, 0, black, black);
       XFlush(display);
-      if(i != window) { //dont create state windows for the framed window 
+      if(i != window) { //don't create state windows for the framed window 
         //OPTIMIZATION: This makes the cropped state windows large so that they don't need to be resized
         if(themes->window_type[frame->theme_type][i].w <= 0) w = XWidthOfScreen(screen);
         if(themes->window_type[frame->theme_type][i].h <= 0) h = XWidthOfScreen(screen);
         for(int j = 0; j <= inactive; j++) {
           frame->widgets[i].state[j] = XCreateSimpleWindow(display, frame->widgets[i].widget
           , 0, 0, w, h, 0, black, black);
-          XSetWindowBackgroundPixmap(display, frame->widgets[i].state[j]
+          /* We don't know which pixmap to set until the mode is correct */
+          if(i != mode_dropdown_lhs) XSetWindowBackgroundPixmap(display, frame->widgets[i].state[j]
           , themes->window_type[frame->theme_type][i].state_p[j]);
           XMapWindow(display, frame->widgets[i].state[j]);
         }
       }
-      //map windows
-      //TODO double check y i need to check this
+      //Map windows
       XMapWindow(display, frame->widgets[i].widget);
     }
   }
@@ -705,7 +710,7 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
     create_text_background(display, temp.menu.state[i], temp.window_name
     , &themes->font_theme[i], themes->popup_menu[menu_item_mid].state_p[i]
     , XWidthOfScreen(screen), themes->popup_menu[menu_item_mid].h);
-    
+    //TODO make the title for unfocussed windows not bold?
     create_text_background(display, temp.widgets[title_menu_text].state[i], temp.window_name
     , &themes->font_theme[active], themes->window_type[frame->theme_type][title_menu_text].state_p[i]
     , XWidthOfScreen(screen), themes->window_type[frame->theme_type][title_menu_text].h);

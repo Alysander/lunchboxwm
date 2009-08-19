@@ -19,6 +19,10 @@
 This function ensures that the window is within limits. 
 It sets the frames x,y,w,h to achieve this.
 ******/
+
+static void
+change_mode_pulldown_lhs_pixmap(Display *display, struct Frame *frame, int index, struct Themes *themes);
+
 void 
 check_frame_limits(Display *display, struct Frame *frame, struct Themes *themes) {
   Screen* screen = DefaultScreenOfDisplay(display);  
@@ -76,8 +80,8 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
   xcheck_raisewin(display, frame->widgets[title_menu_rhs].state[normal]);
 
   if(mode == frame->mode  &&  mode == desktop) {
-    xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs_desktop].widget);
-    xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs_desktop].state[normal]);
+    change_mode_pulldown_lhs_pixmap(display, frame, mode_dropdown_lhs_desktop, themes);
+    xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs].state[normal]);
     xcheck_raisewin(display, frame->widgets[mode_dropdown_rhs].state[normal]);
     xcheck_raisewin(display, frame->widgets[mode_dropdown_hotspot].widget);
     XFlush(display); 
@@ -107,25 +111,20 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
   }
   else 
   if(mode == floating) {
-    xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs_floating].widget);
-    xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs_floating].state[normal]);
-    xcheck_raisewin(display, frame->widgets[mode_dropdown_rhs].state[normal]);
     frame->mode = floating;
+    change_mode_pulldown_lhs_pixmap(display, frame, mode_dropdown_lhs_floating, themes);
   }
   else
   if(mode == tiling) {
-    xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs_tiling].widget);
-    xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs_tiling].state[normal]);
-    xcheck_raisewin(display, frame->widgets[mode_dropdown_rhs].state[normal]);
     frame->mode = tiling;
+    change_mode_pulldown_lhs_pixmap(display, frame, mode_dropdown_lhs_tiling, themes);
     //cannot drop frame here because it requires access to the whole frame list
   }
 
   else 
   if(mode == desktop) {
-    xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs_desktop].widget);
-    xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs_desktop].state[normal]);
-    xcheck_raisewin(display, frame->widgets[mode_dropdown_rhs].state[normal]);
+
+    change_mode_pulldown_lhs_pixmap(display, frame, mode_dropdown_lhs_desktop, themes);
     frame->x = 0 - themes->window_type[frame->type][window].x;
     frame->y = 0 - themes->window_type[frame->type][window].y;
 
@@ -136,10 +135,30 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
     check_frame_limits(display, frame, themes);
     resize_frame(display, frame, themes);
   }
+  xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs].state[normal]);
+  xcheck_raisewin(display, frame->widgets[mode_dropdown_rhs].state[normal]);
   xcheck_raisewin(display, frame->widgets[mode_dropdown_hotspot].widget);
   XFlush(display);
 }
 
+/* This is an internal function used to change the frame mode indicated on the frame. It mimics that used to change the frame name,
+but luckily the mode pixmaps can be pre-generated */
+static void
+change_mode_pulldown_lhs_pixmap(Display *display, struct Frame *frame, int index, struct Themes *themes) {
+  if(frame->widgets[mode_dropdown_lhs].widget) {
+    XUnmapWindow(display, frame->widgets[mode_dropdown_lhs].widget);
+    
+    for(int j = 0; j <= inactive; j++) if(themes->window_type[frame->theme_type][mode_dropdown_lhs].exists) 
+    if(themes->window_type[frame->theme_type][index].state_p[j]){
+      XSetWindowBackgroundPixmap(display, frame->widgets[mode_dropdown_lhs].state[j]
+      , themes->window_type[frame->theme_type][index].state_p[j]);
+    }
+    
+    XFlush(display);
+    XMapWindow(display, frame->widgets[mode_dropdown_lhs].widget);
+    XFlush(display);
+  }
+}
 /*This function makes a window fullscreen.  It resizes it, but resets the values back to their originals */
 void 
 change_frame_state (Display *display, struct Frame *frame, enum Window_state state
@@ -185,8 +204,6 @@ a best-fit algorithm is used to determine the closest size.
 If all spaces are smaller than the window's minimum size 
 (which can only happen if the window's mode is being changed) the window
 remains in it's previous mode. Otherwise the window's mode is changed to tiling.
-
-
 ********/
 void 
 drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, struct Themes *themes) {
@@ -723,7 +740,6 @@ stack_frame(Display *display, struct Frame *frame, struct Seperators *seps) {
     changes.stack_mode = Above;
   }
  
-  
   XConfigureWindow(display, frame->widgets[frame_parent].widget, mask, &changes);
   XFlush(display);
 }

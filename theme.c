@@ -46,13 +46,19 @@ static void swap_widget_theme(struct Widget_theme *from, struct Widget_theme *to
 static void swap_tiled_widget_themes(char *type, struct Widget_theme *themes, struct Widget_theme *tiles);
 
 static void create_widget_theme_pixmap(Display *display, struct Widget_theme *widget_theme, cairo_surface_t **theme_images);
+
+static Pixmap create_text_background_pixmap(Display *display, const char *restrict text
+, const struct Font_theme *restrict font_theme, Pixmap background_p, int b_w, int b_h);
+
 static void remove_widget_themes (Display *display, struct Widget_theme *themes, int length);
+static void create_mode_menu_lhs(Display *display, struct Themes *themes);
 
 /* strnadd concatinates s1 and s2 and writes the result into s0 provided the length of s1 and s2 
 is less that the limit, which is usually defined as the length of s0.  If any of the passed strings are NULL
 s0 is returned unmodified.  If the limit is less than the length of s2, s0 is returned unmodified. 
 All strings must be NULL terminated and this function ensures that s0 will always be null terminated */
-char *strnadd(char *restrict s0, char *restrict s1, char *restrict s2, size_t limit) {
+char *
+strnadd(char *restrict s0, char *restrict s1, char *restrict s2, size_t limit) {
   size_t length;
   if(!s0  ||  !s1  ||  !s2)  return s0;
   length = strlen(s1) + strlen(s2) + 1;
@@ -67,7 +73,8 @@ char *strnadd(char *restrict s0, char *restrict s1, char *restrict s2, size_t li
 /* create_themes opens the theme in the theme folder with the name specified by theme_name.
 It changes the current working directory before calling create_component_theme each window type.
 If an error occurs when opening the theme a NULL pointer is returned. */
-struct Themes *create_themes(Display *display, char *theme_name) {
+struct Themes *
+create_themes(Display *display, char *theme_name) {
   struct Themes *themes = NULL;
   char *path = NULL;
   char *home = getenv("HOME");
@@ -114,17 +121,18 @@ struct Themes *create_themes(Display *display, char *theme_name) {
 
 /****
 TODO Verify that: 
-t_edge                         x >= 0, y >= 0, w <=0, h>0
-l_edge                         x >= 0, y >= 0, w > 0, h<=0
-b_edge                         x > 0,  y < 0, w <= 0, h>0
-r_edge                         x < 0,  y >= 0, w > 0, h <= 0
-title_menu_text: all states exist for all defined window types
-window                         x >= 0,  y >= 0, w <= 0, h <= 0
-frame_parent                   x == 0, y == 0, w == 0, h == 0
-title_menu_rhs                 w > 0
-
-all menubar item width and heights are greater than zero
+  t_edge                         x >= 0, y >= 0, w <=0,  h >  0
+  l_edge                         x >= 0, y >= 0, w > 0,  h <= 0
+  b_edge                         x > 0,  y < 0,  w <= 0, h >  0
+  r_edge                         x < 0,  y >= 0, w > 0,  h <= 0
+  title_menu_text: all states exist for all defined window types
+  window                         x >= 0, y >= 0, w <= 0, h <= 0
+  frame_parent                   x == 0, y == 0, w == 0, h == 0
+  title_menu_rhs                 w > 0
+  mode_dropdown_lhs              w > 0, h > 0
+  all menubar item width and heights are greater than zero
 ****/
+  
   themes->popup_menu = create_component_theme(display, "popup_menu");
   if(!themes->popup_menu) goto error;
   themes->menubar = create_component_theme(display, "menubar");
@@ -132,6 +140,7 @@ all menubar item width and heights are greater than zero
 
   free(path);
   create_font_themes(themes);
+  create_mode_menu_lhs(display, themes);
   return themes;
 
   error:
@@ -140,7 +149,38 @@ all menubar item width and heights are greater than zero
   return NULL;
 }
 
-static struct Widget_theme *create_component_theme(Display *display, char *type) {
+/*This function creates the different states for the mode pulldown list 
+(depending on the mode chosen for each frame type */
+static void
+create_mode_menu_lhs(Display *display, struct Themes *themes) {
+  /** This is the custom create mode menu LHS section **/
+  themes->mode_pulldown_width = get_text_width(display, "Floating", &themes->font_theme[active]);
+  for(int i = 0; i <= system_program; i++) {
+    for(int j = 0; j <= inactive; j++) {
+      if(themes->window_type[i] != NULL
+      && themes->window_type[i][mode_dropdown_lhs].state_p[j]) {
+
+        themes->window_type[i][mode_dropdown_lhs_floating].state_p[j] = create_text_background_pixmap(display, "Floating"
+        , &themes->font_theme[active], themes->window_type[i][mode_dropdown_lhs].state_p[j]
+        , themes->window_type[i][mode_dropdown_lhs].w
+        , themes->window_type[i][mode_dropdown_lhs].h);
+
+        themes->window_type[i][mode_dropdown_lhs_tiling].state_p[j] = create_text_background_pixmap(display, "Tiling"
+        , &themes->font_theme[active], themes->window_type[i][mode_dropdown_lhs].state_p[j]
+        , themes->window_type[i][mode_dropdown_lhs].w
+        , themes->window_type[i][mode_dropdown_lhs].h);
+
+        themes->window_type[i][mode_dropdown_lhs_desktop].state_p[j] = create_text_background_pixmap(display, "Desktop"
+        , &themes->font_theme[active], themes->window_type[i][mode_dropdown_lhs].state_p[j]
+        , themes->window_type[i][mode_dropdown_lhs].w
+        , themes->window_type[i][mode_dropdown_lhs].h);          
+      }
+    }
+  }
+}
+
+static struct Widget_theme *
+create_component_theme(Display *display, char *type) {
   struct Widget_theme *themes = NULL;
   struct Widget_theme *tiles  = NULL;
   char *filename = NULL;
@@ -187,7 +227,7 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
   tiles =  calloc(ntiles,   sizeof(struct Widget_theme));  
   if(!tiles)    goto error;
 
-  filename = calloc(100, sizeof(char));
+  filename = calloc(PATH_SIZE, sizeof(char));
   if(!filename) goto error;
 
   regions = fopen(strnadd(filename, type, "_regions", WIDGET_NAME_SIZE), "r");
@@ -218,7 +258,7 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
       goto error;
     }
     else fprintf(stderr, "Loading theme for %s\n", widget_name);
-    if(strstr(type, "frame")) {    
+    if(strstr(type, "frame")) { 
       if(!strcmp(widget_name, "window"))                   current_widget = window;
       else if(!strcmp(widget_name, "titlebar"))            current_widget = titlebar;
       else if(!strcmp(widget_name, "t_edge"))              current_widget = t_edge;
@@ -236,9 +276,7 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
       else if(!strcmp(widget_name, "title_menu_text"))     current_widget = title_menu_text;
       else if(!strcmp(widget_name, "title_menu_rhs"))      current_widget = title_menu_rhs;
       else if(!strcmp(widget_name, "title_menu_hotspot"))  current_widget = title_menu_hotspot;
-      else if(!strcmp(widget_name, "mode_dropdown_lhs_floating")) current_widget = mode_dropdown_lhs_floating;
-      else if(!strcmp(widget_name, "mode_dropdown_lhs_tiling"))   current_widget = mode_dropdown_lhs_tiling;
-      else if(!strcmp(widget_name, "mode_dropdown_lhs_desktop"))  current_widget = mode_dropdown_lhs_desktop;
+      else if(!strcmp(widget_name, "mode_dropdown_lhs"))          current_widget = mode_dropdown_lhs;
       else if(!strcmp(widget_name, "mode_dropdown_rhs"))          current_widget = mode_dropdown_rhs;
       else if(!strcmp(widget_name, "mode_dropdown_hotspot"))      current_widget = mode_dropdown_hotspot;
       else if(!strcmp(widget_name, "close_button"))               current_widget = close_button;
@@ -349,25 +387,11 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
   //backup the position and size of the widget before replacing with the corresponding tiles region
   swap_tiled_widget_themes(type, themes, tiles);
 
-  //create all the widget pixmaps
+  
   for(unsigned int i = 0; i < nwidgets; i++) {
     create_widget_theme_pixmap(display, &themes[i], theme_images);
   }
 
-/*  if(strstr(type, "frame")) {
-    Window root = DefaultRootWindow(display); 
-    int screen_number = DefaultScreen (display);
-    Screen *screen    = DefaultScreenOfDisplay(display);
-    Visual *colours   = DefaultVisual(display, screen_number);    
-    int black = BlackPixelOfScreen(screen);	  
-    Window temp = XCreateSimpleWindow(display, root
-    , 20, 20
-    , 6, 2, 0, black, black); 
-
-    XSetWindowBackgroundPixmap(display, temp, themes[t_edge].state_p[normal]);
-    XMapWindow(display, temp);
-    XFlush(display);    
-  }*/
   //save the widgets region data and cleanup the tiled background region data as it isn't required anymore.
   swap_tiled_widget_themes(type, themes, tiles);
 
@@ -390,9 +414,8 @@ static struct Widget_theme *create_component_theme(Display *display, char *type)
 
 //This loads the various font settings that are used by functions that draw the text.
 //eventually it will load these from a file.
-static void create_font_themes(struct Themes *restrict themes) {
-
-
+static void 
+create_font_themes(struct Themes *restrict themes) {
   struct Font_theme font_theme = { .font_name = "Sans", .size = 13.5, .r = 1, .g = 1, .b = 1, .a = 1
   , .x = 3, .y = 15, .slant = CAIRO_FONT_SLANT_NORMAL, .weight = CAIRO_FONT_WEIGHT_NORMAL };
 
@@ -410,7 +433,8 @@ static void create_font_themes(struct Themes *restrict themes) {
 
 /*This copies all the details about the widget theme, but not the pixmaps.
 This is so that the region of tile can be used to create the pixmaps for a widget that itself has a different region */
-static void swap_widget_theme(struct Widget_theme *from, struct Widget_theme *to) {
+static void 
+swap_widget_theme(struct Widget_theme *from, struct Widget_theme *to) {
   struct Widget_theme original_region;
   /*Problem, this also copies the pixmaps.*/
   if(from->exists &&  to->exists) {
@@ -433,7 +457,8 @@ because some widgets need a tiled image (or image subsection) that isn't
 the same region that the widget itself will be on.  So the region the widget
 will be at and the image itself need to be temporarily swapped.
 ******/
-static void swap_tiled_widget_themes(char *type, struct Widget_theme *themes, struct Widget_theme *tiles) {
+static void 
+swap_tiled_widget_themes(char *type, struct Widget_theme *themes, struct Widget_theme *tiles) {
   if(strstr(type, "frame")) {
     swap_widget_theme(&tiles[tile_titlebar], &themes[titlebar]);
     swap_widget_theme(&tiles[tile_t_edge], &themes[t_edge]);
@@ -455,7 +480,8 @@ static void swap_tiled_widget_themes(char *type, struct Widget_theme *themes, st
   }
 }
 
-static void create_widget_theme_pixmap(Display *display,  struct Widget_theme *widget_theme, cairo_surface_t **theme_images) {
+static void 
+create_widget_theme_pixmap(Display *display,  struct Widget_theme *widget_theme, cairo_surface_t **theme_images) {
   Window root = DefaultRootWindow(display); 
   int screen_number = DefaultScreen (display);
   Visual *colours   = DefaultVisual(display, screen_number);
@@ -467,7 +493,7 @@ static void create_widget_theme_pixmap(Display *display,  struct Widget_theme *w
   int y = widget_theme->y;
   int w = widget_theme->w;
   int h = widget_theme->h;
-  //TODO THIS IS ONLY CREATING IT FOR ONE STATE
+
   int surface_width = cairo_image_surface_get_width(theme_images[0]);
   int surface_height = cairo_image_surface_get_height(theme_images[0]);
 
@@ -495,7 +521,7 @@ static void create_widget_theme_pixmap(Display *display,  struct Widget_theme *w
     cairo_rectangle(cr, 0, 0, w, h);
     cairo_fill(cr);
 
-    //paint the section of the image    
+    //paint the section of the image onto the widget pixmap
     cairo_set_source_surface(cr, theme_images[i], -x, -y);
     cairo_rectangle(cr, 0, 0, w, h);
     cairo_fill(cr);
@@ -507,7 +533,9 @@ static void create_widget_theme_pixmap(Display *display,  struct Widget_theme *w
 
 
 /* This function frees the pixmaps in an array of widget_theme s.  length is the number of elements in the array. */
-static void remove_widget_themes (Display *display, struct Widget_theme *themes, int length) {
+static void 
+remove_widget_themes (Display *display, struct Widget_theme *themes, int length) {
+
   if(themes != NULL) {
     for(int i = 0; i < length; i++)
     if(themes[i].exists) {
@@ -519,9 +547,12 @@ static void remove_widget_themes (Display *display, struct Widget_theme *themes,
 
 
 /* This is dependent on struct Themes, so if that changes make corresponding updates here */
-void remove_themes(Display *display, struct Themes *themes) {
-  for(int i = 0; i <= menubar; i++)  remove_widget_themes(display, themes->window_type[i], frame_parent + 1);
+void 
+remove_themes(Display *display, struct Themes *themes) {
+
+  for(int i = 0; i <= system_program; i++)  remove_widget_themes(display, themes->window_type[i], frame_parent + 1);
   remove_widget_themes(display, themes->popup_menu, popup_menu_parent + 1);
+
   remove_widget_themes(display, themes->menubar, menubar_parent + 1);
   free(themes);
   XFlush(display);
@@ -542,17 +573,33 @@ Description:     this function uses the supplied pixmap as the background and dr
 
 /* this doesn't use the themes struct so that the caller can more easily specify which pixmap to use */
 
-void create_text_background(Display *display, Window window, const char *restrict text
+void 
+create_text_background(Display *display, Window window, const char *restrict text
 , const struct Font_theme *restrict font_theme, Pixmap background_p, int b_w, int b_h) {
 
+
+  Pixmap pixmap = create_text_background_pixmap(display, text, font_theme, background_p, b_w, b_h);
+
+  if(!pixmap || pixmap == BadPixmap) return;
+  XSetWindowBackgroundPixmap(display, window, pixmap);
+  XSync(display, False); 
+
+  XFreePixmap(display, pixmap);
+  XFlush(display);
+
+}
+
+static Pixmap
+create_text_background_pixmap(Display *display, const char *restrict text
+, const struct Font_theme *restrict font_theme, Pixmap background_p, int b_w, int b_h) {
   Window root = DefaultRootWindow(display); 
   int screen_number = DefaultScreen (display);
   Screen* screen = DefaultScreenOfDisplay(display);
   Visual *colours =  DefaultVisual(display, screen_number);
-  if(b_w <=0 ) return;
-  if(b_h <= 0) return;
-  if(!background_p || !font_theme) return;
 
+  if(b_w <= 0) return 0;
+  if(b_h <= 0) return 0;
+  if(!background_p || !font_theme) return 0;
   //printf("Creating text pixmap %s\n", text);
 
   unsigned int width = XWidthOfScreen(screen);
@@ -583,16 +630,13 @@ void create_text_background(Display *display, Window window, const char *restric
   cairo_destroy (cr);  
   cairo_surface_destroy(surface);
   XFlush(display);
-  XSetWindowBackgroundPixmap(display, window, pixmap);
-  XSync(display, False); 
-  XFreePixmap(display, pixmap);
-  XFlush(display);
-
+  return pixmap;
 }
 
 /* This function calculates the width of a title when drawn using the specified font theme in pixels. It is used to calculate popup menu widths.
    It never returns a length larger than the width of the screen. */
-unsigned int get_text_width(Display* display, const char *title, struct Font_theme *font_theme) {
+unsigned int 
+get_text_width(Display* display, const char *title, struct Font_theme *font_theme) {
   int screen_number = DefaultScreen (display);
   Screen* screen = DefaultScreenOfDisplay(display);
   Visual *colours =  DefaultVisual(display, screen_number);
