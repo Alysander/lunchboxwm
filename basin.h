@@ -101,8 +101,9 @@ enum Window_type {
   status, 
   system_program,
   popup_menu,            
-  popup_menubar,  
-  menubar /* must be last */
+  popup_menubar, 
+  menubar, /* must be last */
+  panel //this is ignored in the themes
 };
 
 

@@ -1,6 +1,7 @@
 
 /* These control which printfs are shown */
 #define ALLOW_XLIB_DEBUG
+//#define CRASH_ON_BUG
 #define SHOW_SIG
 #define SHOW_STARTUP
 //#define SHOW_FRAME_HINTS

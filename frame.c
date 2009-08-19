@@ -29,14 +29,14 @@ int
 supress_xerror(Display *display, XErrorEvent *event) {
   (void) display;
   (void) event;
-  //printf("Caught an error\n");
+  printf("Caught an X error\n");
   return 0;
 }
 
 /*returns the frame index of the newly created window or -1 if out of memory */
 int
 create_frame (Display *display, struct Frame_list* frames
-, Window framed_window, struct Popup_menu *window_menu, struct Themes *themes
+, Window framed_window, struct Popup_menu *window_menu, struct Seperators *seps, struct Themes *themes
 , struct Cursors *cursors, struct Atoms *atoms) {
   
   XWindowAttributes get_attributes;
@@ -80,17 +80,35 @@ create_frame (Display *display, struct Frame_list* frames
   
   get_frame_hints(display, &frame);
   get_frame_type_and_mode (display, &frame, atoms, themes);
+
+  //Don't manage splash screens, they just cause the workspace to be created
+  //and instantly destroyed
+  if(frame.type == splash  ||  frame.type == panel) {
+    //need to update available screen space here.
+    //if it is done here, and we don't manage the window
+    //how do we know when to increase the available screen space?
+    //mayb a seperate list?
+    //also, it will need to stack the panel here or it will be on top in fullscreen
+    //or potentially below other windows.
+    stack_frame(display, &frame, seps);
+    XMapWindow(display, framed_window);
+    XFlush(display);
+    return -1;
+  }
+
+
   get_frame_state(display, &frame, atoms);
   create_frame_subwindows(display, &frame, themes, cursors);
   create_frame_name(display, window_menu, &frame, themes, atoms);
   change_frame_mode(display, &frame, unset, themes);
- 
+  
   //_NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32 - done per window!      
   Window ewmh_frame_extents[4] = { themes->window_type[frame.theme_type][window].x
   , themes->window_type[frame.theme_type][window].y
   , - themes->window_type[frame.theme_type][window].x - themes->window_type[frame.theme_type][window].w
   , - themes->window_type[frame.theme_type][window].y - themes->window_type[frame.theme_type][window].h
   };
+  
   XChangeProperty(display, framed_window, atoms->frame_extents, XA_CARDINAL
   , 32, PropModeReplace, (unsigned char *)ewmh_frame_extents, 4);
   
@@ -104,7 +122,9 @@ create_frame (Display *display, struct Frame_list* frames
   //for some odd reason the reparent only reports an extra unmap event if the window was already unmapped
   XRaiseWindow(display, framed_window);
   XMapWindow(display, frame.widgets[window].widget);
+#ifdef CRASH_ON_BUG
   XSetErrorHandler(NULL);
+#endif
   XUngrabServer(display);
 
   XSelectInput(display, framed_window,  PropertyChangeMask);
@@ -125,7 +145,7 @@ create_frame (Display *display, struct Frame_list* frames
   
   check_frame_limits(display, &frame, themes);
   resize_frame(display, &frame, themes);
-  
+  stack_frame(display, &frame, seps);
   XMoveResizeWindow(display, framed_window, 0, 0, frame.w - frame.hspace, frame.h - frame.vspace);  
   XMoveWindow(display, framed_window, 0, 0);
   XMapWindow(display, framed_window);
@@ -217,6 +237,7 @@ centre_frame(const int container_width, const int container_height, const int w,
   *y = (container_height - h)    / 2;
   if(*x < 0) *x = container_width  / 2;
   if(*y < 0) *y = container_height / 2;
+  //BUGS for some windows this goes off the edge of the screen.
 }
 
 /*** Update frame with available resizing information ***/
@@ -308,8 +329,6 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
 
   /* Ensure that the specified sizes all correspond to usable sizes for the client.
      If they set incremental resize hints */
-  
-  /* */ 
 
   if(frame->width_inc != 1) {
     if((frame->min_width  - frame->hspace)  % frame->width_inc)
@@ -412,15 +431,17 @@ get_frame_type_and_mode(Display *display, struct Frame *frame, struct Atoms *ato
         #ifdef SHOW_PROPERTIES
         printf("type: dock\n");
         #endif
-        frame->mode = floating;
-        if(themes->window_type[system_program]) frame->type = system_program; 
+        //frame->mode = floating;
+        //if(themes->window_type[system_program]) 
+        frame->type = panel; 
       }
       else if(window_type[i] == atoms->wm_window_type_splash) {
         #ifdef SHOW_PROPERTIES
         printf("type: splash\n");
         #endif
-        frame->mode = floating;
-        if(themes->window_type[splash]) frame->type = splash;
+        //frame->mode = floating;
+        //if(themes->window_type[splash]) 
+        frame->type = splash;
         if(!frame->transient)
         centre_frame(XWidthOfScreen(screen), XHeightOfScreen(screen), frame->w, frame->h, &(frame->x), &(frame->y));
       }
@@ -443,7 +464,7 @@ get_frame_type_and_mode(Display *display, struct Frame *frame, struct Atoms *ato
     }
   }
 
-  if(contents != NULL) XFree(contents);
+  if(contents) XFree(contents);
 }
 
 /*This function gets the frame state, which is either, none, demands attention or fullscreen.  
@@ -612,7 +633,6 @@ TODO check if the name is just whitespace  ***/
 /* Problem:  this should create the name for the window itself, and one for the title menu
    but this function doesn't know parent window of the title menu.  Also, it may need to be in many
    different title menus so perhaps this should just make a pixmap. */
-
 void
 create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame *frame
 , struct Themes *themes, struct Atoms *atoms) {

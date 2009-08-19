@@ -100,10 +100,14 @@ int main (int argc, char* argv[]) {
     return -1;
   }
   
+  #if 0
   XSynchronize(display, True);
-  
+  #endif
+#ifndef CRASH_ON_BUG  
+  XSetErrorHandler(supress_xerror);  
+#endif
   root = DefaultRootWindow(display);
-
+  
   XSelectInput(display, root, SubstructureRedirectMask | ButtonMotionMask 
   | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask | FocusChangeMask);
 
@@ -1066,8 +1070,12 @@ int main (int argc, char* argv[]) {
               frames->list[i].h = event.xconfigurerequest.height + frames->list[i].vspace;
               if(frames->list[i].mode == tiling) { 
                 drop_frame (display, frames, i, themes);
-                resize_frame(display, &frames->list[i], themes);
                 check_frame_limits(display, &frames->list[i], themes);
+                resize_frame(display, &frames->list[i], themes);
+              } 
+              else {
+                check_frame_limits(display, &frames->list[i], themes);
+                resize_frame(display, &frames->list[i], themes);
               }
               #ifdef SHOW_CONFIGURE_REQUEST_EVENT
               printf("new width %d, new height %d\n", frames->list[i].w, frames->list[i].h);
@@ -1269,11 +1277,11 @@ void create_seperators(Display *display, struct Seperators *seps) {
   XChangeWindowAttributes(display, seps->tiling_seperator, CWOverrideRedirect,   &set_attributes);
   XChangeWindowAttributes(display, seps->floating_seperator, CWOverrideRedirect, &set_attributes);
   XChangeWindowAttributes(display, seps->panel_seperator, CWOverrideRedirect,    &set_attributes);  
-  XLowerWindow(display, seps->panel_seperator);
-  XLowerWindow(display, seps->floating_seperator);
-  XLowerWindow(display, seps->tiling_seperator);
-  XLowerWindow(display, seps->sinking_seperator);
 
+  XRaiseWindow(display, seps->sinking_seperator);
+  XRaiseWindow(display, seps->tiling_seperator);
+  XRaiseWindow(display, seps->floating_seperator);
+  XRaiseWindow(display, seps->panel_seperator);
   XFlush(display);
 }
 

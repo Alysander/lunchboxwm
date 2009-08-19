@@ -17,7 +17,7 @@
 #define SHOW_EDGE_RESIZE
 /*****
 This function ensures that the window is within limits. 
-It moves and resizes the window to achieve this.
+It sets the frames x,y,w,h to achieve this.
 ******/
 void 
 check_frame_limits(Display *display, struct Frame *frame, struct Themes *themes) {
@@ -173,7 +173,6 @@ change_frame_state (Display *display, struct Frame *frame, enum Window_state sta
     XDeleteProperty(display, frame->framed_window, atoms->wm_state);
     stack_frame(display,  frame, seps); 
     resize_frame(display, frame, themes);
-
   }
   //if(atoms) return;
  
@@ -352,8 +351,22 @@ void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) 
       }
       else if(i == title_menu_rhs      &&  title_menu_text_diff) x -= title_menu_text_diff;
       else if(i == title_menu_hotspot  &&  title_menu_text_diff) w -= title_menu_text_diff;
-
-      XMoveResizeWindow(display, frame->widgets[i].widget, x, y, w, h);
+      
+      if((themes->window_type[frame->theme_type][i].w <= 0 || themes->window_type[frame->theme_type][i].h <= 0)
+      &&
+      (themes->window_type[frame->theme_type][i].x < 0  || themes->window_type[frame->theme_type][i].y < 0)) {
+        XMoveResizeWindow(display, frame->widgets[i].widget, x, y, w, h);
+      }
+      else {
+        if(themes->window_type[frame->theme_type][i].w <= 0 
+        || themes->window_type[frame->theme_type][i].h <= 0) {
+          XResizeWindow(display, frame->widgets[i].widget, w, h);
+        }
+        if(themes->window_type[frame->theme_type][i].x < 0 
+        || themes->window_type[frame->theme_type][i].y < 0) {
+          XMoveWindow(display, frame->widgets[i].widget, x, y);
+        }
+      }
     }
   }
   XFlush(display);
@@ -683,22 +696,34 @@ stack_frame(Display *display, struct Frame *frame, struct Seperators *seps) {
   unsigned int mask = CWSibling | CWStackMode;  
   changes.stack_mode = Below;
 
-
+  if(frame->type == panel) {
+    changes.sibling = seps->panel_seperator;
+    changes.stack_mode = Below;  
+    XConfigureWindow(display, frame->framed_window, mask, &changes);
+    XFlush(display);    
+    return;
+  }
+  
   #ifdef SHOW_BUTTON_PRESS_EVENT
   printf("stacking window %s\n", frame->window_name);
   #endif
   
-  if(frame->mode == tiling) 
-  changes.sibling = seps->tiling_seperator;
-  else if(frame->mode == floating) 
-  changes.sibling = seps->floating_seperator;  
-  else 
-  changes.sibling = seps->sinking_seperator;
-
+  if(frame->mode == tiling) {
+    changes.sibling = seps->tiling_seperator;
+  }
+  else if(frame->mode == floating) {
+    changes.sibling = seps->floating_seperator;  
+  }
+  else {
+    changes.sibling = seps->sinking_seperator;
+  }
+  
   if(frame->state == fullscreen ) {
-    changes.sibling = seps->panel_seperator;        
+    changes.sibling = seps->panel_seperator;
     changes.stack_mode = Above;
   }
+ 
+  
   XConfigureWindow(display, frame->widgets[frame_parent].widget, mask, &changes);
   XFlush(display);
 }

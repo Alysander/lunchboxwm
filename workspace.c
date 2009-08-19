@@ -194,10 +194,9 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
       return -1;
     }
   }
-  frame_index = create_frame(display, &workspaces->list[k], framed_window, window_menu, themes, cursors, atoms);
+  frame_index = create_frame(display, &workspaces->list[k], framed_window, window_menu, seps, themes, cursors, atoms);
   if(frame_index != -1) {
     check_new_frame_focus (display, &workspaces->list[k], frame_index);
-    stack_frame(display, &workspaces->list[k].list[frame_index], seps);
     if(k == current_workspace  &&  current_workspace != -1) {
       //printf("Created and mapped window in workspace %d\n", k);
 
@@ -208,6 +207,10 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
       }
     }
     XFlush(display);
+  }
+  else if(!workspaces->list[k].used) { //if the window wasn't created, and the workspace is now empty, remove the workspace
+    remove_frame_list(display, workspaces, k, themes);
+    return -1;
   }
   return k;
 }

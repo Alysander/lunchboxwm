@@ -109,9 +109,7 @@ struct Themes *create_themes(Display *display, char *theme_name) {
   themes->window_type[utility]        = create_component_theme(display, "program_frame"); 
   themes->window_type[status]         = create_component_theme(display, "program_frame");
   themes->window_type[system_program] = create_component_theme(display, "program_frame");
-  themes->window_type[popup_menu]     = create_component_theme(display, "program_frame");
   themes->window_type[popup_menubar]  = create_component_theme(display, "program_frame");  
-  themes->window_type[menubar]        = create_component_theme(display, "program_frame");
 *****/
 
 /****

@@ -111,13 +111,17 @@ void recover_focus(Display *display, struct Frame_list *frames, struct Themes *t
   for(int i = frames->used - 1; i >= 0; i--) 
   if(frames->list[i].framed_window == frames->focus.list[frames->focus.used - 1]) {
     //_NET_ACTIVE_WINDOW
+#ifdef CRASH_ON_BUG
     XGrabServer(display);
     XSetErrorHandler(supress_xerror);
+#endif
     //seems excessive but closing windows can cause bad window errors
     XSetInputFocus(display, frames->list[i].framed_window, RevertToPointerRoot, CurrentTime);
+#ifdef CRASH_ON_BUG
     XSync(display, False);
     XSetErrorHandler(NULL);    
     XUngrabServer(display);
+#endif
     XFlush(display);
     frames->list[i].selected = 1;
     change_frame_mode(display, &frames->list[i], frames->list[i].mode, themes);
