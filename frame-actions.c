@@ -334,10 +334,10 @@ void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) 
   XMoveResizeWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y, frame->w, frame->h);
   XMoveResizeWindow(display, frame->framed_window, 0, 0, frame->w - frame->hspace, frame->h - frame->vspace);
   if((frame->w - frame->hspace) % frame->width_inc) 
-    printf("Width remainder of %d inc %d   ", (frame->w - frame->hspace) % frame->width_inc, frame->width_inc);
+    printf("Width remainder %d of inc %d   ", (frame->w - frame->hspace) % frame->width_inc, frame->width_inc);
 
   if((frame->h - frame->vspace) % frame->height_inc) 
-    printf("Height remainder of %d inc %d  ", (frame->h - frame->vspace) % frame->height_inc, frame->height_inc);
+    printf("Height remainder %d of inc %d  ", (frame->h - frame->vspace) % frame->height_inc, frame->height_inc);
 
   if(((frame->h - frame->vspace) % frame->height_inc) || ((frame->w - frame->hspace) % frame->width_inc))
     printf("\n");

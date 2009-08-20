@@ -1034,64 +1034,69 @@ int main (int argc, char* argv[]) {
           event.xconfigurerequest.serial, //last event processed
           event.xconfigurerequest.send_event);
         #endif
-        for(int k = 0; k < workspaces.used; k++) {
-          struct Frame_list *frames = &workspaces.list[k];          
-          for(i = 0; i < frames->used; i++) { 
-            if(event.xconfigurerequest.window == frames->list[i].framed_window) {
-              if(frames->list[i].state == fullscreen) {
+        {  //declare these outside so we can check if the frame was found or not in any workspace
+          int k = 0;
+          struct Frame_list *frames = &workspaces.list[k];        
+          for(k = 0; k < workspaces.used; k++) {
+            frames = &workspaces.list[k];
+            for(i = 0; i < frames->used; i++) {
+              if(event.xconfigurerequest.window == frames->list[i].framed_window) {
+                if(frames->list[i].state == fullscreen) {
+                  #ifdef SHOW_CONFIGURE_REQUEST_EVENT
+                  printf("Skipping Configure on fullscreen window: %s\n", frames->list[i].window_name);
+                  #endif
+                  break;
+                }
+
                 #ifdef SHOW_CONFIGURE_REQUEST_EVENT
-                printf("Skipping Configure on fullscreen window: %s\n", frames->list[i].window_name);
+                printf("Configure window: %s\n", frames->list[i].window_name);
                 #endif
+                  /*
+                if ( clicked_frame == i  &&  !pulldown ) { //this window is being resized
+                  #ifdef SHOW_CONFIGURE_REQUEST_EVENT
+                  printf("Ignoring config req., due to ongoing resize operation or tiled window\n");
+                  #endif
+                  break;
+                }
+                  */
+                /* TODO, should we allow programs to change their position? */
+                //frames->list[i].y = event.xconfigurerequest.x; //leads to gimp-toolbox jumpiness
+                //frames->list[i].x = event.xconfigurerequest.y; //leads to gimp-toolbox jumpiness
+                frames->list[i].w = event.xconfigurerequest.width + frames->list[i].hspace;
+                frames->list[i].h = event.xconfigurerequest.height + frames->list[i].vspace;
+                if(frames->list[i].mode == tiling) { 
+                  drop_frame (display, frames, i, themes);
+                  check_frame_limits(display, &frames->list[i], themes);
+                  resize_frame(display, &frames->list[i], themes);
+                } 
+                else {
+                  check_frame_limits(display, &frames->list[i], themes);
+                  resize_frame(display, &frames->list[i], themes);
+                }
+                #ifdef SHOW_CONFIGURE_REQUEST_EVENT
+                printf("new width %d, new height %d\n", frames->list[i].w, frames->list[i].h);
+                #endif
+                /* Raise Window if there has been a restack request */
+                if(frames->list[i].mode != tiling
+                && k == current_workspace
+                && (event.xconfigurerequest.detail == Above || event.xconfigurerequest.detail == TopIf)) {
+                  #ifdef SHOW_CONFIGURE_REQUEST_EVENT
+                  printf("Recovering window in response to possible restack request\n");
+                  #endif
+
+                  if(frames->list[i].mode == hidden) change_frame_mode(display, &frames->list[i], floating, themes);
+                  stack_frame(display, &frames->list[i], &seps);
+                }
+                resize_frame(display, &frames->list[i], themes);
+                check_frame_limits(display, &frames->list[i], themes);
+                XFlush(display);
                 break;
               }
-
-              #ifdef SHOW_CONFIGURE_REQUEST_EVENT
-              printf("Configure window: %s\n", frames->list[i].window_name);
-              #endif
-                /*
-              if ( clicked_frame == i  &&  !pulldown ) { //this window is being resized
-                #ifdef SHOW_CONFIGURE_REQUEST_EVENT
-                printf("Ignoring config req., due to ongoing resize operation or tiled window\n");
-                #endif
-                break;
-              }
-                */
-              /* TODO, should we allow programs to change their position? */
-              //frames->list[i].y = event.xconfigurerequest.x; //leads to gimp-toolbox jumpiness
-              //frames->list[i].x = event.xconfigurerequest.y; //leads to gimp-toolbox jumpiness
-              frames->list[i].w = event.xconfigurerequest.width + frames->list[i].hspace;
-              frames->list[i].h = event.xconfigurerequest.height + frames->list[i].vspace;
-              if(frames->list[i].mode == tiling) { 
-                drop_frame (display, frames, i, themes);
-                check_frame_limits(display, &frames->list[i], themes);
-                resize_frame(display, &frames->list[i], themes);
-              } 
-              else {
-                check_frame_limits(display, &frames->list[i], themes);
-                resize_frame(display, &frames->list[i], themes);
-              }
-              #ifdef SHOW_CONFIGURE_REQUEST_EVENT
-              printf("new width %d, new height %d\n", frames->list[i].w, frames->list[i].h);
-              #endif
-              /* Raise Window if there has been a restack request */
-              if(frames->list[i].mode != tiling
-              && k == current_workspace
-              && (event.xconfigurerequest.detail == Above || event.xconfigurerequest.detail == TopIf)) {
-                #ifdef SHOW_CONFIGURE_REQUEST_EVENT
-                printf("Recovering window in response to possible restack request\n");
-                #endif
-
-                if(frames->list[i].mode == hidden) change_frame_mode(display, &frames->list[i], floating, themes);
-                stack_frame(display, &frames->list[i], &seps);
-              }
-              resize_frame(display, &frames->list[i], themes);
-              check_frame_limits(display, &frames->list[i], themes);
-              XFlush(display);
-              break;
             }
+            if(i != frames->used) break; //break out of workspace search
+            //this window hasn't been mapped yet, let it update it's size and position
           }
-          //this window hasn't been mapped yet, let it update it's size and position
-          if(i == frames->used) {
+          if(i == frames->used) { //frame not found in any workspace
             XWindowAttributes attributes;
             XWindowChanges premap_config; 
 
@@ -1130,7 +1135,6 @@ int main (int argc, char* argv[]) {
             #endif
             XFlush(display);
           }
-          if(i != frames->used) break;
         }
       break;
       case FocusIn:
