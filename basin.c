@@ -418,6 +418,7 @@ int main (int argc, char* argv[]) {
                 printf("changing mode pulldown pixmaps\n");
                 #endif
                 xcheck_raisewin(display, frames->list[i].widgets[mode_dropdown_lhs].state[active]);
+                xcheck_raisewin(display, frames->list[i].widgets[mode_dropdown_text].state[active]);
                 xcheck_raisewin(display, frames->list[i].widgets[mode_dropdown_rhs].state[active]);
               }
               else if(event.xbutton.window == frames->list[i].widgets[title_menu_hotspot].widget) {

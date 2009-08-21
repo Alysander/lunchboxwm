@@ -554,13 +554,12 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
       XFlush(display);
       if(i != window) { //don't create state windows for the framed window 
         //OPTIMIZATION: This makes the cropped state windows large so that they don't need to be resized
-        if(themes->window_type[frame->theme_type][i].w <= 0) w = XWidthOfScreen(screen);
+        if(themes->window_type[frame->theme_type][i].w <= 0 || i == mode_dropdown_text) w = XWidthOfScreen(screen);
         if(themes->window_type[frame->theme_type][i].h <= 0) h = XWidthOfScreen(screen);
         for(int j = 0; j <= inactive; j++) {
           frame->widgets[i].state[j] = XCreateSimpleWindow(display, frame->widgets[i].widget
           , 0, 0, w, h, 0, black, black);
-          /* We don't know which pixmap to set until the mode is correct */
-          if(i != mode_dropdown_lhs) XSetWindowBackgroundPixmap(display, frame->widgets[i].state[j]
+          XSetWindowBackgroundPixmap(display, frame->widgets[i].state[j]
           , themes->window_type[frame->theme_type][i].state_p[j]);
           XMapWindow(display, frame->widgets[i].state[j]);
         }

@@ -51,7 +51,25 @@ static Pixmap create_text_background_pixmap(Display *display, const char *restri
 , const struct Font_theme *restrict font_theme, Pixmap background_p, int b_w, int b_h);
 
 static void remove_widget_themes (Display *display, struct Widget_theme *themes, int length);
-static void create_mode_menu_lhs(Display *display, struct Themes *themes);
+static void create_mode_menu_text(Display *display, struct Themes *themes);
+
+#if 0
+//internal pixmap testing function
+static void show_pixmap (Display *display, Pixmap pixmap); 
+
+static void show_pixmap (Display *display, Pixmap pixmap) {
+  Window root = DefaultRootWindow(display);
+  Screen *screen    = DefaultScreenOfDisplay(display);
+  int black = BlackPixelOfScreen(screen);	  
+  Window temp = XCreateSimpleWindow(display, root
+  , 20, 20
+  , 120, 120, 0, black, black); 
+
+  XSetWindowBackgroundPixmap(display, temp, pixmap);
+  XMapWindow(display, temp);
+  XFlush(display);
+}
+#endif
 
 /* strnadd concatinates s1 and s2 and writes the result into s0 provided the length of s1 and s2 
 is less that the limit, which is usually defined as the length of s0.  If any of the passed strings are NULL
@@ -129,8 +147,10 @@ TODO Verify that:
   window                         x >= 0, y >= 0, w <= 0, h <= 0
   frame_parent                   x == 0, y == 0, w == 0, h == 0
   title_menu_rhs                 w > 0
-  mode_dropdown_lhs              w > 0, h > 0
+  mode_dropdown_text              w > 0, h > 0
   all menubar item width and heights are greater than zero
+  title menu must be just before the mode menu.
+  Assumes that the total mode menu text is less that the w of the mode menu in the theme.
 ****/
   
   themes->popup_menu = create_component_theme(display, "popup_menu");
@@ -140,7 +160,7 @@ TODO Verify that:
 
   free(path);
   create_font_themes(themes);
-  create_mode_menu_lhs(display, themes);
+  create_mode_menu_text(display, themes);
   return themes;
 
   error:
@@ -150,33 +170,35 @@ TODO Verify that:
 }
 
 /*This function creates the different states for the mode pulldown list 
-(depending on the mode chosen for each frame type */
+(depending on the mode chosen for each frame type 
+Problem:  need to draw a good background and then tile the "text" bit. */
 static void
-create_mode_menu_lhs(Display *display, struct Themes *themes) {
+create_mode_menu_text(Display *display, struct Themes *themes) {
   /** This is the custom create mode menu LHS section **/
   themes->mode_pulldown_width = get_text_width(display, "Floating", &themes->font_theme[active]);
   for(int i = 0; i <= system_program; i++) {
     for(int j = 0; j <= inactive; j++) {
       if(themes->window_type[i] != NULL
-      && themes->window_type[i][mode_dropdown_lhs].state_p[j]) {
+      && themes->window_type[i][mode_dropdown_text].state_p[j]) {
 
-        themes->window_type[i][mode_dropdown_lhs_floating].state_p[j] = create_text_background_pixmap(display, "Floating"
-        , &themes->font_theme[active], themes->window_type[i][mode_dropdown_lhs].state_p[j]
-        , themes->window_type[i][mode_dropdown_lhs].w
-        , themes->window_type[i][mode_dropdown_lhs].h);
+        themes->window_type[i][mode_dropdown_text_floating].state_p[j] = create_text_background_pixmap(display, "Floating"
+        , &themes->font_theme[active], themes->window_type[i][mode_dropdown_text].state_p[j]
+        , themes->window_type[i][mode_dropdown_text].w
+        , themes->window_type[i][mode_dropdown_text].h);
 
-        themes->window_type[i][mode_dropdown_lhs_tiling].state_p[j] = create_text_background_pixmap(display, "Tiling"
-        , &themes->font_theme[active], themes->window_type[i][mode_dropdown_lhs].state_p[j]
-        , themes->window_type[i][mode_dropdown_lhs].w
-        , themes->window_type[i][mode_dropdown_lhs].h);
+        themes->window_type[i][mode_dropdown_text_tiling].state_p[j] = create_text_background_pixmap(display, "Tiling"
+        , &themes->font_theme[active], themes->window_type[i][mode_dropdown_text].state_p[j]
+        , themes->window_type[i][mode_dropdown_text].w
+        , themes->window_type[i][mode_dropdown_text].h);
 
-        themes->window_type[i][mode_dropdown_lhs_desktop].state_p[j] = create_text_background_pixmap(display, "Desktop"
-        , &themes->font_theme[active], themes->window_type[i][mode_dropdown_lhs].state_p[j]
-        , themes->window_type[i][mode_dropdown_lhs].w
-        , themes->window_type[i][mode_dropdown_lhs].h);          
+        themes->window_type[i][mode_dropdown_text_desktop].state_p[j] = create_text_background_pixmap(display, "Desktop"
+        , &themes->font_theme[active], themes->window_type[i][mode_dropdown_text].state_p[j]
+        , themes->window_type[i][mode_dropdown_text].w
+        , themes->window_type[i][mode_dropdown_text].h);
       }
     }
   }
+  //show_pixmap (display,  themes->window_type[unknown][mode_dropdown_text_floating].state_p[normal]);
 }
 
 static struct Widget_theme *
@@ -276,12 +298,13 @@ create_component_theme(Display *display, char *type) {
       else if(!strcmp(widget_name, "title_menu_text"))     current_widget = title_menu_text;
       else if(!strcmp(widget_name, "title_menu_rhs"))      current_widget = title_menu_rhs;
       else if(!strcmp(widget_name, "title_menu_hotspot"))  current_widget = title_menu_hotspot;
-      else if(!strcmp(widget_name, "mode_dropdown_lhs"))          current_widget = mode_dropdown_lhs;
-      else if(!strcmp(widget_name, "mode_dropdown_rhs"))          current_widget = mode_dropdown_rhs;
-      else if(!strcmp(widget_name, "mode_dropdown_hotspot"))      current_widget = mode_dropdown_hotspot;
-      else if(!strcmp(widget_name, "close_button"))               current_widget = close_button;
-      else if(!strcmp(widget_name, "close_button_hotspot"))       current_widget = close_button_hotspot ;
-      else if(!strcmp(widget_name, "frame_parent"))               current_widget = frame_parent;
+      else if(!strcmp(widget_name, "mode_dropdown_lhs"))    current_widget = mode_dropdown_lhs;
+      else if(!strcmp(widget_name, "mode_dropdown_text"))   current_widget = mode_dropdown_text;
+      else if(!strcmp(widget_name, "mode_dropdown_rhs"))    current_widget = mode_dropdown_rhs;
+      else if(!strcmp(widget_name, "mode_dropdown_hotspot"))current_widget = mode_dropdown_hotspot;
+      else if(!strcmp(widget_name, "close_button"))         current_widget = close_button;
+      else if(!strcmp(widget_name, "close_button_hotspot")) current_widget = close_button_hotspot ;
+      else if(!strcmp(widget_name, "frame_parent"))         current_widget = frame_parent;
       else if(!strcmp(widget_name, "tile_titlebar")) {         was_tile = 1; current_tile = tile_titlebar;  }
       else if(!strcmp(widget_name, "tile_t_edge")) {           was_tile = 1; current_tile = tile_t_edge;    }
       else if(!strcmp(widget_name, "tile_l_edge")) {           was_tile = 1; current_tile = tile_l_edge;    }
@@ -289,6 +312,7 @@ create_component_theme(Display *display, char *type) {
       else if(!strcmp(widget_name, "tile_r_edge")) {           was_tile = 1; current_tile = tile_r_edge;    }
       else if(!strcmp(widget_name, "tile_title_menu_text")) {  was_tile = 1; current_tile = tile_title_menu_text; }
       else if(!strcmp(widget_name, "tile_frame_parent")) {     was_tile = 1; current_tile = tile_frame_parent;    }
+
       else goto name_error;
     }
     else if(strstr(type, "menubar")) {
@@ -601,7 +625,7 @@ create_text_background_pixmap(Display *display, const char *restrict text
   if(b_w <= 0) return 0;
   if(b_h <= 0) return 0;
   if(!background_p || !font_theme) return 0;
-  //printf("Creating text pixmap %s\n", text);
+  //printf("Creating text pixmap %s, b_w %d b_h %d\n", text, b_w, b_h);
 
   unsigned int width = XWidthOfScreen(screen);
   unsigned int height = b_h;  
@@ -626,8 +650,60 @@ create_text_background_pixmap(Display *display, const char *restrict text
   cairo_select_font_face(cr, font_theme->font_name, font_theme->slant, font_theme->weight);
   cairo_set_font_size(cr, font_theme->size);
   cairo_set_source_rgba(cr, font_theme->r, font_theme->g, font_theme->b, font_theme->a);
-  cairo_move_to(cr, font_theme->x, font_theme->y);
-  cairo_show_text(cr, text);
+  
+  if(!strcmp(text, "Floating") || !strcmp(text, "Tiling") ||  !strcmp(text, "Desktop") || !strcmp(text, "Hidden")) {
+    cairo_move_to(cr, font_theme->x + 15, font_theme->y);
+    if(!strcmp(text, "Floating")) {
+    
+      cairo_show_text(cr, "Floating");
+      
+      cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD); //means don't fill areas that are filled twice.
+      cairo_rectangle(cr, 4, 4, 9, 9);
+      cairo_rectangle(cr, 5, 6, 7, 6);
+      
+      cairo_rectangle(cr, 8, 8, 5, 5); //cut off the corner for the 2nd window icon
+      cairo_rectangle(cr, 8, 8, 4, 4);
+      cairo_fill(cr);
+
+      cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
+      cairo_rectangle(cr, 8, 8, 9, 9);
+      cairo_rectangle(cr, 9, 10, 7, 6);
+      cairo_fill(cr); 
+    }
+    else
+    if(!strcmp(text, "Tiling")) {
+      cairo_show_text(cr, "Tiling");
+
+      cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
+      cairo_rectangle(cr, 5, 7, 4, 7);
+      cairo_rectangle(cr, 4, 5, 6, 10);
+      cairo_fill(cr);
+
+      cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
+      cairo_rectangle(cr, 12, 7, 4, 7);
+      cairo_rectangle(cr, 11, 5, 6, 10);
+      cairo_fill(cr);    
+    }
+    else 
+    if(!strcmp(text, "Desktop")) {
+      cairo_show_text(cr, "Desktop");
+
+      cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD); //means don't fill areas that are filled twice.
+      cairo_rectangle(cr, 4, 4, 11, 11);
+      cairo_rectangle(cr, 5, 5, 9, 9);
+      cairo_fill(cr); 
+    }
+    else 
+    if(!strcmp(text, "Hidden")) {
+      cairo_show_text(cr, "Hidden");
+      cairo_rectangle(cr, 4, 12, 8, 2);
+      cairo_fill(cr);
+    }
+  }
+  else  {
+    cairo_move_to(cr, font_theme->x, font_theme->y);
+    cairo_show_text(cr, text);
+  }
   cairo_destroy (cr);  
   cairo_surface_destroy(surface);
   XFlush(display);
@@ -668,3 +744,4 @@ get_text_width(Display* display, const char *title, struct Font_theme *font_them
   
   return (unsigned int)width;
 }
+

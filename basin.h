@@ -61,11 +61,12 @@ enum Frame_widget {
   title_menu_text,   //fill -- must be before rhs and hotspot for minimum size in resize frame
   title_menu_rhs,    //includes arrow
   title_menu_hotspot,
-
+  //mode dropdown must follow a title menu
   mode_dropdown_lhs, //sets the title and the icon
-  mode_dropdown_lhs_floating, //this is not directly loaded from the theme, but are based on the mode_dropdown_lhs plus text and icon
-  mode_dropdown_lhs_tiling,   //this is not directly loaded from the theme, but are based on the mode_dropdown_lhs plus text and icon
-  mode_dropdown_lhs_desktop,  //this is not directly loaded from the theme, but are based on the mode_dropdown_lhs plus text and icon
+  mode_dropdown_text,
+  mode_dropdown_text_floating, //this is not directly loaded from the theme, but are based on the mode_dropdown_lhs plus text and icon
+  mode_dropdown_text_tiling,   //this is not directly loaded from the theme, but are based on the mode_dropdown_lhs plus text and icon
+  mode_dropdown_text_desktop,  //this is not directly loaded from the theme, but are based on the mode_dropdown_lhs plus text and icon
   mode_dropdown_rhs, //includes arrow
   mode_dropdown_hotspot,
   close_button,
@@ -152,7 +153,7 @@ struct Themes { //these are all individually malloc'd, and window type is an arr
   struct Widget_theme *menubar;
   struct Widget_theme *popup_menu;
   struct Font_theme font_theme[inactive + 1];
-  unsigned int mode_pulldown_width;
+  int mode_pulldown_width;
 };
 
 struct Popup_menu {

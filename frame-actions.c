@@ -21,7 +21,7 @@ It sets the frames x,y,w,h to achieve this.
 ******/
 
 static void
-change_mode_pulldown_lhs_pixmap(Display *display, struct Frame *frame, int index, struct Themes *themes);
+change_mode_pulldown_text_pixmap(Display *display, struct Frame *frame, int index, struct Themes *themes);
 
 void 
 check_frame_limits(Display *display, struct Frame *frame, struct Themes *themes) {
@@ -80,8 +80,9 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
   xcheck_raisewin(display, frame->widgets[title_menu_rhs].state[normal]);
 
   if(mode == frame->mode  &&  mode == desktop) {
-    change_mode_pulldown_lhs_pixmap(display, frame, mode_dropdown_lhs_desktop, themes);
     xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs].state[normal]);
+    change_mode_pulldown_text_pixmap(display, frame, mode_dropdown_text_desktop, themes);
+    xcheck_raisewin(display, frame->widgets[mode_dropdown_text].state[normal]);
     xcheck_raisewin(display, frame->widgets[mode_dropdown_rhs].state[normal]);
     xcheck_raisewin(display, frame->widgets[mode_dropdown_hotspot].widget);
     XFlush(display); 
@@ -112,19 +113,19 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
   else 
   if(mode == floating) {
     frame->mode = floating;
-    change_mode_pulldown_lhs_pixmap(display, frame, mode_dropdown_lhs_floating, themes);
+    change_mode_pulldown_text_pixmap(display, frame, mode_dropdown_text_floating, themes);
   }
   else
   if(mode == tiling) {
     frame->mode = tiling;
-    change_mode_pulldown_lhs_pixmap(display, frame, mode_dropdown_lhs_tiling, themes);
+    change_mode_pulldown_text_pixmap(display, frame, mode_dropdown_text_tiling, themes);
     //cannot drop frame here because it requires access to the whole frame list
   }
 
   else 
   if(mode == desktop) {
 
-    change_mode_pulldown_lhs_pixmap(display, frame, mode_dropdown_lhs_desktop, themes);
+    change_mode_pulldown_text_pixmap(display, frame, mode_dropdown_text_desktop, themes);
     frame->x = 0 - themes->window_type[frame->type][window].x;
     frame->y = 0 - themes->window_type[frame->type][window].y;
 
@@ -136,6 +137,7 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
     resize_frame(display, frame, themes);
   }
   xcheck_raisewin(display, frame->widgets[mode_dropdown_lhs].state[normal]);
+  xcheck_raisewin(display, frame->widgets[mode_dropdown_text].state[normal]);
   xcheck_raisewin(display, frame->widgets[mode_dropdown_rhs].state[normal]);
   xcheck_raisewin(display, frame->widgets[mode_dropdown_hotspot].widget);
   XFlush(display);
@@ -144,18 +146,19 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
 /* This is an internal function used to change the frame mode indicated on the frame. It mimics that used to change the frame name,
 but luckily the mode pixmaps can be pre-generated */
 static void
-change_mode_pulldown_lhs_pixmap(Display *display, struct Frame *frame, int index, struct Themes *themes) {
-  if(frame->widgets[mode_dropdown_lhs].widget) {
-    XUnmapWindow(display, frame->widgets[mode_dropdown_lhs].widget);
+change_mode_pulldown_text_pixmap(Display *display, struct Frame *frame, int index, struct Themes *themes) {
+  if(frame->widgets[mode_dropdown_text].widget) {
+    XUnmapWindow(display, frame->widgets[mode_dropdown_text].widget);
     
-    for(int j = 0; j <= inactive; j++) if(themes->window_type[frame->theme_type][mode_dropdown_lhs].exists) 
+    for(int j = 0; j <= inactive; j++) if(themes->window_type[frame->theme_type][mode_dropdown_text].exists) 
     if(themes->window_type[frame->theme_type][index].state_p[j]){
-      XSetWindowBackgroundPixmap(display, frame->widgets[mode_dropdown_lhs].state[j]
+      XSetWindowBackgroundPixmap(display, frame->widgets[mode_dropdown_text].state[j]
       , themes->window_type[frame->theme_type][index].state_p[j]);
     }
     
     XFlush(display);
-    XMapWindow(display, frame->widgets[mode_dropdown_lhs].widget);
+    XMapWindow(display, frame->widgets[mode_dropdown_text].widget);
+    XMapWindow(display, frame->widgets[mode_dropdown_lhs].widget);    
     XFlush(display);
   }
 }
@@ -347,6 +350,9 @@ void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) 
   /* Bit of a hack to make the title menu use only the minimum space required */
   int title_menu_text_diff = 0;
   int title_menu_rhs_w     = 0;
+
+  int mode_menu_text_diff  = 0;
+
   if(themes->window_type[frame->theme_type][title_menu_rhs].exists) 
     title_menu_rhs_w = themes->window_type[frame->theme_type][title_menu_rhs].w;
     
@@ -366,26 +372,27 @@ void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) 
       /* Bit of a hack to make the title menu use only the minimum space required */
       if(i == title_menu_text  &&  (frame->menu.width + title_menu_rhs_w) < w) {
         title_menu_text_diff = w - (frame->menu.width + title_menu_rhs_w);
+        int mode_menu_extra_space = w - (frame->menu.width + title_menu_rhs_w);
+        //mode_menu_extra_space this is the amount "given up" by reducing the title menu width
         w = frame->menu.width;
-      }
+        if(mode_menu_extra_space > themes->mode_pulldown_width) {
+          mode_menu_text_diff = themes->mode_pulldown_width;
+        }
+        else mode_menu_text_diff = mode_menu_extra_space;
+        if(mode_menu_text_diff < 0) mode_menu_text_diff = 0;
+      } /* title_menu_text is processed before */
       else if(i == title_menu_rhs      &&  title_menu_text_diff) x -= title_menu_text_diff;
       else if(i == title_menu_hotspot  &&  title_menu_text_diff) w -= title_menu_text_diff;
       
-      if((themes->window_type[frame->theme_type][i].w <= 0 || themes->window_type[frame->theme_type][i].h <= 0)
-      &&
-      (themes->window_type[frame->theme_type][i].x < 0  || themes->window_type[frame->theme_type][i].y < 0)) {
-        XMoveResizeWindow(display, frame->widgets[i].widget, x, y, w, h);
+      if(i == mode_dropdown_lhs) {
+        x -= mode_menu_text_diff;
       }
-      else {
-        if(themes->window_type[frame->theme_type][i].w <= 0 
-        || themes->window_type[frame->theme_type][i].h <= 0) {
-          XResizeWindow(display, frame->widgets[i].widget, w, h);
-        }
-        if(themes->window_type[frame->theme_type][i].x < 0 
-        || themes->window_type[frame->theme_type][i].y < 0) {
-          XMoveWindow(display, frame->widgets[i].widget, x, y);
-        }
+      else if(i == mode_dropdown_text  ||  i ==  mode_dropdown_hotspot) {
+        x -= mode_menu_text_diff;
+        w += mode_menu_text_diff;
       }
+      
+      XMoveResizeWindow(display, frame->widgets[i].widget, x, y, w, h);
     }
   }
   XFlush(display);
