@@ -37,8 +37,8 @@ check_frame_limits(Display *display, struct Frame *frame, struct Themes *themes)
      frame->h = XHeightOfScreen(screen) - themes->menubar[menubar_parent].h;
   }
 
-  frame->w -= (frame->w - frame->hspace) % frame->width_inc;
-  frame->h -= (frame->h - frame->vspace) % frame->height_inc;
+  frame->w -= (frame->w - frame->hspace) % frame->width_inc  - frame->w_inc_offset;
+  frame->h -= (frame->h - frame->vspace) % frame->height_inc - frame->h_inc_offset;
  
   if(frame->w < frame->min_width)  frame->w = frame->min_width;
   else 
@@ -333,14 +333,16 @@ void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) 
   
   XMoveResizeWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y, frame->w, frame->h);
   XMoveResizeWindow(display, frame->framed_window, 0, 0, frame->w - frame->hspace, frame->h - frame->vspace);
-  if((frame->w - frame->hspace) % frame->width_inc) 
-    printf("Width remainder %d of inc %d   ", (frame->w - frame->hspace) % frame->width_inc, frame->width_inc);
+  if((frame->w - frame->hspace) % frame->width_inc) {
+    printf("Width remainder %d of inc %d, offset %d \n", (frame->w - frame->hspace) % frame->width_inc
+    , frame->width_inc, frame->w_inc_offset);
+  }
 
-  if((frame->h - frame->vspace) % frame->height_inc) 
-    printf("Height remainder %d of inc %d  ", (frame->h - frame->vspace) % frame->height_inc, frame->height_inc);
+  if((frame->h - frame->vspace) % frame->height_inc) {
+    printf("Height remainder %d of inc %d, offset %d \n", (frame->h - frame->vspace) % frame->height_inc
+    , frame->height_inc, frame->h_inc_offset);    
+  }
 
-  if(((frame->h - frame->vspace) % frame->height_inc) || ((frame->w - frame->hspace) % frame->width_inc))
-    printf("\n");
     
   /* Bit of a hack to make the title menu use only the minimum space required */
   int title_menu_text_diff = 0;
@@ -397,14 +399,14 @@ resize_using_frame_grip (Display *display, struct Frame_list *frames, int clicke
 , int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y
 , int r_edge_dx, int b_edge_dy, Window clicked_widget, struct Themes *themes) {
   
-  #define W_INC_REM (new_width - frame->hspace) %frame->width_inc
-  #define H_INC_REM (new_height - frame->vspace)%frame->height_inc
+  #define W_INC_REM ((new_width  - frame->hspace) %frame->width_inc - frame->w_inc_offset)
+  #define H_INC_REM ((new_height - frame->vspace)%frame->height_inc - frame->h_inc_offset)
 
   /*new_x and new_y increment compensation for shrinking windows */
 
   /*New x increment compensation for enlarging windows */
-  #define NEW_X_INC if((W_INC_REM) &&  new_width  != frame->w ) { new_x += W_INC_REM; }
-  #define NEW_Y_INC if((H_INC_REM) &&  new_height != frame->h)  { new_y += H_INC_REM; }
+  #define NEW_X_INC if((W_INC_REM) &&  new_width  != frame->w) { new_x += W_INC_REM; }
+  #define NEW_Y_INC if((H_INC_REM) &&  new_height != frame->h) { new_y += H_INC_REM; }
 
   Screen* screen = DefaultScreenOfDisplay(display);
   struct Frame *frame = &frames->list[clicked_frame];

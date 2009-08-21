@@ -581,9 +581,10 @@ create_text_background(Display *display, Window window, const char *restrict tex
   Pixmap pixmap = create_text_background_pixmap(display, text, font_theme, background_p, b_w, b_h);
 
   if(!pixmap || pixmap == BadPixmap) return;
+  XUnmapWindow(display, window);
   XSetWindowBackgroundPixmap(display, window, pixmap);
   XSync(display, False); 
-
+  XMapWindow(display, window);
   XFreePixmap(display, pixmap);
   XFlush(display);
 
@@ -644,7 +645,7 @@ get_text_width(Display* display, const char *title, struct Font_theme *font_them
   cairo_surface_t *surface;
   cairo_t *cr;
   cairo_text_extents_t extents;
-  int width;
+  int width = 0;
   
   temp = XCreateSimpleWindow(display, DefaultRootWindow(display), 0, 0, PIXMAP_SIZE, PIXMAP_SIZE, 0
   , WhitePixelOfScreen(screen), BlackPixelOfScreen(screen));

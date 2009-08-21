@@ -72,7 +72,7 @@ create_frame (Display *display, struct Frame_list* frames
   frame.height_inc = 1;
   frame.hspace = 0 - themes->window_type[frame.theme_type][window].w;
   frame.vspace = 0 - themes->window_type[frame.theme_type][window].h;
-
+  frame.menu.item = 0; //some title aren't getting loaded properly
   frame.w = get_attributes.width; 
   frame.h = get_attributes.height;
 
@@ -259,7 +259,8 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
   frame->max_height = XHeightOfScreen(screen);
   frame->min_width  = MINWIDTH  ;
   frame->min_height = MINHEIGHT ;
-
+  frame->w_inc_offset = 0;
+  frame->h_inc_offset = 0;
   #ifdef ALLOW_OVERSIZE_WINDOWS_WITHOUT_MINIMUM_HINTS
   /* Ugh Horrible.  */
   /* Many apps that are resizeable ask to be the size of the screen and since windows
@@ -276,7 +277,13 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
     #ifdef SHOW_FRAME_HINTS
     printf("Managed to recover size hints\n");
     #endif
-    
+   
+    if(specified.flags & PResizeInc) { //Set this first as it might be required for the min hints
+      printf("got inc hints, w %d, h %d\n", specified.width_inc, specified.height_inc);
+      frame->width_inc = specified.width_inc;
+      frame->height_inc = specified.height_inc;
+    }
+        
     if((specified.flags & PPosition) 
     || (specified.flags & USPosition)) {
       #ifdef SHOW_FRAME_HINTS
@@ -295,15 +302,34 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
       frame->w = specified.width ;
       frame->h = specified.height;
     }
-    if((specified.flags & PMinSize)
-    && (specified.min_width >= frame->min_width)
-    && (specified.min_height >= frame->min_height)) {
+    if(specified.flags & PMinSize) {
       #ifdef SHOW_FRAME_HINTS
       printf("Minimum size specified\n");
-      #endif
-      frame->min_width = specified.min_width;
-      frame->min_height = specified.min_height;
+      #endif  
+      frame->w_inc_offset = specified.min_width  % frame->width_inc;  
+      frame->h_inc_offset = specified.min_height % frame->height_inc;
+     
+      if(specified.min_width  < frame->min_width) {
+        //decided to override min hints, compensate possible base case for inc_resize
+        frame->min_width  += frame->width_inc  - ((frame->min_width) % frame->width_inc);
+        if(frame->w_inc_offset) {
+          frame->min_width  -= frame->w_inc_offset;
+          frame->min_width  += frame->width_inc;
+        }
+      }
+      else frame->min_width = specified.min_width;
+
+      if(specified.min_height < frame->min_height) {
+       //decided to override min hints, compensate possible base case for inc_resize
+        frame->min_height += frame->height_inc - ((frame->min_height)% frame->height_inc);        
+        if(frame->h_inc_offset) {
+          frame->min_height -= frame->h_inc_offset;
+          frame->min_height += frame->height_inc;
+        }
+      }
+      else frame->min_height = specified.min_height;
     }
+    
     if((specified.flags & PMaxSize) 
     && (specified.max_width >= frame->min_width)
     && (specified.max_height >= frame->min_height)) {
@@ -313,16 +339,11 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
       frame->max_width = specified.max_width;
       frame->max_height = specified.max_height;
     }
-    if(specified.flags & PResizeInc) {
-      printf("got inc hints, w %d, h %d\n", specified.width_inc, specified.height_inc);
-      frame->width_inc = specified.width_inc;
-      frame->height_inc = specified.height_inc;
-    }
+
   }
+
+  //all of the initial values are sans the frame
   
-  //all of the initial values are sans the frame 
-  //increase the size of the window for the frame to be drawn in 
-  //this means that the attributes must be saved without the extra width and height
   frame->w += frame->hspace; 
   frame->h += frame->vspace; 
 
@@ -331,32 +352,7 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
 
   frame->min_width  += frame->hspace; 
   frame->min_height += frame->vspace; 
-
-  /* Ensure that the specified sizes all correspond to usable sizes for the client.
-     If they set incremental resize hints */
-
-  if(frame->width_inc != 1) {
-    if((frame->min_width  - frame->hspace)  % frame->width_inc)
-    frame->min_width  += frame->width_inc  - ((frame->min_width  - frame->hspace)% frame->width_inc);
-  
-    if((frame->max_width  - frame->hspace) % frame->width_inc)
-    frame->max_width  += frame->width_inc  - ((frame->max_width  - frame->hspace)% frame->width_inc);
-    
-    if((frame->w - frame->hspace)  % frame->width_inc)
-    frame->w          += frame->width_inc  - ((frame->w          - frame->hspace)% frame->width_inc);
-  }
-
-  if(frame->height_inc != 1) {
-    if((frame->min_height - frame->vspace) % frame->height_inc)
-    frame->min_height += frame->height_inc - ((frame->min_height - frame->vspace)% frame->height_inc);
-
-    if((frame->max_height - frame->vspace) % frame->height_inc)
-    frame->max_height += frame->height_inc - ((frame->max_height - frame->vspace)% frame->height_inc);
-    
-    if((frame->h          - frame->vspace) % frame->width_inc)
-    frame->h          += frame->height_inc - ((frame->h          - frame->vspace)% frame->height_inc);  
-  }
-
+   
   #ifdef SHOW_FRAME_HINTS      
   printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n"
   , frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height
@@ -573,7 +569,7 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
       XMapWindow(display, frame->widgets[i].widget);
     }
   }
-  frame->menu.item = 0;
+  frame->menu.width = 0;
   //select input
   XSelectInput(display, frame->widgets[frame_parent].widget
   , Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
@@ -701,7 +697,7 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
   }
   
   temp.menu.width = get_text_width(display, temp.window_name, &themes->font_theme[active]);
-  
+
   //create corresponding title menu item for this frame
   for(int i = 0; i <= inactive; i++) {
     XUnmapWindow(display, temp.menu.state[i]);

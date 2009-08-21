@@ -196,13 +196,15 @@ struct Frame {
   enum Window_type theme_type; //this is used in case the theme is actually from a different window type
   enum Window_state state;
   int selected;
-  int min_width, max_width;
-  int min_height, max_height;
+  int min_width, max_width; //includes hspace
+  int min_height, max_height; //includes vspace
   int vspace; //dependent on the window type
   int hspace; //dependent on the window type
   int width_inc;  //increments for incremental resize
   int height_inc; //increments for incremental resize
-
+  int w_inc_offset;
+  int h_inc_offset;
+  
   Window transient; //the calling window of this dialog box - not structural
 
   Window framed_window; //the window which is reparented.
