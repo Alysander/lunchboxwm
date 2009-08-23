@@ -280,4 +280,5 @@ void change_to_workspace(Display *display, struct Workspace_list *workspaces, in
     XFlush(display);
     *current_workspace = index;
   }
+  else *current_workspace = -1;
 }

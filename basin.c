@@ -211,8 +211,10 @@ int main (int argc, char* argv[]) {
                   printf("Removed workspace %d, name %s\n", k, workspaces.list[k].workspace_name);
                   #endif
                   remove_frame_list(display, &workspaces, k, themes);
-                  if(workspaces.used != 0) change_to_workspace(display, &workspaces, &current_workspace, 0, themes);
-                  else change_to_workspace(display, &workspaces, &current_workspace, -1, themes);
+                  //change the workspace to the first one opened, probably nautilus or asuslauncher on xandros
+                  if(workspaces.used != 0  &&  k == current_workspace) { 
+                    change_to_workspace(display, &workspaces, &current_workspace, 0, themes);
+                  }
                 }
                 break;
               }
