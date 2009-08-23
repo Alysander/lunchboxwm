@@ -1078,13 +1078,14 @@ void maximize_frame (Display *display, struct Frame_list *frames, int clicked_fr
   struct Frame *frame = &frames->list[clicked_frame]; 
   Screen* screen = DefaultScreenOfDisplay(display);
   frame->w = XWidthOfScreen(screen);
-  frame->h = XHeightOfScreen(screen);
-  if(frame->mode != tiling) {
-    check_frame_limits(display, frame, themes);
-    resize_frame(display, frame, themes);
+  frame->h = XWidthOfScreen(screen);
+  if(frame->mode == tiling) {
+    //could rewrite this function here to ensure the window is in the same space, not the biggest one.
+    drop_frame(display, frames, clicked_frame, themes); 
   }
   else {
-    drop_frame(display, frames, clicked_frame, themes); //could rewrite this function here to ensure the window is in the same space, not the biggest one.
+    check_frame_limits(display, frame, themes);
+    resize_frame(display, frame, themes);
   }
 }
 

@@ -367,7 +367,6 @@ int main (int argc, char* argv[]) {
                 add_focus(frames->list[i].framed_window, &frames->focus);
                 unfocus_frames(display, frames);
                 recover_focus(display, frames, themes);
-                break;
               }
 
               if(!last_click_window  ||  last_click_window != event.xbutton.window) {  //this is the first click
@@ -375,10 +374,10 @@ int main (int argc, char* argv[]) {
                 last_click_window = event.xbutton.window;
               }
               else {  //this is the second click, reset
-                if(last_click_time != CurrentTime  
-                &&  last_click_window == event.xbutton.window  
-                &&  event.xbutton.window != frames->list[i].widgets[window].widget //ignore double clicks on these
-                &&  event.xbutton.window != frames->list[i].framed_window) {       //ignore double clicks on these
+                if( last_click_time   != CurrentTime  
+                &&  last_click_window == event.xbutton.window 
+                &&  event.xbutton.window != frames->list[i].widgets[window].widget //ignore double click on these
+                &&  event.xbutton.window != frames->list[i].framed_window ) {      //ignore double click on these
                   maximize_frame(display, frames, i, themes);
                   XFlush(display);
                 }
@@ -969,9 +968,12 @@ int main (int argc, char* argv[]) {
 
           int mouse_child_x, mouse_child_y;
           int mouse_root_x, mouse_root_y;
-
+          //considering making a deadzone
+          //also, if a move is large, cancel the last_click_window and last_click_time so it isn't considered a double click
+          // (makes a resize flash)
+          
           unsigned int mask;
-          struct Frame_list *frames = &workspaces.list[current_workspace]; //TODO
+          struct Frame_list *frames = &workspaces.list[current_workspace];
           //If a menu on the titlebar is dragged, cancel the menu and move the window.
           if(clicked_widget == frames->list[clicked_frame].widgets[mode_dropdown_hotspot].widget) {  //cancel the pulldown lists opening
             change_frame_mode(display, &frames->list[clicked_frame], frames->list[clicked_frame].mode, themes);
@@ -995,12 +997,18 @@ int main (int argc, char* argv[]) {
             move_frame(display, &frames->list[clicked_frame]
             , &pointer_start_x, &pointer_start_y, mouse_root_x, mouse_root_y
             , &resize_x_direction, &resize_y_direction, themes);
+            //TODO consider deadzone here too
+            last_click_window = 0;
+            last_click_time = CurrentTime;
           }
           else {  /*** Resize grips are being dragged ***/
             //clicked_widget is set to one of the grips.
             resize_using_frame_grip(display, frames, clicked_frame
             , pointer_start_x, pointer_start_y, mouse_root_x, mouse_root_y
             , r_edge_dx, b_edge_dy, clicked_widget, themes);
+            //TODO consider deadzone here too
+            last_click_window = 0;
+            last_click_time = CurrentTime;
           }
         }
       break;
