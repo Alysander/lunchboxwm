@@ -367,20 +367,25 @@ int main (int argc, char* argv[]) {
                 add_focus(frames->list[i].framed_window, &frames->focus);
                 unfocus_frames(display, frames);
                 recover_focus(display, frames, themes);
+                break;
               }
-              break;
-              if(!last_click_window) {  //this is the first click
+
+              if(!last_click_window  ||  last_click_window != event.xbutton.window) {  //this is the first click
                 last_click_time = event.xbutton.time;
                 last_click_window = event.xbutton.window;
               }
               else {  //this is the second click, reset
-                if(last_click_time != CurrentTime  &&  last_click_window == event.xbutton.window) {
+                if(last_click_time != CurrentTime  
+                &&  last_click_window == event.xbutton.window  
+                &&  event.xbutton.window != frames->list[i].widgets[window].widget //ignore double clicks on these
+                &&  event.xbutton.window != frames->list[i].framed_window) {       //ignore double clicks on these
                   maximize_frame(display, frames, i, themes);
+                  XFlush(display);
                 }
                 last_click_time = CurrentTime;
                 last_click_window = 0;
               }
-
+              break;
             }
           }
           /** Frame widget press registration. **/
