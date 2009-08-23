@@ -75,6 +75,10 @@ int main (int argc, char* argv[]) {
   int resize_x_direction = 0; //used in motionNotify, 1 means LHS, -1 means RHS 
   int resize_y_direction = 0; //used in motionNotify, 1 means top, -1 means bottom
   int i;                     
+
+
+  Time last_click_time = CurrentTime;  //this is used for implementing double click
+  Window last_click_window = -1;       //this is used for implementing double click
   
   if(signal(SIGINT, end_event_loop) == SIG_ERR) {
     #ifdef SHOW_STARTUP
@@ -358,25 +362,25 @@ int main (int argc, char* argv[]) {
                 do_click_to_focus = 0;
               }
 
-              /* lurking mode has not been implemented
-              if(frames->list[i].state == lurking) {
-                if(event.xbutton.window == frames->list[i].widgets[mode_dropdown_hotspot].widget
-                || event.xbutton.window == frames->list[i].widgets[close_button_hotspot].widget)
-                  break; //allow the mode pulldown and close button to be used on lurking windows.
-
-                drop_frame(display, frames, i, themes);
-                i = frames->used;
-                clicked_frame = -1; 
-              }
-              */
-              //above code may not have been able to tile the window
-              if(frames->list[i].mode != hidden /* &&  frames->list[i].state != lurking */ ) {
+              if(frames->list[i].mode != hidden ) {
                 //FOCUS
                 add_focus(frames->list[i].framed_window, &frames->focus);
                 unfocus_frames(display, frames);
                 recover_focus(display, frames, themes);
               }
               break;
+              if(!last_click_window) {  //this is the first click
+                last_click_time = event.xbutton.time;
+                last_click_window = event.xbutton.window;
+              }
+              else {  //this is the second click, reset
+                if(last_click_time != CurrentTime  &&  last_click_window == event.xbutton.window) {
+                  maximize_frame(display, frames, i, themes);
+                }
+                last_click_time = CurrentTime;
+                last_click_window = 0;
+              }
+
             }
           }
           /** Frame widget press registration. **/
@@ -399,7 +403,7 @@ int main (int argc, char* argv[]) {
               pointer_start_x = event.xbutton.x;
               pointer_start_y = event.xbutton.y;
               clicked_frame = i;
-
+              
               if(event.xbutton.window == frames->list[i].widgets[mode_dropdown_hotspot].widget) {
                 #ifdef SHOW_BUTTON_PRESS_EVENT
                 printf("pressed mode pulldown %lu on window %lu\n", frames->list[i].widgets[mode_dropdown_hotspot].widget

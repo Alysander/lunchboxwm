@@ -19,3 +19,4 @@ void stack_frame            (Display *display, struct Frame *frame, struct Seper
 int replace_frame           (Display *display, struct Frame *target
 , struct Frame *replacement, struct Seperators *seps, struct Themes *themes);  
 
+void maximize_frame         (Display *display, struct Frame_list *frames, int clicked_frame, struct Themes *themes);

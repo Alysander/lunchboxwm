@@ -425,7 +425,7 @@ get_frame_type_and_mode(Display *display, struct Frame *frame, struct Atoms *ato
         #ifdef SHOW_PROPERTIES
         printf("type: normal/definately unknown\n");
         #endif
-        frame->mode = floating;
+        frame->mode = tiling;
         frame->type = unknown;
       }
       else if(window_type[i] == atoms->wm_window_type_dock) {

@@ -205,6 +205,9 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
       if(workspaces->list[k].list[frame_index].selected != 0) {
         recover_focus(display, &workspaces->list[k], themes);
       }
+      if(workspaces->list[k].list[frame_index].mode == tiling) {
+        drop_frame(display, &workspaces->list[k], frame_index, themes);
+      }
     }
     XFlush(display);
   }

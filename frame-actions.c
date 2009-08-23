@@ -158,7 +158,6 @@ change_mode_pulldown_text_pixmap(Display *display, struct Frame *frame, int inde
     
     XFlush(display);
     XMapWindow(display, frame->widgets[mode_dropdown_text].widget);
-    XMapWindow(display, frame->widgets[mode_dropdown_lhs].widget);    
     XFlush(display);
   }
 }
@@ -320,8 +319,7 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
       if(frame->h > frame->max_height) frame->h = frame->max_height;
       resize_frame(display, frame, themes);
     }
-    else if (frame->mode != tiling)  change_frame_mode(display, frame, frame->mode, themes);
-    else  change_frame_mode(display, frame, floating, themes);
+    else /*if (frame->mode == tiling) */change_frame_mode(display, frame, floating, themes);
   }
 
   if(free_spaces.list != NULL) free(free_spaces.list);
@@ -1074,3 +1072,19 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
   resize_frame(display, &frames->list[index], themes);
   return;
 }
+
+//This function implements double click to maximize.  In basin, maximization is not a mode, but a command.
+void maximize_frame (Display *display, struct Frame_list *frames, int clicked_frame, struct Themes *themes) {
+  struct Frame *frame = &frames->list[clicked_frame]; 
+  Screen* screen = DefaultScreenOfDisplay(display);
+  frame->w = XWidthOfScreen(screen);
+  frame->h = XHeightOfScreen(screen);
+  if(frame->mode != tiling) {
+    check_frame_limits(display, frame, themes);
+    resize_frame(display, frame, themes);
+  }
+  else {
+    drop_frame(display, frames, clicked_frame, themes); //could rewrite this function here to ensure the window is in the same space, not the biggest one.
+  }
+}
+
