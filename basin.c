@@ -129,7 +129,7 @@ int main (int argc, char* argv[]) {
   create_menubar(display, &menubar, &seps, themes, &cursors);
   create_mode_menu(display, &mode_menu, themes, &cursors);
   create_title_menu(display, &title_menu, themes, &cursors);
-  create_startup_workspaces(display, &workspaces, &seps, &title_menu, themes, &cursors, &atoms);
+  create_startup_workspaces(display, &workspaces, &current_workspace, &seps, &title_menu, themes, &cursors, &atoms);
   
   change_to_workspace(display, &workspaces, &current_workspace, -1, themes);
 
@@ -241,7 +241,7 @@ int main (int argc, char* argv[]) {
           XGetWindowAttributes(display, event.xmaprequest.window, &attributes);
           if(attributes.override_redirect == False) { //TODO investigate whether opening the first workspaces causes it to change to the workspace
             int used = workspaces.used;
-            new_workspace = add_frame_to_workspace(display, &workspaces, event.xmaprequest.window, current_workspace
+            new_workspace = add_frame_to_workspace(display, &workspaces, event.xmaprequest.window, &current_workspace
             , &title_menu, &seps, themes, &cursors, &atoms);
             #ifdef SHOW_MAP_REQUEST_EVENT
             printf("new workspace %d\n", new_workspace);

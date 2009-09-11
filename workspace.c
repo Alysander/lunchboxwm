@@ -152,7 +152,7 @@ char *load_program_name(Display* display, Window window) {
   return NULL;
 }
 
-
+//TODO does the name actually need to be allocated with Xmalloc or something?
 void make_default_program_name(Display *display, Window window, char *name) {
   XClassHint program_hint;
   program_hint.res_name = name;
@@ -163,13 +163,14 @@ void make_default_program_name(Display *display, Window window, char *name) {
 
 
 /* creates the workspace */
-int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window framed_window, int current_workspace
+int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window framed_window, int *current_workspace
 , struct Popup_menu *window_menu
 , struct Seperators *seps
 , struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
   char *program_name = load_program_name(display, framed_window);
   int k;
-  int frame_index = -1;  
+  int frame_index = -1;
+  
   if(program_name == NULL) {
     #ifdef SHOW_MAP_REQUEST_EVENT
     printf("Warning, could not load program name for window %lu. ", framed_window);  
@@ -178,7 +179,9 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
     make_default_program_name(display, framed_window, "Other Programs");
     program_name = load_program_name(display, framed_window);
   }
-
+  
+  if(program_name == NULL) return -1; //probably out of memory
+  
   for(k = 0; k < workspaces->used; k++) {
     if(strcmp(program_name, workspaces->list[k].workspace_name) == 0) {
       XFree(program_name);
@@ -197,7 +200,7 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
   frame_index = create_frame(display, &workspaces->list[k], framed_window, window_menu, seps, themes, cursors, atoms);
   if(frame_index != -1) {
     check_new_frame_focus (display, &workspaces->list[k], frame_index);
-    if(k == current_workspace  &&  current_workspace != -1) {
+    if(k == *current_workspace  &&  *current_workspace != -1) {
       //printf("Created and mapped window in workspace %d\n", k);
 
       XMapWindow(display, workspaces->list[k].list[frame_index].widgets[frame_parent].widget);
@@ -209,6 +212,10 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
         drop_frame(display, &workspaces->list[k], frame_index, themes);
       }
     }
+    else if(k != *current_workspace  &&  *current_workspace != -1) {
+      change_to_workspace(display, workspaces, current_workspace, k, themes);
+    }
+    
     XFlush(display);
   }
   else if(!workspaces->list[k].used) { //if the window wasn't created, and the workspace is now empty, remove the workspace
@@ -219,6 +226,7 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
 }
 
 int create_startup_workspaces(Display *display, struct Workspace_list *workspaces
+, int *current_workspace
 , struct Seperators *seps
 , struct Popup_menu *window_menu, struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
 
@@ -235,7 +243,7 @@ int create_startup_workspaces(Display *display, struct Workspace_list *workspace
     XGetWindowAttributes(display, windows[i], &attributes);
     if(attributes.map_state == IsViewable && !attributes.override_redirect)  {
 
-      add_frame_to_workspace(display, workspaces, windows[i], -1, window_menu
+      add_frame_to_workspace(display, workspaces, windows[i], current_workspace, window_menu
       , seps, themes, cursors, atoms);
     }
   }

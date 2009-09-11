@@ -1,5 +1,3 @@
-#define DEFAULT_MENU_ITEM_WIDTH 90 /* This is the starting width for the mode menu */
-
 char *strnadd(char *restrict s0, char *restrict s1, char *restrict s2, size_t limit);
 
 struct Themes *create_themes(Display *display, char *theme_name);

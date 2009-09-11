@@ -175,7 +175,7 @@ Problem:  need to draw a good background and then tile the "text" bit. */
 static void
 create_mode_menu_text(Display *display, struct Themes *themes) {
   /** This is the custom create mode menu LHS section **/
-  themes->mode_pulldown_width = get_text_width(display, "Floating", &themes->font_theme[active]);
+  themes->mode_pulldown_width = get_text_width(display, "Floating", &themes->font_theme[active]) + MODE_ICON_SIZE;
   for(int i = 0; i <= system_program; i++) {
     for(int j = 0; j <= inactive; j++) {
       if(themes->window_type[i] != NULL
@@ -652,22 +652,22 @@ create_text_background_pixmap(Display *display, const char *restrict text
   cairo_set_source_rgba(cr, font_theme->r, font_theme->g, font_theme->b, font_theme->a);
   
   if(!strcmp(text, "Floating") || !strcmp(text, "Tiling") ||  !strcmp(text, "Desktop") || !strcmp(text, "Hidden")) {
-    cairo_move_to(cr, font_theme->x + 15, font_theme->y);
+    cairo_move_to(cr, font_theme->x + MODE_ICON_SIZE, font_theme->y);
     if(!strcmp(text, "Floating")) {
     
       cairo_show_text(cr, "Floating");
       
       cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD); //means don't fill areas that are filled twice.
-      cairo_rectangle(cr, 4, 4, 9, 9);
-      cairo_rectangle(cr, 5, 6, 7, 6);
+      cairo_rectangle(cr, 4 - 1, 4, 9, 9);
+      cairo_rectangle(cr, 5 - 1, 6, 7, 6);
       
-      cairo_rectangle(cr, 8, 8, 5, 5); //cut off the corner for the 2nd window icon
-      cairo_rectangle(cr, 8, 8, 4, 4);
+      cairo_rectangle(cr, 8 - 1, 8, 5, 5); //cut off the corner for the 2nd window icon
+      cairo_rectangle(cr, 8 - 1, 8, 4, 4);
       cairo_fill(cr);
 
       cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
-      cairo_rectangle(cr, 8, 8, 9, 9);
-      cairo_rectangle(cr, 9, 10, 7, 6);
+      cairo_rectangle(cr, 8 - 1, 8, 9, 9);
+      cairo_rectangle(cr, 9 - 1, 10, 7, 6);
       cairo_fill(cr); 
     }
     else
@@ -675,13 +675,13 @@ create_text_background_pixmap(Display *display, const char *restrict text
       cairo_show_text(cr, "Tiling");
 
       cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
-      cairo_rectangle(cr, 5, 7, 4, 7);
-      cairo_rectangle(cr, 4, 5, 6, 10);
+      cairo_rectangle(cr, 5- 1, 7, 4, 7);
+      cairo_rectangle(cr, 4- 1, 5, 6, 10);
       cairo_fill(cr);
 
       cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
-      cairo_rectangle(cr, 12, 7, 4, 7);
-      cairo_rectangle(cr, 11, 5, 6, 10);
+      cairo_rectangle(cr, 12- 1, 7, 4, 7);
+      cairo_rectangle(cr, 11- 1, 5, 6, 10);
       cairo_fill(cr);    
     }
     else 
@@ -689,14 +689,14 @@ create_text_background_pixmap(Display *display, const char *restrict text
       cairo_show_text(cr, "Desktop");
 
       cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD); //means don't fill areas that are filled twice.
-      cairo_rectangle(cr, 4, 4, 11, 11);
-      cairo_rectangle(cr, 5, 5, 9, 9);
+      cairo_rectangle(cr, 4- 1, 4, 11, 11);
+      cairo_rectangle(cr, 5- 1, 5, 9, 9);
       cairo_fill(cr); 
     }
     else 
     if(!strcmp(text, "Hidden")) {
       cairo_show_text(cr, "Hidden");
-      cairo_rectangle(cr, 4, 12, 8, 2);
+      cairo_rectangle(cr, 4 - 1, 12, 8, 2);
       cairo_fill(cr);
     }
   }

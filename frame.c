@@ -665,20 +665,22 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
     return;
   }
   else 
-  if(temp.window_name == NULL) {
-    printf("Warning: unnamed window\n");
-    XStoreName(display, temp.framed_window, untitled);
-    XFlush(display);
-    XFetchName(display, temp.framed_window, &temp.window_name);
-  }
-  else 
-  if(frame->window_name != NULL
+
+  if(frame->window_name != NULL  &&  temp.window_name != NULL
   && strcmp(temp.window_name, frame->window_name) == 0) {
     XFree(temp.window_name);
     //skip this if the name hasn't changed
     return;
   }
-
+  
+  if(temp.window_name == NULL) {
+    printf("Warning: unnamed window\n");
+    XStoreName(display, temp.framed_window, untitled);
+    XFlush(display);
+    XFetchName(display, temp.framed_window, &temp.window_name);
+    XFlush(display);
+  }
+  
   if(!temp.menu.item) {
     temp.menu.item = XCreateSimpleWindow(display
     , window_menu->widgets[popup_menu_parent].widget
