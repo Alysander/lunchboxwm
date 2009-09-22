@@ -102,7 +102,7 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
   frames->focus.used = 0;
   frames->focus.max  = 8; //must be divisible by 2
   frames->focus.list = malloc(sizeof(struct Focus_list) * frames->focus.max); //ok if it fails.
-  #ifdef SHOW_STARTUP
+  #ifdef SHOW_WORKSPACE
   printf("Created workspace %d\n", workspaces->used);
   #endif
 

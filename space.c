@@ -86,7 +86,9 @@ struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spac
       #endif
       return free_spaces;
     }
+    #ifdef SHOW_FREE_SPACE_STEPS     
     printf("\nPlacing next rectangle\n");    
+    #endif
     for(j = 0; j < free_spaces.used; j++) {
       struct Rectangle new = {0, 0, 0, 0};
       #ifdef SHOW_FREE_SPACE_STEPS

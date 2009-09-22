@@ -279,7 +279,7 @@ create_component_theme(Display *display, char *type) {
       fprintf(stderr, "which represent the widget name, x position, y position, width and height repectively\n");
       goto error;
     }
-    else fprintf(stderr, "Loading theme for %s\n", widget_name);
+    //else fprintf(stderr, "Loading theme for %s\n", widget_name);
     if(strstr(type, "frame")) { 
       if(!strcmp(widget_name, "window"))                   current_widget = window;
       else if(!strcmp(widget_name, "titlebar"))            current_widget = titlebar;
@@ -372,7 +372,7 @@ create_component_theme(Display *display, char *type) {
   /* Load the different state image files */
   theme_images[normal]  
   = cairo_image_surface_create_from_png(strnadd(filename, type, "_normal.png", WIDGET_NAME_SIZE));
-  printf("filename %s\n", filename);
+  //printf("filename %s\n", filename);
   theme_images[active]  
   = cairo_image_surface_create_from_png(strnadd(filename, type, "_active.png", WIDGET_NAME_SIZE));
   theme_images[normal_hover] 

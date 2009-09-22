@@ -14,7 +14,6 @@
 #include "space.h"
 #include "frame-actions.h"
 
-#define SHOW_EDGE_RESIZE
 /*****
 This function ensures that the window is within limits. 
 It sets the frames x,y,w,h to achieve this.
@@ -233,7 +232,9 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
   else free_spaces = get_free_screen_spaces (display, frames, themes);
 
   if(free_spaces.list == NULL) return;
+  #ifdef SHOW_FRAME_DROP  
   printf("End result\n");
+  #endif
   /* Try and fit the window into a space. */
   for(unsigned int k = 0; k < free_spaces.used; k++) {
     double displacement = 0;
@@ -335,13 +336,17 @@ void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) 
   XMoveResizeWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y, frame->w, frame->h);
   XMoveResizeWindow(display, frame->framed_window, 0, 0, frame->w - frame->hspace, frame->h - frame->vspace);
   if((frame->w - frame->hspace) % frame->width_inc) {
+    #ifdef SHOW_FRAME_INC
     printf("Width remainder %d of inc %d, offset %d \n", (frame->w - frame->hspace) % frame->width_inc
     , frame->width_inc, frame->w_inc_offset);
+    #endif
   }
 
   if((frame->h - frame->vspace) % frame->height_inc) {
+    #ifdef SHOW_FRAME_INC
     printf("Height remainder %d of inc %d, offset %d \n", (frame->h - frame->vspace) % frame->height_inc
     , frame->height_inc, frame->h_inc_offset);    
+    #endif
   }
 
     
@@ -488,8 +493,10 @@ resize_using_frame_grip (Display *display, struct Frame_list *frames, int clicke
     }
   }
 
+  #ifdef SHOW_FRAME_INC
   if(W_INC_REM) printf("Subtracted %d from width\n",  W_INC_REM);
   if(H_INC_REM) printf("Subtracted %d from height\n", H_INC_REM);  
+  #endif
   new_width -= W_INC_REM;
   new_height-= H_INC_REM;
   

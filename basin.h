@@ -11,12 +11,12 @@
 //#define DEFAULT_MENU_ITEM_WIDTH 90 /* This is the starting width for the mode menu */
 #define MODE_ICON_SIZE 14
 //#define MINWIDTH 200
-#define MINWIDTH 80
+#define MINWIDTH 100
 #define MINHEIGHT 40
 #define PATH_SIZE 400
 #define WIDGET_NAME_SIZE 50
+#define DEFAULT_MENU_ITEM_WIDTH 100
 /****THEME DERIVED CONSTANTS******/
-
 
 enum Splash_widget {
   splash_parent

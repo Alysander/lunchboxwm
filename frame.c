@@ -29,7 +29,7 @@ int
 supress_xerror(Display *display, XErrorEvent *event) {
   (void) display;
   (void) event;
-  printf("Caught an X error\n");
+  //printf("Caught an X error\n");
   return 0;
 }
 
@@ -279,7 +279,9 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
     #endif
    
     if(specified.flags & PResizeInc) { //Set this first as it might be required for the min hints
+      #ifdef SHOW_FRAME_HINTS
       printf("got inc hints, w %d, h %d\n", specified.width_inc, specified.height_inc);
+      #endif
       frame->width_inc = specified.width_inc;
       frame->height_inc = specified.height_inc;
     }
