@@ -1190,7 +1190,9 @@ int main (int argc, char* argv[]) {
           There should be only one window in fullscreen as overrideredirect windows often appear.
         */
         if(event.xclient.message_type == atoms.wm_state) {
+          #ifdef SHOW_CLIENT_MESSAGE
           printf("It is a state change\n");
+          #endif
           for(int k = 0; k < workspaces.used; k++) {
             struct Frame_list *frames = &workspaces.list[k];
             for(i = 0; i < frames->used; i++) {
