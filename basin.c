@@ -381,7 +381,8 @@ main (int argc, char* argv[]) {
                 if( last_click_time   != CurrentTime  
                 &&  last_click_window == event.xbutton.window 
                 &&  event.xbutton.window != frames->list[i].widgets[window].widget //ignore double click on these
-                &&  event.xbutton.window != frames->list[i].framed_window ) {      //ignore double click on these
+                &&  event.xbutton.window != frames->list[i].framed_window
+                &&  event.xbutton.time - last_click_time < DOUBLE_CLICK_MILLISECONDS) {      //ignore double click on these
                   maximize_frame(display, frames, i, themes);
                   XFlush(display);
                 }

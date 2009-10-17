@@ -16,6 +16,7 @@
 #define PATH_SIZE 400
 #define WIDGET_NAME_SIZE 50
 #define DEFAULT_MENU_ITEM_WIDTH 100
+#define DOUBLE_CLICK_MILLISECONDS 300 /* */
 /****THEME DERIVED CONSTANTS******/
 
 enum Splash_widget {

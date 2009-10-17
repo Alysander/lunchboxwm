@@ -601,10 +601,10 @@ void
 create_text_background(Display *display, Window window, const char *restrict text
 , const struct Font_theme *restrict font_theme, Pixmap background_p, int b_w, int b_h) {
 
-
   Pixmap pixmap = create_text_background_pixmap(display, text, font_theme, background_p, b_w, b_h);
 
   if(!pixmap || pixmap == BadPixmap) return;
+
   XUnmapWindow(display, window);
   XSetWindowBackgroundPixmap(display, window, pixmap);
   XSync(display, False); 
@@ -651,10 +651,9 @@ create_text_background_pixmap(Display *display, const char *restrict text
   cairo_set_font_size(cr, font_theme->size);
   cairo_set_source_rgba(cr, font_theme->r, font_theme->g, font_theme->b, font_theme->a);
   
-  if(!strcmp(text, "Floating") || !strcmp(text, "Tiling") ||  !strcmp(text, "Desktop") || !strcmp(text, "Hidden")) {
+  if(text && (!strcmp(text, "Floating") || !strcmp(text, "Tiling") ||  !strcmp(text, "Desktop") || !strcmp(text, "Hidden"))) {
     cairo_move_to(cr, font_theme->x + MODE_ICON_SIZE, font_theme->y);
     if(!strcmp(text, "Floating")) {
-    
       cairo_show_text(cr, "Floating");
       
       cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD); //means don't fill areas that are filled twice.
@@ -700,7 +699,8 @@ create_text_background_pixmap(Display *display, const char *restrict text
       cairo_fill(cr);
     }
   }
-  else  {
+  else 
+  if(text) {
     cairo_move_to(cr, font_theme->x, font_theme->y);
     cairo_show_text(cr, text);
   }

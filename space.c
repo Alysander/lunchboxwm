@@ -315,7 +315,7 @@ remove_rectangle(struct Rectangle_list *list, struct Rectangle old) {
 //Returns -1 if source is larger than dest
 double 
 calculate_displacement(struct Rectangle source, struct Rectangle dest, int *dx, int *dy) {
-  double hypotenuse;
+  double hypotenuse_squared;
   
   if(source.w > dest.w
   || source.h > dest.h) {
@@ -337,9 +337,9 @@ calculate_displacement(struct Rectangle source, struct Rectangle dest, int *dx, 
   
   if(*dy < 0) *dy += dest.h - source.h; //move it to the nearest edge if required.
   
-  hypotenuse = /* sqrt(); */  (*dx) * (*dx) + (*dy) * (*dy); //major optimization if we don't use the sqrt
+  hypotenuse_squared = (*dx) * (*dx) + (*dy) * (*dy); //major optimization if we don't use the sqrt
  // printf("dest x %d, dest y %d, dx %d, dy %d, hyp %f\n", dest.x, dest.y, *dx, *dy, hypotenuse);
 
-  return hypotenuse;
+  return hypotenuse_squared;
 }
 
