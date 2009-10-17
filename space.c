@@ -6,7 +6,8 @@
 #include "basin.h"
 #include "space.h"
 
-struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_list *frames, struct Themes *themes) {
+struct Rectangle_list 
+get_free_screen_spaces (Display *display, struct Frame_list *frames, struct Themes *themes) {
   //the start variable is used to skip windows at the start 
   //in the handle_frame_retile function these are the intersecting tiled windows.
   
@@ -50,7 +51,8 @@ struct Rectangle_list get_free_screen_spaces (Display *display, struct Frame_lis
 }
 
 /* This implements "Free space modeling for placing rectangles without overlapping" by Marc Bernard and Francois Jacquenet. */
-struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spaces, int w, int h) {
+struct Rectangle_list 
+largest_available_spaces (struct Rectangle_list *used_spaces, int w, int h) {
 
   struct Rectangle_list free_spaces  = {.used = 0, .max = 8, .list = NULL};
   struct Rectangle_list new_spaces   = {.used = 0, .max = 8, .list = NULL};
@@ -234,7 +236,8 @@ struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spac
 }
 
 /* Adds rectangles to the list.  Rectangles are checked for validity and independence/inclusion. O(n) */
-void add_rectangle(struct Rectangle_list *list, struct Rectangle new) {
+void 
+add_rectangle(struct Rectangle_list *list, struct Rectangle new) {
 
   if(list->list == NULL) {
     #ifdef SHOW_FREE_SPACE_STEPS     
@@ -280,7 +283,8 @@ void add_rectangle(struct Rectangle_list *list, struct Rectangle new) {
 }
 
 /* Removes the rectangle from the list if it exists. O(n)*/
-void remove_rectangle(struct Rectangle_list *list, struct Rectangle old) {
+void 
+remove_rectangle(struct Rectangle_list *list, struct Rectangle old) {
   unsigned int i;
   if(list->list == NULL) {
     #ifdef SHOW_FREE_SPACE_STEPS     
@@ -309,7 +313,8 @@ void remove_rectangle(struct Rectangle_list *list, struct Rectangle old) {
 //Prerequisites:  Rectangles a and b must not be overlapping.
 //Design:  Calculate the displacement in each axis and use pythagoras to calculate the net displacement
 //Returns -1 if source is larger than dest
-double calculate_displacement(struct Rectangle source, struct Rectangle dest, int *dx, int *dy) {
+double 
+calculate_displacement(struct Rectangle source, struct Rectangle dest, int *dx, int *dy) {
   double hypotenuse;
   
   if(source.w > dest.w

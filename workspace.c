@@ -18,7 +18,8 @@
 
 /*** Create Workspace ***/
 //create_workspace
-int create_frame_list(Display *display, struct Workspace_list* workspaces, char *workspace_name, struct Themes *themes, struct Cursors *cursors) {
+int 
+create_frame_list(Display *display, struct Workspace_list* workspaces, char *workspace_name, struct Themes *themes, struct Cursors *cursors) {
   Window root = DefaultRootWindow(display);
   Screen* screen =  DefaultScreenOfDisplay(display);  
   int black = BlackPixelOfScreen(screen);
@@ -112,7 +113,8 @@ int create_frame_list(Display *display, struct Workspace_list* workspaces, char 
 }
 
 /*  This is called when the wm is exiting, it doesn't close the open windows. */
-void remove_frame_list(Display *display, struct Workspace_list* workspaces, int index, struct Themes *themes) {
+void 
+remove_frame_list(Display *display, struct Workspace_list* workspaces, int index, struct Themes *themes) {
 
   if(index >= workspaces->used) return;
   struct Frame_list *frames = &workspaces->list[index];
@@ -141,7 +143,8 @@ void remove_frame_list(Display *display, struct Workspace_list* workspaces, int 
 }
 
 //returned pointer must be freed with XFree.
-char *load_program_name(Display* display, Window window) {
+char *
+load_program_name(Display* display, Window window) {
   XClassHint program_hint;
   if(XGetClassHint(display, window, &program_hint)) {
    // printf("res_name %s, res_class %s\n", program_hint.res_name, program_hint.res_class);
@@ -153,7 +156,8 @@ char *load_program_name(Display* display, Window window) {
 }
 
 //TODO does the name actually need to be allocated with Xmalloc or something?
-void make_default_program_name(Display *display, Window window, char *name) {
+void 
+make_default_program_name(Display *display, Window window, char *name) {
   XClassHint program_hint;
   program_hint.res_name = name;
   program_hint.res_class = name;
@@ -163,7 +167,8 @@ void make_default_program_name(Display *display, Window window, char *name) {
 
 
 /* creates the workspace */
-int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window framed_window, int *current_workspace
+int 
+add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window framed_window, int *current_workspace
 , struct Popup_menu *window_menu
 , struct Seperators *seps
 , struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
@@ -225,7 +230,8 @@ int add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, 
   return k;
 }
 
-int create_startup_workspaces(Display *display, struct Workspace_list *workspaces
+int 
+create_startup_workspaces(Display *display, struct Workspace_list *workspaces
 , int *current_workspace
 , struct Seperators *seps
 , struct Popup_menu *window_menu, struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
@@ -260,7 +266,8 @@ Desc: This function changes the user's workspace to the workspace at the specifi
       Windows from other workspaces are unmapped.
 Post: The user's workspace has visibly changed.
 */
-void change_to_workspace(Display *display, struct Workspace_list *workspaces, int *current_workspace, int index, struct Themes *themes) {
+void 
+change_to_workspace(Display *display, struct Workspace_list *workspaces, int *current_workspace, int index, struct Themes *themes) {
 
   if(index < workspaces->used) {
     struct Frame_list *frames;

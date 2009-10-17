@@ -34,14 +34,16 @@ void set_icon_size    (Display *display, Window window, int new_size);
 #include "workspace.h"
 int done = 0;
 
-void end_event_loop(int sig) {
+void 
+end_event_loop(int sig) {
   #ifdef SHOW_SIG
   printf("Caught signal %d\n", sig);
   #endif
   done = 1;
 }
 
-int main (int argc, char* argv[]) {
+int 
+main (int argc, char* argv[]) {
   Display* display = NULL;
   XEvent event; /* 96 bytes per events */
   Window root;
@@ -256,8 +258,8 @@ int main (int argc, char* argv[]) {
         }
       break;
             
-      /* uses grab_move, pointer_start_x, pointer_start_y, resize_x_direction,
-         resize_y_direction and do_click_to_focus. */
+      /* uses grab_move, pointer_start_x, pointer_start_y, 
+         resize_x_direction, resize_y_direction and do_click_to_focus. */
       case ButtonPress:
         #ifdef SHOW_BUTTON_PRESS_EVENT
         printf("ButtonPress %lu, subwindow %lu\n", (unsigned long)event.xbutton.window, (unsigned long)event.xbutton.subwindow);
@@ -1281,7 +1283,8 @@ int main (int argc, char* argv[]) {
 /* When windows are created they are placed under one of these seperators (but on top of previous windows at that level
    The seperators are lowered in case of pre-exising override redirect windows which should be on top.
 */
-void create_seperators(Display *display, struct Seperators *seps) {
+void 
+create_seperators(Display *display, struct Seperators *seps) {
   XSetWindowAttributes set_attributes;
   Window root = DefaultRootWindow(display);
   Screen *screen = DefaultScreenOfDisplay(display);
@@ -1309,7 +1312,8 @@ void create_seperators(Display *display, struct Seperators *seps) {
 }
 
 
-void create_cursors (Display *display, struct Cursors *cursors) {
+void 
+create_cursors (Display *display, struct Cursors *cursors) {
   cursors->normal       = XcursorLibraryLoadCursor(display, "left_ptr");
   cursors->pressable    = XcursorLibraryLoadCursor(display, "hand2");
   //AFAIK  hand1 is the open hand only in DMZ-white/black
@@ -1322,7 +1326,8 @@ void create_cursors (Display *display, struct Cursors *cursors) {
   cursors->resize_tl_br = XcursorLibraryLoadCursor(display, "bd_double_arrow");
 }
 
-void free_cursors (Display *display, struct Cursors *cursors) {
+void 
+free_cursors (Display *display, struct Cursors *cursors) {
   XFreeCursor(display, cursors->normal);
   XFreeCursor(display, cursors->pressable);
   XFreeCursor(display, cursors->hand);
@@ -1333,7 +1338,8 @@ void free_cursors (Display *display, struct Cursors *cursors) {
   XFreeCursor(display, cursors->resize_tl_br);
 }
 
-void list_properties(Display *display, Window window) {
+void 
+list_properties(Display *display, Window window) {
   int total;
   Atom *list = XListProperties(display, window, &total);
   char *name;
@@ -1348,7 +1354,8 @@ void list_properties(Display *display, Window window) {
   XFree(list);
 }
 
-void create_hints (Display *display, struct Atoms *atoms) {
+void 
+create_hints (Display *display, struct Atoms *atoms) {
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
 

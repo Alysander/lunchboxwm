@@ -329,7 +329,8 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
 
 
 /*** Moves and resizes the subwindows of the frame ***/
-void resize_frame(Display* display, struct Frame* frame, struct Themes *themes) {
+void 
+resize_frame(Display* display, struct Frame* frame, struct Themes *themes) {
   /*Do not move or resize fullscreen windows */
   if(frame->state == fullscreen) return;
   
@@ -767,7 +768,8 @@ position is the requested position
 
 ******/
 
-void resize_tiling_frame(Display *display, struct Frame_list *frames, int index, char axis
+void 
+resize_tiling_frame(Display *display, struct Frame_list *frames, int index, char axis
 , int position, int size, struct Themes *themes) {
 
   /******
@@ -1080,8 +1082,9 @@ void resize_tiling_frame(Display *display, struct Frame_list *frames, int index,
   return;
 }
 
-//This function implements double click to maximize.  In basin, maximization is not a mode, but a command.
-void maximize_frame (Display *display, struct Frame_list *frames, int clicked_frame, struct Themes *themes) {
+//This function is called in response to a double click for maximize.  In basin, maximization is not a mode, but a command.
+void 
+maximize_frame (Display *display, struct Frame_list *frames, int clicked_frame, struct Themes *themes) {
   struct Frame *frame = &frames->list[clicked_frame]; 
   Screen* screen = DefaultScreenOfDisplay(display);
   frame->w = XWidthOfScreen(screen);
