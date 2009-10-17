@@ -311,7 +311,7 @@ remove_rectangle(struct Rectangle_list *list, struct Rectangle old) {
 }
 
 //Prerequisites:  Rectangles a and b must not be overlapping.
-//Design:  Calculate the displacement in each axis and use pythagoras to calculate the net displacement
+//Design:  Calculate the displacement squared in each axis and use pythagoras to calculate the net displacement
 //Returns -1 if source is larger than dest
 double 
 calculate_displacement(struct Rectangle source, struct Rectangle dest, int *dx, int *dy) {
@@ -337,7 +337,7 @@ calculate_displacement(struct Rectangle source, struct Rectangle dest, int *dx, 
   
   if(*dy < 0) *dy += dest.h - source.h; //move it to the nearest edge if required.
   
-  hypotenuse = sqrt((*dx) * (*dx) + (*dy) * (*dy));
+  hypotenuse = /* sqrt(); */  (*dx) * (*dx) + (*dy) * (*dy); //major optimization possible if we don't use the sqrt
  // printf("dest x %d, dest y %d, dx %d, dy %d, hyp %f\n", dest.x, dest.y, *dx, *dy, hypotenuse);
 
   return hypotenuse;
