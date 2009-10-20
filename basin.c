@@ -1306,9 +1306,9 @@ create_seperators(Display *display, struct Seperators *seps) {
   XChangeWindowAttributes(display, seps->panel_seperator, CWOverrideRedirect,    &set_attributes);  
 
   XRaiseWindow(display, seps->sinking_seperator);
+  XRaiseWindow(display, seps->panel_seperator);  //in the meantime until we can actually tile them properly
   XRaiseWindow(display, seps->tiling_seperator);
   XRaiseWindow(display, seps->floating_seperator);
-  XRaiseWindow(display, seps->panel_seperator);
   XFlush(display);
 }
 

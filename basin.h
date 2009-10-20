@@ -231,7 +231,7 @@ struct Focus_list {
 
 struct Frame_list {
   int used, max;
-  struct Frame* list;
+  struct Frame* list; //2d array = 1d array of pointers
   struct Focus_list focus;
   
   char *workspace_name;
