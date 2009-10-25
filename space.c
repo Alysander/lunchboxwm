@@ -11,34 +11,44 @@ get_free_screen_spaces (Display *display, struct Frame_list *frames, struct Them
   //the start variable is used to skip windows at the start 
   //in the handle_frame_retile function these are the intersecting tiled windows.
   
-  struct Rectangle_list used_spaces = {0, 8, NULL};
-  struct Rectangle_list free_spaces = {0, 8, NULL};
+  struct Rectangle_list used_spaces = {.used = 0, .max = 8, .list = NULL};
+  struct Rectangle_list free_spaces = {.used = 0, .max = 8, .list = NULL};
   
   Screen* screen = DefaultScreenOfDisplay(display);
   
   used_spaces.list = malloc(used_spaces.max * sizeof(struct Rectangle));
   if(used_spaces.list == NULL) {
     //probably could do something more intelligent here
-    //printf("Error: out of memory for calculating free spaces on the screen.\n");
+    #ifdef SHOW_FREE_SPACE_STEPS   
+    printf("Error: out of memory for calculating free spaces on the screen.\n");
+    #endif
     return used_spaces; //i.e., NULL
   }
   
+  //ideally we would be certain that all tiled windows are not overlapping.  However, this is hard so we have to double check.
   for(int i = 0; i < frames->used; i++) {
     if(frames->list[i].mode == tiling) {
-      struct Rectangle current = 
-        {frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h};
+      struct Rectangle current = {.x = frames->list[i].x, .y = frames->list[i].y, .w = frames->list[i].w, .h = frames->list[i].h};
 
-      //printf("Tiled window %s, x %d, y %d, w %d, h %d\n", frames->list[i].window_name
-      //, frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h);
-      for(unsigned int j = 0; j < used_spaces.used; j++) 
-      if(INTERSECTS(current.x, current.w, used_spaces.list[j].x, used_spaces.list[j].w)
-      && INTERSECTS(current.y, current.h, used_spaces.list[j].y, used_spaces.list[j].h)) {
-        //This should never occur
-        //Enforce precondition of largest_available spaces algorithm.
-        free(used_spaces.list);
-        used_spaces.list = NULL;
-        used_spaces.used = 0;
-        return used_spaces;
+      #ifdef SHOW_FREE_SPACE_STEPS   
+      printf("Tiled window %s, x %d, y %d, w %d, h %d\n", frames->list[i].window_name
+      , frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h);
+      #endif
+      for(unsigned int j = 0; j < used_spaces.used; j++) {
+        printf("%d, %d, %d, %d vs %d, %d, %d, %d\n", current.x, current.y, current.w, current.h,  used_spaces.list[j].x, used_spaces.list[j].y, used_spaces.list[j].w, used_spaces.list[j].h);
+        if(INTERSECTS(current.x, current.w, used_spaces.list[j].x, used_spaces.list[j].w)
+        && INTERSECTS(current.y, current.h, used_spaces.list[j].y, used_spaces.list[j].h)) {
+          
+          //This should never occur
+          //Enforce precondition of largest_available spaces algorithm.
+          #ifdef SHOW_FREE_SPACE_STEPS   
+          printf("intersects the current window");
+          #endif        
+          free(used_spaces.list);
+          used_spaces.list = NULL;
+          used_spaces.used = 0;
+          return used_spaces;
+        }
       }
       add_rectangle(&used_spaces, current);
     }
@@ -64,7 +74,9 @@ largest_available_spaces (struct Rectangle_list *used_spaces, int w, int h) {
   if(free_spaces.list == NULL) {
     free(used_spaces->list);
     //probably could do something more intelligent here
-   // printf("Error: out of memory for calculating free spaces on the screen.\n");
+    #ifdef SHOW_FREE_SPACE_STEPS   
+    printf("Error: out of memory for calculating free spaces on the screen.\n");
+    #endif
     return free_spaces;
   }
   
@@ -96,6 +108,7 @@ largest_available_spaces (struct Rectangle_list *used_spaces, int w, int h) {
       #ifdef SHOW_FREE_SPACE_STEPS
       printf("j %d, free_spaces.used %d, free_spaces.max %d\n", j, free_spaces.used, free_spaces.max);
       #endif
+
       //if an edge intersects, modify opposing edge.  add modified to new_spaces and original to old_spaces
       if(INTERSECTS_OUTSIDE(free_spaces.list[j].y, free_spaces.list[j].h, used_spaces->list[i].y, used_spaces->list[i].h)
       && INTERSECTS_OUTSIDE(free_spaces.list[j].x, free_spaces.list[j].w, used_spaces->list[i].x, used_spaces->list[i].w) ) {
@@ -201,13 +214,13 @@ largest_available_spaces (struct Rectangle_list *used_spaces, int w, int h) {
     #ifdef SHOW_FREE_SPACE_STEPS     
     printf("Integrating Changes\n");
     #endif
-    if(new_spaces.used != 0) {
-      //remove the spaces which were modified. O(N*M)
-      for(unsigned int k = 0; k < old_spaces.used; k++) remove_rectangle(&free_spaces, old_spaces.list[k]);
+
+    //remove the spaces which were modified. O(N*M)
+    for(unsigned int k = 0; k < old_spaces.used; k++) remove_rectangle(&free_spaces, old_spaces.list[k]);
       
-      //add new_spaces to the free spaces O(N*M)
-      for(unsigned int k = 0; k < new_spaces.used; k++) add_rectangle(&free_spaces, new_spaces.list[k]);
-    }
+    //add new_spaces to the free spaces O(N*M)
+    for(unsigned int k = 0; k < new_spaces.used; k++) add_rectangle(&free_spaces, new_spaces.list[k]);
+
     if(new_spaces.list == NULL  ||  old_spaces.list == NULL) {
       #ifdef SHOW_FREE_SPACE_STEPS
       printf("An error occured when calculating free space, j %d, free_spaces.used %d\n", j, free_spaces.used);

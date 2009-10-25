@@ -231,7 +231,13 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
   }
   else free_spaces = get_free_screen_spaces (display, frames, themes);
 
-  if(free_spaces.list == NULL) return;
+  if(free_spaces.list == NULL) {
+    #ifdef SHOW_FRAME_DROP  
+    printf("No free spaces\n");
+    #endif
+      change_frame_mode(display, frame, floating, themes);
+    return;
+  }
   #ifdef SHOW_FRAME_DROP  
   printf("End result\n");
   #endif
@@ -320,7 +326,11 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
       if(frame->h > frame->max_height) frame->h = frame->max_height;
       resize_frame(display, frame, themes);
     }
-    else /*if (frame->mode == tiling) */change_frame_mode(display, frame, floating, themes);
+    else {
+      /*if (frame->mode == tiling) */
+      printf("Floating: %s\n", frame->window_name);
+      change_frame_mode(display, frame, floating, themes);
+    }
   }
 
   if(free_spaces.list != NULL) free(free_spaces.list);

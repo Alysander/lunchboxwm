@@ -248,6 +248,7 @@ main (int argc, char* argv[]) {
             #ifdef SHOW_MAP_REQUEST_EVENT
             printf("new workspace %d\n", new_workspace);
             #endif
+            
             if(used < workspaces.used) { //if it is a newly created workspace
               #ifdef SHOW_MAP_REQUEST_EVENT
               printf("going to new workspace\n");
@@ -1365,7 +1366,7 @@ create_hints (Display *display, struct Atoms *atoms) {
   static int desktops = 1;
 
   int32_t desktop_geometry[2] = {XWidthOfScreen(screen), XHeightOfScreen(screen)};
-
+  int32_t workarea[4] = {0, 0, XWidthOfScreen(screen), XHeightOfScreen(screen)};
   //this window is closed automatically by X11 when the connection is closed.
   //this is supposed to be used to save the required flags. TODO review this
   Window program_instance = XCreateSimpleWindow(display, root, 0, 0, 1, 1, 0, BlackPixelOfScreen(screen), BlackPixelOfScreen(screen));
@@ -1374,8 +1375,10 @@ create_hints (Display *display, struct Atoms *atoms) {
   number_of_atoms++; atoms->supporting_wm_check        = XInternAtom(display, "_NET_SUPPORTING_WM_CHECK", False);
   number_of_atoms++; atoms->number_of_desktops         = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);
   number_of_atoms++; atoms->desktop_geometry           = XInternAtom(display, "_NET_DESKTOP_GEOMETRY", False);
-  //_NET_WORKAREA
-  //number_of_atoms++; atoms->wm_full_placement          = XInternAtom(display, "_NET_WM_FULL_PLACEMENT", False);
+  //TODO this will need to be dynamically calculated
+  number_of_atoms++; atoms->workarea                   = XInternAtom(display, "_NET_WORKAREA", False);
+
+//  number_of_atoms++; atoms->wm_full_placement          = XInternAtom(display, "_NET_WM_FULL_PLACEMENT", False);
   number_of_atoms++; atoms->frame_extents              = XInternAtom(display, "_NET_FRAME_EXTENTS", False);
   number_of_atoms++; atoms->wm_window_type             = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
   number_of_atoms++; atoms->wm_window_type_normal      = XInternAtom(display, "_NET_WM_WINDOW_TYPE_NORMAL", False);
@@ -1399,7 +1402,7 @@ create_hints (Display *display, struct Atoms *atoms) {
   XChangeProperty(display, root, atoms->supporting_wm_check, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&program_instance, 1);
   XChangeProperty(display, root, atoms->number_of_desktops, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&desktops, 1);
   XChangeProperty(display, root, atoms->desktop_geometry, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)desktop_geometry, 2);
-
+  XChangeProperty(display, root, atoms->workarea, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)workarea, 4);
 
   #ifdef SHOW_STARTUP
   list_properties(display, root);

@@ -172,7 +172,7 @@ remove_frame(Display* display, struct Frame_list* frames, int index, struct Them
   //free_frame_icon_size(display, &frames->list[index]);
   //always unmap the title pulldown before removing the frame or else it will crash
   //XDestroyWindow(display, frames->list[index].menu_item.backing);
-
+  /* free_frame_name(&frames->list[index]);*/ //Xdestroy window takes care of this
   XDestroyWindow(display, frames->list[index].menu.item);  
 #ifdef CRASH_ON_BUG
   XGrabServer(display);
@@ -192,7 +192,7 @@ remove_frame(Display* display, struct Frame_list* frames, int index, struct Them
   XSetErrorHandler(NULL);    
   XUngrabServer(display);
 #endif
-  free_frame_name(&frames->list[index]);
+
   if((frames->used != 1) && (index != frames->used - 1)) { //the frame is not alone or the last
     frames->list[index] = frames->list[frames->used - 1]; //swap the deleted frame with the last frame
   }

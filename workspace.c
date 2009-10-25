@@ -17,7 +17,7 @@
 #include "focus.h"
 
 /*** Create Workspace ***/
-//create_workspace
+//create_workspace, returns the index of the created workspace
 int 
 create_frame_list(Display *display, struct Workspace_list* workspaces, char *workspace_name, struct Themes *themes, struct Cursors *cursors) {
   Window root = DefaultRootWindow(display);

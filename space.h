@@ -2,7 +2,8 @@
 #define INTERSECTS_AFTER(x2, w2, x1, w1)   ((x2 >= x1)  &&  (x2 < x1 + w1) && (x2 + w2 > x1 + w1))
 #define INTERSECTS_WITHIN(x2, w2, x1, w1)  ((x2 <= x1)  &&  (x2 + w2 >= x1 + w1))
 #define INTERSECTS_OUTSIDE(x2, w2, x1, w1) ((x2 >= x1)  &&  (x2 + w2 <= x1 + w1))
-#define INTERSECTS(x1, w1, x2, w2) (INTERSECTS_BEFORE(x1, w1, x2, w2) || INTERSECTS_AFTER(x1, w1, x2, w2) || INTERSECTS_WITHIN(x1, w1, x2, w2) || INTERSECTS_OUTSIDE(x1, w1, x2, w2))
+#define IDENTICAL(x1,w1,x2,w2)  ((x1 == x2) && (x1 + w1 == x2 + w2))
+#define INTERSECTS(x1, w1, x2, w2) (INTERSECTS_BEFORE(x1, w1, x2, w2) || IDENTICAL(x1, w1, x2, w2) || INTERSECTS_AFTER(x1, w1, x2, w2) || INTERSECTS_WITHIN(x1, w1, x2, w2) || INTERSECTS_OUTSIDE(x1, w1, x2, w2))
 
 struct Rectangle {
   int x,y,w,h;
