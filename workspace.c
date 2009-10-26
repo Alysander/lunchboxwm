@@ -205,16 +205,19 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
   frame_index = create_frame(display, &workspaces->list[k], framed_window, window_menu, seps, themes, cursors, atoms);
   if(frame_index != -1) {
     check_new_frame_focus (display, &workspaces->list[k], frame_index);
+    //double check if we need to tile the newly created window.
+    if(workspaces->list[k].list[frame_index].mode == tiling) {
+      drop_frame(display, &workspaces->list[k], frame_index, themes);
+    }
+      
     if(k == *current_workspace  &&  *current_workspace != -1) {
-      //printf("Created and mapped window in workspace %d\n", k);
-
+      #ifdef SHOW_MAP_REQUEST_EVENT      
+      printf("Created and mapped window in workspace %d\n", k);
+      #endif
       XMapWindow(display, workspaces->list[k].list[frame_index].widgets[frame_parent].widget);
       XMapWindow(display, workspaces->list[k].list[frame_index].menu.item);
-      if(workspaces->list[k].list[frame_index].selected != 0) {
+      if(workspaces->list[k].list[frame_index].selected) {
         recover_focus(display, &workspaces->list[k], themes);
-      }
-      if(workspaces->list[k].list[frame_index].mode == tiling) {
-        drop_frame(display, &workspaces->list[k], frame_index, themes);
       }
     }
     else if(k != *current_workspace  &&  *current_workspace != -1) {

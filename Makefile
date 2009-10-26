@@ -37,6 +37,9 @@ menus.o: menus.c
 clean:
 	rm -f *.o
 	rm -f basin
-     
+
+install:
+	cp basin /usr/bin     
+
 #debug:
 #	gcc basin.c -lX11 -lXcursor -lXext `pkg-config --cflags --libs cairo` -std=c99 -g -o basin > compile 2>&1
