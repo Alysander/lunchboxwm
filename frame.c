@@ -22,6 +22,7 @@ get_frame_type_and_mode (Display *display, struct Frame *frame, struct Atoms *at
 static void 
 get_frame_state         (Display *display, struct Frame *frame, struct Atoms *atoms);
 
+static void get_frame_wm_hints     (Display *display, struct Frame *frame, struct Themes *themes);
 
 /* Sometimes a client window is killed before it gets unmapped, we only get the unmapnotify event,
  but there is no way to tell so we just supress the error. */
@@ -38,7 +39,7 @@ int
 create_frame (Display *display, struct Frame_list* frames
 , Window framed_window, struct Popup_menu *window_menu, struct Seperators *seps, struct Themes *themes
 , struct Cursors *cursors, struct Atoms *atoms) {
-  
+  Screen* screen = DefaultScreenOfDisplay(display); 
   XWindowAttributes get_attributes;
   struct Frame frame;
 
@@ -76,8 +77,14 @@ create_frame (Display *display, struct Frame_list* frames
   frame.w = get_attributes.width; 
   frame.h = get_attributes.height;
 
-  //TODO icon support  get_frame_wm_hints(display, &frame); 
-  
+  //prevent overly large windows with sensible defaults
+  frame.max_width  = XWidthOfScreen(screen) + frame.hspace;; 
+  frame.max_height = XHeightOfScreen(screen) + frame.vspace;;
+  frame.min_width  = MINWIDTH + frame.hspace;;
+  frame.min_height = MINHEIGHT + frame.vspace;;
+  frame.w_inc_offset = 0;
+  frame.h_inc_offset = 0;
+    
   get_frame_hints(display, &frame);
   get_frame_type_and_mode (display, &frame, atoms, themes);
 
@@ -101,8 +108,11 @@ create_frame (Display *display, struct Frame_list* frames
   create_frame_subwindows(display, &frame, themes, cursors);
   create_frame_name(display, window_menu, &frame, themes, atoms);
   change_frame_mode(display, &frame, unset, themes);
+
+  get_frame_wm_hints(display, &frame, themes);  //this might need to change the focus, it's mode (to hidden) and so on
   
-  //_NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32 - done per window!      
+  //_NET_FRAME_EXTENTS, left, right, top, bottom, CARDINAL[4]/32 - done per window!  TODO Actually meant to be done in response to a client message.
+  /* 
   Window ewmh_frame_extents[4] = { themes->window_type[frame.theme_type][window].x
   , themes->window_type[frame.theme_type][window].y
   , - themes->window_type[frame.theme_type][window].x - themes->window_type[frame.theme_type][window].w
@@ -110,7 +120,7 @@ create_frame (Display *display, struct Frame_list* frames
   };
   
   XChangeProperty(display, framed_window, atoms->frame_extents, XA_CARDINAL
-  , 32, PropModeReplace, (unsigned char *)ewmh_frame_extents, 4);
+  , 32, PropModeReplace, (unsigned char *)ewmh_frame_extents, 4);*/
   
   XSetWindowBorderWidth(display, framed_window, 0);
 #ifdef CRASH_ON_BUG
@@ -129,11 +139,11 @@ create_frame (Display *display, struct Frame_list* frames
   XUngrabServer(display);
 #endif
 
-  XSelectInput(display, framed_window,  PropertyChangeMask);
+  XSelectInput(display, framed_window,  PropertyChangeMask); //Property notify is used to update titles
   XSelectInput(display, frame.widgets[window].widget
-  , SubstructureRedirectMask | SubstructureNotifyMask 
+  , SubstructureRedirectMask | SubstructureNotifyMask
   | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-  //Property notify is used to update titles, structureNotify for destroyNotify events. 
+  
   //Some windows only send the destroy event (e.g., gimp splash screen)
   XSync(display, False);  
   
@@ -199,6 +209,7 @@ remove_frame(Display* display, struct Frame_list* frames, int index, struct Them
   frames->used--;
 }
 
+
 /*This function is called when the close button on the frame is pressed */
 void
 close_window(Display* display, Window framed_window) {
@@ -248,20 +259,15 @@ centre_frame(const int container_width, const int container_height, const int w,
 /*** Update frame with available resizing information ***/
 void 
 get_frame_hints(Display* display, struct Frame* frame) { //use themes
-  Screen* screen = DefaultScreenOfDisplay(display);
   XSizeHints specified;
   long pre_ICCCM; //pre ICCCM recovered values which are ignored.
 
-/*  printf("BEFORE: width %d, height %d, x %d, y %d\n", frame->w, frame->h, frame->x, frame->y); */
+  #ifdef SHOW_FRAME_HINTS
+  printf("BEFORE: width %d, height %d, x %d, y %d, minh %d, minw %d\n", frame->w, frame->h, frame->x, frame->y, frame->min_height, frame->min_width);
+  #endif
   
-  //prevent overly large windows, but allow one larger than the screen by default (think eee pc)
-  frame->max_width  = XWidthOfScreen(screen); 
-  frame->max_height = XHeightOfScreen(screen);
-  frame->min_width  = MINWIDTH  ;
-  frame->min_height = MINHEIGHT ;
-  frame->w_inc_offset = 0;
-  frame->h_inc_offset = 0;
   #ifdef ALLOW_OVERSIZE_WINDOWS_WITHOUT_MINIMUM_HINTS
+  Screen* screen = DefaultScreenOfDisplay(display);
   /* Ugh Horrible.  */
   /* Many apps that are resizeable ask to be the size of the screen and since windows
      often don't specifiy their minimum size, we have no way of knowing if they 
@@ -272,6 +278,8 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
   if(frame->w > XWidthOfScreen(screen))  frame->min_width = frame->w;
   if(frame->h > XHeightOfScreen(screen)) frame->min_height = frame->h;
   #endif
+
+  /* whenever assigning a width, height, min/max width/height anew, always add on the h/v space. */
 
   if(XGetWMNormalHints(display, frame->framed_window, &specified, &pre_ICCCM) != 0) {
     #ifdef SHOW_FRAME_HINTS
@@ -301,8 +309,11 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
       #ifdef SHOW_FRAME_HINTS    
       printf("Size specified\n");
       #endif
-      frame->w = specified.width ;
+      frame->w = specified.width;
       frame->h = specified.height;
+      frame->w += frame->hspace; 
+      frame->h += frame->vspace; 
+
     }
     if(specified.flags & PMinSize) {
       #ifdef SHOW_FRAME_HINTS
@@ -311,50 +322,57 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
       frame->w_inc_offset = specified.min_width  % frame->width_inc;  
       frame->h_inc_offset = specified.min_height % frame->height_inc;
      
-      if(specified.min_width  < frame->min_width) {
+      if(specified.min_width  < MINWIDTH) {
         //decided to override min hints, compensate possible base case for inc_resize
-        frame->min_width  += frame->width_inc  - ((frame->min_width) % frame->width_inc);
-        if(frame->w_inc_offset) {
-          frame->min_width  -= frame->w_inc_offset;
-          frame->min_width  += frame->width_inc;
+        if(frame->width_inc > 1) { //inc defaults to 1  so the following might be changing the size in that case needlessly
+          frame->min_width  += frame->width_inc  - (frame->min_width % frame->width_inc);
+          if(frame->w_inc_offset) {
+            frame->min_width  -= frame->w_inc_offset;
+            frame->min_width  += frame->width_inc;
+          }
         }
       }
-      else frame->min_width = specified.min_width;
+      else {
+        frame->min_width = specified.min_width;
+        frame->min_width += frame->hspace;
+      }
 
-      if(specified.min_height < frame->min_height) {
-       //decided to override min hints, compensate possible base case for inc_resize
-        frame->min_height += frame->height_inc - ((frame->min_height)% frame->height_inc);        
-        if(frame->h_inc_offset) {
-          frame->min_height -= frame->h_inc_offset;
-          frame->min_height += frame->height_inc;
+      if(specified.min_height < MINHEIGHT) {
+       //decided to override min hints, compensate possible base case for inc_resize 
+       if(frame->height_inc > 1) { //inc defaults to 1 so the following might be changing the size in that case needlessly
+          frame->min_height += frame->height_inc - (frame->min_height % frame->height_inc);        
+          if(frame->h_inc_offset) {
+            frame->min_height -= frame->h_inc_offset;
+            frame->min_height += frame->height_inc;
+          }
         }
       }
-      else frame->min_height = specified.min_height;
+      else {
+        frame->min_height = specified.min_height;
+        frame->min_height += frame->vspace;
+      }
+ 
+      if(frame->min_width > frame->max_width) frame->max_width = frame->min_width;
+      if(frame->min_height > frame->max_height) frame->max_height = frame->min_height;
+
     }
     
-    if((specified.flags & PMaxSize) 
-    && (specified.max_width >= frame->min_width)
-    && (specified.max_height >= frame->min_height)) {
+    if(specified.flags & PMaxSize) {
       #ifdef SHOW_FRAME_HINTS
       printf("Maximum size specified\n");
       #endif
-      frame->max_width = specified.max_width;
-      frame->max_height = specified.max_height;
+      //only update the maximums if they are greater than the minimums!
+      if(specified.max_width >= frame->min_width - frame->hspace) {
+        frame->max_height  = specified.max_height;
+        frame->max_height += frame->vspace; 
+      }
+      if(specified.max_height >= frame->min_height - frame->vspace) {
+        frame->max_width  = specified.max_width;
+        frame->max_width += frame->hspace; 
+      }
     }
-
   }
 
-  //all of the initial values are sans the frame
-  
-  frame->w += frame->hspace; 
-  frame->h += frame->vspace; 
-
-  frame->max_width  += frame->hspace; 
-  frame->max_height += frame->vspace; 
-
-  frame->min_width  += frame->hspace; 
-  frame->min_height += frame->vspace; 
-   
   #ifdef SHOW_FRAME_HINTS      
   printf("width %d, height %d, min_width %d, max_width %d, min_height %d, max_height %d, x %d, y %d\n"
   , frame->w, frame->h, frame->min_width, frame->max_width, frame->min_height, frame->max_height
@@ -398,8 +416,7 @@ get_frame_type_and_mode(Display *display, struct Frame *frame, struct Atoms *ato
         }
       }
     }
-    else 
-    centre_frame(XWidthOfScreen(screen), XHeightOfScreen(screen), frame->w, frame->h, &(frame->x), &(frame->y));
+    else centre_frame(XWidthOfScreen(screen), XHeightOfScreen(screen), frame->w, frame->h, &(frame->x), &(frame->y));
   }
   
   XGetWindowProperty(display, frame->framed_window, atoms->wm_window_type, 0, 1 //long long_length?
@@ -529,7 +546,6 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
     for(int j = 0; j <= inactive; j++)  frame->widgets[i].state[j] = 0;
   }
   for(int i = 0; i < frame_parent; i++) {
-
     int x = themes->window_type[frame->theme_type][i].x;
     int y = themes->window_type[frame->theme_type][i].y;
     int w = themes->window_type[frame->theme_type][i].w;
@@ -629,8 +645,7 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
   XFlush(display);
 }
 
-/*** create pixmaps with the specified name if it is available, otherwise use a default name
-TODO check if the name is just whitespace  ***/
+/*** create pixmaps with the specified name if it is available, otherwise use a default name  ***/
 
 /* Problem:  this should create the name for the window itself, and one for the title menu
    but this function doesn't know parent window of the title menu.  Also, it may need to be in many
@@ -706,9 +721,11 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
     XUnmapWindow(display, temp.menu.state[i]);
     XUnmapWindow(display, temp.widgets[title_menu_text].state[i]);
     XFlush(display);
+    //create the title menu item with the windows title
     create_text_background(display, temp.menu.state[i], temp.window_name
     , &themes->font_theme[i], themes->popup_menu[menu_item_mid].state_p[i]
     , XWidthOfScreen(screen), themes->popup_menu[menu_item_mid].h);
+    
     //TODO make the title for unfocussed windows not bold?
     create_text_background(display, temp.widgets[title_menu_text].state[i], temp.window_name
     , &themes->font_theme[active], themes->window_type[frame->theme_type][title_menu_text].state_p[i]
@@ -752,3 +769,51 @@ free_frame_name(struct Frame* frame) {
     frame->window_name = NULL;
   }
 } 
+
+/** Update frame with available wm hints (icon, window "group", focus wanted, urgency, withdrawn) **/
+
+void 
+get_frame_wm_hints(Display *display, struct Frame *frame, struct Themes *themes) {
+  XWMHints *wm_hints = XGetWMHints(display, frame->framed_window);
+  //WM_ICON_SIZE  in theory we can ask for set of specific icon sizes.
+
+  //Set defaults
+  Pixmap icon_p = 0;
+  Pixmap icon_mask_p = 0;
+
+  if(wm_hints != NULL) {
+    if(wm_hints->flags & IconPixmapHint
+    && wm_hints->icon_pixmap != 0) {
+      icon_p = wm_hints->icon_pixmap;
+      //XSetWindowBackgroundPixmap(display, frame->menu_item.icon.item_icon, icon_p);
+    }
+
+    if(wm_hints->flags & IconMaskHint  
+    && wm_hints->icon_pixmap != 0) {
+      icon_mask_p = wm_hints->icon_mask;
+      //XShapeCombineMask (display, frame->menu_item.icon.item_icon, ShapeBounding //ShapeClip or ShapeBounding
+      //,0, 0, icon_mask_p, ShapeSet); 
+      //Shapeset or ShapeUnion, ShapeIntersect, ShapeSubtract, ShapeInvert
+      //XMapWindow(display, frame->menu_item.icon.item_icon);
+      
+    }
+    
+    if(icon_p /*&& icon_mask_p */ ) {
+      for(int i = 0; i <= inactive; i++) {
+        create_icon_background(display, frame->widgets[title_menu_lhs].state[i]
+        , icon_p, icon_mask_p
+        , themes->window_type[frame->theme_type][title_menu_lhs].state_p[i]
+        , themes->window_type[frame->theme_type][title_menu_lhs].w, themes->window_type[frame->theme_type][title_menu_lhs].h);
+        XMapWindow(display, frame->widgets[title_menu_lhs].state[i]);
+      }
+      
+    }
+    XSync(display, False);
+    //get the icon sizes
+    //find out it is urgent
+    //get the icon if it has one.
+    //icon window is for the systray
+    //window group is for mass minimization
+    XFree(wm_hints);
+  }
+}

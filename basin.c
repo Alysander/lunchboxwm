@@ -21,6 +21,8 @@
 #include "menus.h"
 #include "frame.h"
 #include "frame-actions.h"
+#include "focus.h"
+#include "workspace.h"
 
 //int main 
 void list_properties  (Display *display, Window window);
@@ -29,9 +31,9 @@ void create_cursors   (Display *display, struct Cursors *cursors);
 void create_hints     (Display *display, struct Atoms *atoms);
 void free_cursors     (Display *display, struct Cursors *cursors);
 void set_icon_size    (Display *display, Window window, int new_size);
+static XIconSize *create_icon_size (Display *display, int new_size);
 
-#include "focus.h"
-#include "workspace.h"
+
 int done = 0;
 
 void 
@@ -124,6 +126,8 @@ main (int argc, char* argv[]) {
     printf("Error: Could not load theme \"original\".\n\n");
     return -1;
   }
+  
+  XIconSize *icon_size = create_icon_size (display, 16); //This specifies the icon size that we want from programs.
 
   create_cursors (display, &cursors); //load a bunch of XCursors
   create_hints(display, &atoms);      //Create EWMH hints which are atoms
@@ -235,7 +239,12 @@ main (int argc, char* argv[]) {
           int k;
           struct Frame_list *frames = &workspaces.list[i];
           for(k = 0; k < frames->used; k++) if(frames->list[k].framed_window == event.xmaprequest.window) break;
-          if(k < frames->used) break; //already exists
+          if(k < frames->used) {
+            #ifdef SHOW_MAP_REQUEST_EVENT
+            printf("Window %lu\n already managed.", (unsigned long)event.xmaprequest.window);
+            #endif
+            break; //already exists
+          }
         }
         if(i == workspaces.used) {
           int new_workspace;
@@ -1033,6 +1042,7 @@ main (int argc, char* argv[]) {
                 /* For some reason the gimp 2.6.3 on intrepid kept on resetting it's size hints for the toolbox 
                    This lead to the window moving and resizing unpredictably.  */
                 if(clicked_frame != i) {
+                  printf("Frame hints %s\n ", frames->list[i].window_name);
                   get_frame_hints(display, &frames->list[i]); 
                   if(frames->list[i].mode == tiling) { 
                     drop_frame (display, frames, i, themes);
@@ -1274,6 +1284,8 @@ main (int argc, char* argv[]) {
   free_cursors(display, &cursors);
 
   remove_themes(display,themes);
+
+  XFree(icon_size);
   
   /* This will close all open windows, but not free any dangling pixmaps. Valgrind won't pickup on leaked pixmaps. */
   XCloseDisplay(display);
@@ -1281,6 +1293,26 @@ main (int argc, char* argv[]) {
   printf(".......... \n");
   return 1;
 }
+
+
+/* This function sets the icon size property on the window so that the program that created it
+knows what size to make the icon it provides when we call XGetWMHints.  But I don't understand
+why XSetIconSize provides a method to specify a variety of sizes when only one size is returned.
+Also, I am presuming that we can't free XIconSize immediately so I do so at the end of the main function.
+*/
+static XIconSize *
+create_icon_size (Display *display, int new_size) {
+  XIconSize *icon_size = XAllocIconSize(); //this allows us to specify a size for icons when we request them
+  if(icon_size == NULL) return NULL;
+  icon_size->min_width = new_size;
+  icon_size->max_width = new_size;
+  icon_size->min_height = new_size;
+  icon_size->max_height = new_size;
+  //inc amount are already zero from XAlloc
+  XSetIconSizes(display, DefaultRootWindow(display), icon_size, 1); 
+  return icon_size;
+}
+
 
 /* When windows are created they are placed under one of these seperators (but on top of previous windows at that level
    The seperators are lowered in case of pre-exising override redirect windows which should be on top.
@@ -1307,9 +1339,9 @@ create_seperators(Display *display, struct Seperators *seps) {
   XChangeWindowAttributes(display, seps->panel_seperator, CWOverrideRedirect,    &set_attributes);  
 
   XRaiseWindow(display, seps->sinking_seperator);
-  XRaiseWindow(display, seps->panel_seperator);  //in the meantime until we can actually tile them properly
   XRaiseWindow(display, seps->tiling_seperator);
   XRaiseWindow(display, seps->floating_seperator);
+  XRaiseWindow(display, seps->panel_seperator); 
   XFlush(display);
 }
 
@@ -1367,6 +1399,7 @@ create_hints (Display *display, struct Atoms *atoms) {
 
   int32_t desktop_geometry[2] = {XWidthOfScreen(screen), XHeightOfScreen(screen)};
   int32_t workarea[4] = {0, 0, XWidthOfScreen(screen), XHeightOfScreen(screen)};
+/**** When changing supported hints here, also update Atoms struct (and add/remove members as required) ******/
   //this window is closed automatically by X11 when the connection is closed.
   //this is supposed to be used to save the required flags. TODO review this
   Window program_instance = XCreateSimpleWindow(display, root, 0, 0, 1, 1, 0, BlackPixelOfScreen(screen), BlackPixelOfScreen(screen));
@@ -1377,8 +1410,7 @@ create_hints (Display *display, struct Atoms *atoms) {
   number_of_atoms++; atoms->desktop_geometry           = XInternAtom(display, "_NET_DESKTOP_GEOMETRY", False);
   //TODO this will need to be dynamically calculated
   number_of_atoms++; atoms->workarea                   = XInternAtom(display, "_NET_WORKAREA", False);
-
-//  number_of_atoms++; atoms->wm_full_placement          = XInternAtom(display, "_NET_WM_FULL_PLACEMENT", False);
+  number_of_atoms++; atoms->wm_full_placement          = XInternAtom(display, "_NET_WM_FULL_PLACEMENT", False);
   number_of_atoms++; atoms->frame_extents              = XInternAtom(display, "_NET_FRAME_EXTENTS", False);
   number_of_atoms++; atoms->wm_window_type             = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
   number_of_atoms++; atoms->wm_window_type_normal      = XInternAtom(display, "_NET_WM_WINDOW_TYPE_NORMAL", False);

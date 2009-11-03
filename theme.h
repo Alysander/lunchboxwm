@@ -8,3 +8,8 @@ void create_text_background(Display *display, Window window, const char *restric
 , const struct Font_theme *restrict font_theme, Pixmap background_p, int b_w, int b_h);
 
 unsigned int get_text_width(Display * display, const char *title, struct Font_theme *font_theme);
+
+void 
+create_icon_background(Display *display, Window window
+, Pixmap icon_p, Pixmap icon_mask_p
+, Pixmap background_p, int b_w, int b_h);

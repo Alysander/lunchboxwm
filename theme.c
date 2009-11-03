@@ -294,7 +294,7 @@ create_component_theme(Display *display, char *type) {
       else if(!strcmp(widget_name, "selection_indicator")) current_widget = selection_indicator;
       else if(!strcmp(widget_name, "selection_indicator_hotspot")) current_widget = selection_indicator_hotspot;
       else if(!strcmp(widget_name, "title_menu_lhs"))      current_widget = title_menu_lhs;
-//      else if(!strcmp(widget_name, "title_menu_icon"))     current_widget = title_menu_icon;
+//      else if(!strcmp(widget_name, "title_menu_icon"))     current_widget = title_menu_icon; /* this can have the icon*/
       else if(!strcmp(widget_name, "title_menu_text"))     current_widget = title_menu_text;
       else if(!strcmp(widget_name, "title_menu_rhs"))      current_widget = title_menu_rhs;
       else if(!strcmp(widget_name, "title_menu_hotspot"))  current_widget = title_menu_hotspot;
@@ -612,6 +612,65 @@ create_text_background(Display *display, Window window, const char *restrict tex
   XFreePixmap(display, pixmap);
   XFlush(display);
 
+}
+
+void 
+create_icon_background(Display *display, Window window
+, Pixmap icon_p, Pixmap icon_mask_p
+, Pixmap background_p, int b_w, int b_h) {
+
+  Window root = DefaultRootWindow(display); 
+  int screen_number = DefaultScreen (display);
+  Screen* screen = DefaultScreenOfDisplay(display);
+  Visual *colours =  DefaultVisual(display, screen_number);
+
+  unsigned int width = XWidthOfScreen(screen);
+  unsigned int height = b_h;  
+  
+  Pixmap pixmap = icon_mask_p; /*TODO, for werror */
+  pixmap = XCreatePixmap(display, root, width, height, XDefaultDepth(display, screen_number));
+  cairo_surface_t *surface = cairo_xlib_surface_create(display, pixmap, colours,  width, height);
+  cairo_surface_t *background = cairo_xlib_surface_create(display, background_p, colours, b_w, b_h);
+  cairo_t *cr = cairo_create(surface);
+
+  cairo_set_source_rgba(cr, 0.5, 0.5, 0.5, 1);
+  cairo_rectangle(cr, 0, 0, width, height);
+  cairo_fill(cr);
+
+  cairo_pattern_t *background_pattern = cairo_pattern_create_for_surface(background);
+  cairo_pattern_set_extend(background_pattern, CAIRO_EXTEND_REPEAT);
+  cairo_set_source(cr, background_pattern);
+  cairo_rectangle(cr, 0, 0, width, height);
+  cairo_fill(cr);
+  cairo_surface_flush(surface);
+  cairo_surface_destroy(background);
+  cairo_pattern_destroy(background_pattern);
+
+  //so the surface is the pixmap, we create a pattern based on the surface and then set that as the source for the renderer
+  background = cairo_xlib_surface_create(display, icon_p, colours, b_w, b_h);
+  background_pattern = cairo_pattern_create_for_surface(background);
+  cairo_pattern_set_extend(background_pattern, CAIRO_EXTEND_NONE);
+  //need to mask it first
+  
+  cairo_set_source(cr, background_pattern);
+  cairo_rectangle(cr, 0, 0, width, height);
+  cairo_fill(cr);
+  cairo_surface_flush(surface);
+  cairo_surface_destroy(background);
+  cairo_pattern_destroy(background_pattern);
+      
+  /********** ***********/
+  cairo_destroy (cr);  
+  cairo_surface_destroy(surface);    
+  
+  if(!pixmap || pixmap == BadPixmap) return;
+
+  XUnmapWindow(display, window);
+  XSetWindowBackgroundPixmap(display, window, pixmap);
+  XSync(display, False); 
+  XMapWindow(display, window);
+  XFreePixmap(display, pixmap);
+  XFlush(display);
 }
 
 static Pixmap

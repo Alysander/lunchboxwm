@@ -203,7 +203,7 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
     }
   }
   frame_index = create_frame(display, &workspaces->list[k], framed_window, window_menu, seps, themes, cursors, atoms);
-  if(frame_index != -1) {
+  if(frame_index >= 0) {
     check_new_frame_focus (display, &workspaces->list[k], frame_index);
     //double check if we need to tile the newly created window.
     if(workspaces->list[k].list[frame_index].mode == tiling) {
