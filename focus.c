@@ -6,7 +6,7 @@
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/Xatom.h>
 
-#include "basin.h"
+#include "lunchbox.h"
 
 #include "frame.h"
 #include "frame-actions.h"

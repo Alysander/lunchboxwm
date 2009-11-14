@@ -7,7 +7,7 @@
 #include <X11/Xatom.h>
 
 #include "xcheck.h"
-#include "basin.h"
+#include "lunchbox.h"
 #include "menus.h"
 #include "theme.h"
 #include "frame.h"

@@ -8,7 +8,7 @@
 #include <cairo/cairo.h>
 #include <cairo/cairo-xlib.h>
 
-#include "basin.h"
+#include "lunchbox.h"
 #include "theme.h"
 #include "xcheck.h"
 

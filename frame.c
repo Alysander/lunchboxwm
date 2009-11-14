@@ -7,7 +7,7 @@
 #include <X11/Xatom.h>
 
 #include "xcheck.h"
-#include "basin.h"
+#include "lunchbox.h"
 #include "menus.h"
 #include "theme.h"
 #include "frame.h"
@@ -22,7 +22,12 @@ get_frame_type_and_mode (Display *display, struct Frame *frame, struct Atoms *at
 static void 
 get_frame_state         (Display *display, struct Frame *frame, struct Atoms *atoms);
 
-static void get_frame_wm_hints     (Display *display, struct Frame *frame, struct Themes *themes);
+static void 
+get_frame_wm_hints      (Display *display, struct Frame *frame, struct Themes *themes);
+
+
+static void 
+frame_type_settings     (Display *display, struct Frame *frame);
 
 /* Sometimes a client window is killed before it gets unmapped, we only get the unmapnotify event,
  but there is no way to tell so we just supress the error. */
@@ -67,27 +72,48 @@ create_frame (Display *display, struct Frame_list* frames
   frame.mode = unset;
   frame.state = none;
   frame.transient = 0;
-  frame.x = get_attributes.x - themes->window_type[frame.theme_type][window].x;
-  frame.y = get_attributes.y - themes->window_type[frame.theme_type][window].y;
   frame.width_inc = 1;
   frame.height_inc = 1;
-  frame.hspace = 0 - themes->window_type[frame.theme_type][window].w;
-  frame.vspace = 0 - themes->window_type[frame.theme_type][window].h;
+  
   frame.menu.item = 0; //some title aren't getting loaded properly
-  frame.w = get_attributes.width; 
-  frame.h = get_attributes.height;
 
-  //prevent overly large windows with sensible defaults
-  frame.max_width  = XWidthOfScreen(screen) + frame.hspace;; 
-  frame.max_height = XHeightOfScreen(screen) + frame.vspace;;
-  frame.min_width  = MINWIDTH + frame.hspace;;
-  frame.min_height = MINHEIGHT + frame.vspace;;
   frame.w_inc_offset = 0;
   frame.h_inc_offset = 0;
-    
-  get_frame_hints(display, &frame);
+  
+  frame.w = get_attributes.width; 
+  frame.h = get_attributes.height;
+ 
   get_frame_type_and_mode (display, &frame, atoms, themes);
 
+  frame.x = get_attributes.x - themes->window_type[frame.theme_type][window].x;
+  frame.y = get_attributes.y - themes->window_type[frame.theme_type][window].y;
+  frame.hspace = 0 - themes->window_type[frame.theme_type][window].w;
+  frame.vspace = 0 - themes->window_type[frame.theme_type][window].h;
+  
+  //prevent overly large windows with these sensible defaults
+  frame.max_width  = XWidthOfScreen(screen) + frame.hspace; 
+  frame.max_height = XHeightOfScreen(screen) + frame.vspace;
+  frame.min_width  = MINWIDTH + frame.hspace;;
+  frame.min_height = MINHEIGHT + frame.vspace;;
+
+  #ifdef ALLOW_OVERSIZE_WINDOWS_WITHOUT_MINIMUM_HINTS
+  Screen* screen = DefaultScreenOfDisplay(display);
+  /* Ugh Horrible.  */
+  /* Many apps that are resizeable ask to be the size of the screen and since windows
+     often don't specifiy their minimum size, we have no other way of knowing if they 
+     really need to be that size or not.  In case they do, this specifies that their
+     current width is their minimum size, in the hope that it is overridden by the
+     size hints. This kind of behaviour causes problems on small screens like the
+     eee pc. */
+  if(frame->w > XWidthOfScreen(screen))  frame->min_width = frame->w;
+  if(frame->h > XHeightOfScreen(screen)) frame->min_height = frame->h;
+  #endif
+
+  /* This requires hspace and vspace to be set as well as the incremental hints */
+  get_frame_hints(display, &frame);
+
+  frame_type_settings(display, &frame);
+  
   //Don't manage splash screens, they just cause the workspace to be created
   //and instantly destroyed
   if(frame.type == splash  ||  frame.type == panel) {
@@ -123,10 +149,12 @@ create_frame (Display *display, struct Frame_list* frames
   , 32, PropModeReplace, (unsigned char *)ewmh_frame_extents, 4);*/
   
   XSetWindowBorderWidth(display, framed_window, 0);
-#ifdef CRASH_ON_BUG
+  
+  #ifdef CRASH_ON_BUG
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);
-#endif
+  #endif
+  
   XSelectInput(display, framed_window,  0);
 
   //reparent the framed_window to frame.widgets[window].widget
@@ -134,10 +162,11 @@ create_frame (Display *display, struct Frame_list* frames
   //for some odd reason the reparent only reports an extra unmap event if the window was already unmapped
   XRaiseWindow(display, framed_window);
   XMapWindow(display, frame.widgets[window].widget);
-#ifdef CRASH_ON_BUG
+  
+  #ifdef CRASH_ON_BUG
   XSetErrorHandler(NULL);
   XUngrabServer(display);
-#endif
+  #endif
 
   XSelectInput(display, framed_window,  PropertyChangeMask); //Property notify is used to update titles
   XSelectInput(display, frame.widgets[window].widget
@@ -172,36 +201,42 @@ create_frame (Display *display, struct Frame_list* frames
 /* It is used when the framed window has been unmapped or destroyed, or is about to be*/
 void 
 remove_frame(Display* display, struct Frame_list* frames, int index, struct Themes *themes) {
+
+  struct Frame *frame = &frames->list[index];
+  
   XWindowChanges changes;
   Window root = DefaultRootWindow(display);
   unsigned int mask = CWSibling | CWStackMode;  
 
   changes.stack_mode = Below;
   changes.sibling = frames->list[index].widgets[frame_parent].widget;
-  struct Frame *frame = &frames->list[index];
-  //free_frame_icon_size(display, &frames->list[index]);
-  //always unmap the title pulldown before removing the frame or else it will crash
-  //XDestroyWindow(display, frames->list[index].menu_item.backing);
+  
   /* free_frame_name(&frames->list[index]);*/ //Xdestroy window takes care of this
   XDestroyWindow(display, frames->list[index].menu.item);  
-#ifdef CRASH_ON_BUG
+  
+  #ifdef CRASH_ON_BUG
   XGrabServer(display);
   XSetErrorHandler(supress_xerror);  
-#endif
+  #endif
+  
   XReparentWindow(display, frame->framed_window, root
   , frame->x + themes->window_type[frame->theme_type][window].x
   , frame->y + themes->window_type[frame->theme_type][window].y);
   //TODO need to change the frame w,h attributes here
-  XConfigureWindow(display, frame->framed_window, mask, &changes);  
+  
   //keep the stacking order
+  XConfigureWindow(display, frame->framed_window, mask, &changes);  
+  
   XRemoveFromSaveSet (display, frame->framed_window); 
+  
   //this will not destroy the window because it has been reparented to root
   XDestroyWindow(display, frame->widgets[frame_parent].widget);
   XSync(display, False);
-#ifdef CRASH_ON_BUG
+  
+  #ifdef CRASH_ON_BUG
   XSetErrorHandler(NULL);    
   XUngrabServer(display);
-#endif
+  #endif
 
   if((frames->used != 1) && (index != frames->used - 1)) { //the frame is not alone or the last
     frames->list[index] = frames->list[frames->used - 1]; //swap the deleted frame with the last frame
@@ -264,19 +299,6 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
 
   #ifdef SHOW_FRAME_HINTS
   printf("BEFORE: width %d, height %d, x %d, y %d, minh %d, minw %d\n", frame->w, frame->h, frame->x, frame->y, frame->min_height, frame->min_width);
-  #endif
-  
-  #ifdef ALLOW_OVERSIZE_WINDOWS_WITHOUT_MINIMUM_HINTS
-  Screen* screen = DefaultScreenOfDisplay(display);
-  /* Ugh Horrible.  */
-  /* Many apps that are resizeable ask to be the size of the screen and since windows
-     often don't specifiy their minimum size, we have no way of knowing if they 
-     really need to be that size or not.  In case they do, this specifies that their
-     current width is their minimum size, in the hope that it is overridden by the
-     size hints. This kind of behaviour causes problems on small screens like the
-     eee pc. */
-  if(frame->w > XWidthOfScreen(screen))  frame->min_width = frame->w;
-  if(frame->h > XHeightOfScreen(screen)) frame->min_height = frame->h;
   #endif
 
   /* whenever assigning a width, height, min/max width/height anew, always add on the h/v space. */
@@ -381,16 +403,9 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
   
 }
 
-static void 
-get_frame_type_and_mode(Display *display, struct Frame *frame, struct Atoms *atoms, struct Themes *themes) {
-  unsigned char *contents = NULL;
-  Atom return_type;
-  int return_format;
-  unsigned long items;
-  unsigned long bytes;
+/* This function is run after get_frame_type_and_mode so that there are fewer inter-dependences between that and get_frame_hints */
+static void frame_type_settings(Display *display, struct Frame *frame) {
   Screen* screen = DefaultScreenOfDisplay(display);
-  
-  XGetTransientForHint(display, frame->framed_window, &frame->transient);
   
   /* Centre transient windows on top of their parents */
   /* This is a bit of a hack in that it uses some slow round trips but reduces coupling with other modules */
@@ -418,6 +433,20 @@ get_frame_type_and_mode(Display *display, struct Frame *frame, struct Atoms *ato
     }
     else centre_frame(XWidthOfScreen(screen), XHeightOfScreen(screen), frame->w, frame->h, &(frame->x), &(frame->y));
   }
+  else if(frame->type == dialog  ||  frame->type == splash  ) {
+    centre_frame(XWidthOfScreen(screen), XHeightOfScreen(screen), frame->w, frame->h, &(frame->x), &(frame->y));
+  }
+}
+
+static void 
+get_frame_type_and_mode(Display *display, struct Frame *frame, struct Atoms *atoms, struct Themes *themes) {
+  unsigned char *contents = NULL;
+  Atom return_type;
+  int return_format;
+  unsigned long items;
+  unsigned long bytes;
+  
+  XGetTransientForHint(display, frame->framed_window, &frame->transient);
   
   XGetWindowProperty(display, frame->framed_window, atoms->wm_window_type, 0, 1 //long long_length?
   , False, AnyPropertyType, &return_type, &return_format,  &items, &bytes, &contents);
@@ -452,7 +481,7 @@ get_frame_type_and_mode(Display *display, struct Frame *frame, struct Atoms *ato
         printf("type: dock\n");
         #endif
         //frame->mode = floating;
-        //if(themes->window_type[system_program]) 
+        //if(themes->window_type[system_program]) //these have been removed because currently we don't manage panels
         frame->type = panel; 
       }
       else if(window_type[i] == atoms->wm_window_type_splash) {
@@ -461,9 +490,7 @@ get_frame_type_and_mode(Display *display, struct Frame *frame, struct Atoms *ato
         #endif
         //frame->mode = floating;
         //if(themes->window_type[splash]) 
-        frame->type = splash;
-        if(!frame->transient)
-        centre_frame(XWidthOfScreen(screen), XHeightOfScreen(screen), frame->w, frame->h, &(frame->x), &(frame->y));
+        frame->type = splash; //these have been removed because currently we don't manage splash screens
       }
       else if(window_type[i] ==atoms->wm_window_type_dialog) {
         #ifdef SHOW_PROPERTIES
@@ -471,8 +498,6 @@ get_frame_type_and_mode(Display *display, struct Frame *frame, struct Atoms *ato
         #endif
         frame->mode = floating;
         if(themes->window_type[dialog]) frame->type = dialog;
-        if(!frame->transient)
-        centre_frame(XWidthOfScreen(screen), XHeightOfScreen(screen), frame->w, frame->h, &(frame->x), &(frame->y));
       }
       else if(window_type[i] == atoms->wm_window_type_utility) {
         #ifdef SHOW_PROPERTIES

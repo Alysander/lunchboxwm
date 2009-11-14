@@ -4,10 +4,10 @@ CFLAGS= -g -Werror -Wall -Wextra -pedantic -std=c99 `pkg-config --cflags cairo`
 
 #make runs the first one by default
 
-all:basin
+all:lunchbox
 
-basin: basin.c focus.o workspace.o frame.o frame-actions.o theme.o xcheck.o space.o menus.o *.h Makefile
-	${CC}  focus.o workspace.o frame.o frame-actions.o theme.o xcheck.o space.o menus.o basin.c ${CFLAGS} ${LDFLAGS} -o basin
+lunchbox: main.c focus.o workspace.o frame.o frame-actions.o theme.o xcheck.o space.o menus.o *.h Makefile
+	${CC}  focus.o workspace.o frame.o frame-actions.o theme.o xcheck.o space.o menus.o main.c ${CFLAGS} ${LDFLAGS} -o lunchbox
 
 focus.o: focus.c frame.o xcheck.o *.h
 	${CC} ${CFLAGS} -c $<
@@ -39,7 +39,7 @@ clean:
 	rm -f basin
 
 install:
-	cp basin /usr/bin     
+	cp lunchbox /usr/bin     
 
 #debug:
 #	gcc basin.c -lX11 -lXcursor -lXext `pkg-config --cflags --libs cairo` -std=c99 -g -o basin > compile 2>&1
