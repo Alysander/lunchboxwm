@@ -1,42 +1,39 @@
 CC=gcc 
 LDFLAGS+=-lX11 -lXcursor -lXext -lcairo
 CFLAGS= -g -Werror -Wall -Wextra -pedantic -std=c99 `pkg-config --cflags cairo`
-
+OBJS=bin/
+COMPILE=${CC} ${CFLAGS} -c $< -o $@ 
 #make runs the first one by default
 
 all:lunchbox
 
-lunchbox: main.c focus.o workspace.o frame.o frame-actions.o theme.o xcheck.o space.o menus.o *.h Makefile
-	${CC}  focus.o workspace.o frame.o frame-actions.o theme.o xcheck.o space.o menus.o main.c ${CFLAGS} ${LDFLAGS} -o lunchbox
+lunchbox: main.c ${OBJS}focus.o ${OBJS}workspace.o ${OBJS}frame.o ${OBJS}frame-actions.o ${OBJS}theme.o ${OBJS}xcheck.o ${OBJS}space.o ${OBJS}menus.o *.h Makefile
+	${CC}  ${OBJS}focus.o ${OBJS}workspace.o ${OBJS}frame.o ${OBJS}frame-actions.o ${OBJS}theme.o ${OBJS}xcheck.o ${OBJS}space.o ${OBJS}menus.o main.c ${CFLAGS} ${LDFLAGS} -o lunchbox
 
-focus.o: focus.c frame.o xcheck.o *.h
-	${CC} ${CFLAGS} -c $<
+${OBJS}focus.o: focus.c ${OBJS}frame.o ${OBJS}xcheck.o *.h
+	${COMPILE}
 
-workspace.o: workspace.c frame-actions.o frame.o *.h
-	${CC} ${CFLAGS} -c $<
+${OBJS}workspace.o: workspace.c ${OBJS}frame-actions.o ${OBJS}frame.o *.h
+	${COMPILE}
 
-frame.o: frame.c xcheck.o *.h
-	${CC} ${CFLAGS} -c $<
+${OBJS}frame.o: frame.c ${OBJS}xcheck.o *.h
+	${COMPILE}
 
-frame-actions.o: frame-actions.c frame.o xcheck.o *.h
-	${CC} ${CFLAGS} -c $<
+${OBJS}frame-actions.o: frame-actions.c ${OBJS}frame.o ${OBJS}xcheck.o *.h
+	${COMPILE}
 
-theme.o: theme.c xcheck.o *.h
-	${CC} ${CFLAGS} -c $<
+${OBJS}theme.o: theme.c ${OBJS}xcheck.o *.h
+	${COMPILE}
 
-xcheck.o: xcheck.c *.h
-	${CC} ${CFLAGS} -c $<
+${OBJS}xcheck.o: xcheck.c *.h
+	${COMPILE}
 
-space.o: space.c *.h
-	${CC} ${CFLAGS} -c $<
+${OBJS}space.o: space.c *.h
+	${COMPILE}
 
-menus.o: menus.c
-	${CC} ${CFLAGS} -c $<
+${OBJS}menus.o: menus.c
+	${COMPILE}
 
-	
-clean:
-	rm -f *.o
-	rm -f basin
 
 install:
 	cp lunchbox /usr/bin     
