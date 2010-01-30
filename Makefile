@@ -1,6 +1,6 @@
 CC=gcc 
 LDFLAGS+=-lX11 -lXcursor -lXext -lcairo
-CFLAGS= -g -Werror -Wall -Wextra -pedantic -std=c99 `pkg-config --cflags cairo`
+CFLAGS= -g -Wall -Wextra -pedantic -std=c99 `pkg-config --cflags cairo`
 OBJS=bin/
 COMPILE=${CC} ${CFLAGS} -c $< -o $@ 
 #make runs the first one by default

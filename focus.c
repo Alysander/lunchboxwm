@@ -13,6 +13,12 @@
 #include "focus.h"
 #include "xcheck.h"
 
+/**
+@file     focus.c
+@brief    Functions for setting and recovering keyboard focus for frames.  Keyboard focus is the term used to identify the window which receives key press events.
+@author   Alysander Stanley
+**/
+
 /****
 
 (implemented in add_frame_to_workspace called from main)
@@ -33,9 +39,10 @@ Remove focus and change it to previously focussed window when:
 Remove focus if any window is hidden - because giving focus shouldn't have to raise a window.
 
 (implemented in ButtonPress) 
-Change focus to another window whenever the user clicks on it an
+Change focus to another window whenever the user clicks on it.
 ****/
 
+/* Adds another window (the framed window) to the focus list */
 void add_focus(Window new, struct Focus_list* focus) {
   remove_focus(new, focus); //remove duplicates
   if(focus->used == focus->max  ||  focus->list == NULL) {
@@ -57,6 +64,7 @@ void add_focus(Window new, struct Focus_list* focus) {
   focus->used++;
 }
 
+/* Removes a window from the focus list. This is called when the window has been unmapped. */
 void remove_focus(Window old, struct Focus_list* focus) {
   int i;
   if(focus->list == NULL || focus->used == 0) return;
@@ -68,6 +76,8 @@ void remove_focus(Window old, struct Focus_list* focus) {
   for( ; (unsigned int)i < focus->used; i++) focus->list[i] = focus->list[i + 1];
 }
 
+/* Determines if newly created windows should get focussed automatically. This is the case if no windows are currently focussed or
+if it is a transient window and its parent is focussed.  Caller then checks if the frame structure has the "selected" member set to 1.*/
 //this doesn't actually focus the window in case it is in the wrong workspace.
 //caller must determine that and then run recover focus.
 void check_new_frame_focus (Display *display, struct Frame_list *frames, int index) {
@@ -91,6 +101,7 @@ void check_new_frame_focus (Display *display, struct Frame_list *frames, int ind
 }
 
 //deselect all the frames.
+/* Resets the appearance of all the frames. Used when changing the focused window. */
 void unfocus_frames(Display *display, struct Frame_list *frames) {
   for(int i = 0; i < frames->used; i++) 
   if(frames->list[i].selected) {
@@ -100,7 +111,9 @@ void unfocus_frames(Display *display, struct Frame_list *frames) {
   }
 }
 
-
+/* After a focused window is closed, use this function to set the focus to another window.
+  It actually does set the focus using XSetInputFocus. */
+  
 //So it turns out that if selection indicators are present this introduces a linear behaviour
 //rather than a constant time one.  The alternative would be to always keep the frame list
 //in focus order, but copying around reasonably large structs seems more expensive than

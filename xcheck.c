@@ -1,5 +1,12 @@
 #include "xcheck.h"
 
+/**
+@file     xcheck.c
+@brief    Contains simple wrappers which enable calls to windows/pixmaps with an ID of 0 to be silently ignored.  This is useful for the theming system which does not require all pixmaps/windows to be present.
+@author   Alysander Stanley
+**/
+
+
 Bool
 xcheck_raisewin(Display *display, Window window) {
   if(window) {

@@ -14,6 +14,13 @@
 #include "space.h"
 #include "frame-actions.h"
 
+/**
+@file     frame-actions.c
+@brief    High level functions for manipulating frames.
+@author   Alysander Stanley
+**/
+
+
 /*****
 This function ensures that the window is within limits. 
 It sets the frames x,y,w,h to achieve this.
@@ -163,7 +170,7 @@ change_mode_pulldown_text_pixmap(Display *display, struct Frame *frame, int inde
 /*This function makes a window fullscreen.  It resizes it, but resets the values back to their originals */
 void 
 change_frame_state (Display *display, struct Frame *frame, enum Window_state state
-, struct Seperators *seps, struct Themes *themes, struct Atoms *atoms) {
+, struct Separators *seps, struct Themes *themes, struct Atoms *atoms) {
   Screen* screen = DefaultScreenOfDisplay(display);  
   
   if(state == fullscreen) {
@@ -652,12 +659,13 @@ move_frame (Display *display, struct Frame *frame
   }
   XFlush(display);  
 }
+
 /*****
 
 *****/
 int 
 replace_frame(Display *display, struct Frame *target, struct Frame *replacement
-, struct Seperators *seps, struct Themes *themes) {
+, struct Separators *seps, struct Themes *themes) {
   XWindowChanges changes;
   XWindowChanges changes2;
   enum Window_mode mode;
@@ -729,17 +737,17 @@ replace_frame(Display *display, struct Frame *target, struct Frame *replacement
 }
 
 /**** 
-Implements stacking and focus policy 
+Implements stacking policy 
 *****/
 void 
-stack_frame(Display *display, struct Frame *frame, struct Seperators *seps) {
+stack_frame(Display *display, struct Frame *frame, struct Separators *seps) {
   XWindowChanges changes;
   
   unsigned int mask = CWSibling | CWStackMode;  
   changes.stack_mode = Below;
 
   if(frame->type == panel) {
-    changes.sibling = seps->panel_seperator;
+    changes.sibling = seps->panel_separator;
     changes.stack_mode = Below;  
     XConfigureWindow(display, frame->framed_window, mask, &changes);
     XFlush(display);    
@@ -751,17 +759,17 @@ stack_frame(Display *display, struct Frame *frame, struct Seperators *seps) {
   #endif
   
   if(frame->mode == tiling) {
-    changes.sibling = seps->tiling_seperator;
+    changes.sibling = seps->tiling_separator;
   }
   else if(frame->mode == floating) {
-    changes.sibling = seps->floating_seperator;  
+    changes.sibling = seps->floating_separator;  
   }
   else {
-    changes.sibling = seps->sinking_seperator;
+    changes.sibling = seps->sinking_separator;
   }
   
   if(frame->state == fullscreen ) {
-    changes.sibling = seps->panel_seperator;
+    changes.sibling = seps->panel_separator;
     changes.stack_mode = Above;
   }
  
@@ -793,10 +801,7 @@ resize_tiling_frame(Display *display, struct Frame_list *frames, int index, char
     size is the new width or height 
     position is the new x or y co-ordinate and is within a valid range.
   *****/
-  /****
-    BUG frame space might be frame dependent
-    BUG if a window can't be enlarged indirectly, (reached its max) that is fine, don't try to enlarge
-  ****/  
+
   int shrink_margin = 1;
   
   int size_change;            //size change of selected frame

@@ -16,8 +16,17 @@
 #include "space.h"
 #include "focus.h"
 
+
+/**
+@file     workspace.c
+@brief    Contains functions for manipulating workspaces.  A workspace is a different arrangement of frames.
+@author   Alysander Stanley
+**/
+
+
 /*** Create Workspace ***/
 //create_workspace, returns the index of the created workspace
+/* Creates a new workspace, including separators used for stacking windows in different modes and the workspace menu item for the program menu. */
 int 
 create_frame_list(Display *display, struct Workspace_list* workspaces, char *workspace_name, struct Themes *themes, struct Cursors *cursors) {
   Window root = DefaultRootWindow(display);
@@ -167,10 +176,13 @@ make_default_program_name(Display *display, Window window, char *name) {
 
 
 /* creates the workspace */
+/* Indirectly creates workspaces and frames.  Gets the program name from the frame using the class hints.
+If the program name doesn't match the name of any workspace, creates a new workspace.
+If the workspace is new, switch to the workspace.  Try and tile the frame if its mode is tiling.  Decide whether to show the frame and whether to focus it. */
 int 
 add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window framed_window, int *current_workspace
 , struct Popup_menu *window_menu
-, struct Seperators *seps
+, struct Separators *seps
 , struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
   char *program_name = load_program_name(display, framed_window);
   int k;
@@ -233,10 +245,11 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
   return k;
 }
 
+/* Called when the window manager is starting up.  Adds all frames to workspaces. */
 int 
 create_startup_workspaces(Display *display, struct Workspace_list *workspaces
 , int *current_workspace
-, struct Seperators *seps
+, struct Separators *seps
 , struct Popup_menu *window_menu, struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
 
   unsigned int windows_length;
@@ -269,6 +282,8 @@ Desc: This function changes the user's workspace to the workspace at the specifi
       Windows from other workspaces are unmapped.
 Post: The user's workspace has visibly changed.
 */
+/*Changes the users workspace to the workspace at the specified index.  A default argument can also be provided,
+it which case the workspace is changed to the default workspace (This is done when the currently open workspace is removed).*/
 void 
 change_to_workspace(Display *display, struct Workspace_list *workspaces, int *current_workspace, int index, struct Themes *themes) {
 

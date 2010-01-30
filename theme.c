@@ -12,6 +12,13 @@
 #include "theme.h"
 #include "xcheck.h"
 
+/**
+@file     theme.
+@brief    Contains functions relevant to the theming system. It works by using the stored co-ordinates in a set of region files to identify and copy out sections of corresponding image files for each individual widget.
+@author   Alysander Stanley
+**/
+
+
 enum Splash_background_tile {
   tile_splash_parent
 };
@@ -108,7 +115,7 @@ create_themes(Display *display, char *theme_name) {
     return NULL;
   }
   
-  strnadd(path, home, "/.basin/themes/", PATH_SIZE);
+  strnadd(path, home, "/.lunchbox/themes/", PATH_SIZE);
   strncat(path, theme_name, PATH_SIZE);
   printf("The theme path is: %s\n", path);
   if(chdir(path)) {
@@ -294,7 +301,7 @@ create_component_theme(Display *display, char *type) {
       else if(!strcmp(widget_name, "selection_indicator")) current_widget = selection_indicator;
       else if(!strcmp(widget_name, "selection_indicator_hotspot")) current_widget = selection_indicator_hotspot;
       else if(!strcmp(widget_name, "title_menu_lhs"))      current_widget = title_menu_lhs;
-//      else if(!strcmp(widget_name, "title_menu_icon"))     current_widget = title_menu_icon; /* this can have the icon*/
+    //else if(!strcmp(widget_name, "title_menu_icon"))     current_widget = title_menu_icon; /* this can have the icon*/
       else if(!strcmp(widget_name, "title_menu_text"))     current_widget = title_menu_text;
       else if(!strcmp(widget_name, "title_menu_rhs"))      current_widget = title_menu_rhs;
       else if(!strcmp(widget_name, "title_menu_hotspot"))  current_widget = title_menu_hotspot;
@@ -619,25 +626,30 @@ create_icon_background(Display *display, Window window
 , Pixmap icon_p, Pixmap icon_mask_p
 , Pixmap background_p, int b_w, int b_h) {
 
-  Window root = DefaultRootWindow(display); 
-  int screen_number = DefaultScreen (display);
-  Screen* screen = DefaultScreenOfDisplay(display);
-  Visual *colours =  DefaultVisual(display, screen_number);
+  Window root       = DefaultRootWindow(display); 
+  int screen_number = DefaultScreen(display);
+  Screen *screen    = DefaultScreenOfDisplay(display);
+  Visual *colours   = DefaultVisual(display, screen_number);
 
   unsigned int width = XWidthOfScreen(screen);
-  unsigned int height = b_h;  
+  unsigned int height = XHeightOfScreen(screen);
+
+  cairo_surface_t *background;
+  cairo_pattern_t *background_pattern;
   
-  Pixmap pixmap = icon_mask_p; /*TODO, for werror */
-  pixmap = XCreatePixmap(display, root, width, height, XDefaultDepth(display, screen_number));
+  Pixmap pixmap = XCreatePixmap(display, root, width, height, XDefaultDepth(display, screen_number));
   cairo_surface_t *surface = cairo_xlib_surface_create(display, pixmap, colours,  width, height);
-  cairo_surface_t *background = cairo_xlib_surface_create(display, background_p, colours, b_w, b_h);
+  cairo_surface_t *mask =  cairo_xlib_surface_create_for_bitmap(display, icon_mask_p, screen, b_w, b_h);
   cairo_t *cr = cairo_create(surface);
 
+  /*Draw a backup background */
   cairo_set_source_rgba(cr, 0.5, 0.5, 0.5, 1);
   cairo_rectangle(cr, 0, 0, width, height);
   cairo_fill(cr);
 
-  cairo_pattern_t *background_pattern = cairo_pattern_create_for_surface(background);
+  /* Draw the background first
+  background = cairo_xlib_surface_create(display, background_p, colours, b_w, b_h);
+  background_pattern = cairo_pattern_create_for_surface(background);
   cairo_pattern_set_extend(background_pattern, CAIRO_EXTEND_REPEAT);
   cairo_set_source(cr, background_pattern);
   cairo_rectangle(cr, 0, 0, width, height);
@@ -645,25 +657,29 @@ create_icon_background(Display *display, Window window
   cairo_surface_flush(surface);
   cairo_surface_destroy(background);
   cairo_pattern_destroy(background_pattern);
-
+  */
+  
   //so the surface is the pixmap, we create a pattern based on the surface and then set that as the source for the renderer
   background = cairo_xlib_surface_create(display, icon_p, colours, b_w, b_h);
   background_pattern = cairo_pattern_create_for_surface(background);
   cairo_pattern_set_extend(background_pattern, CAIRO_EXTEND_NONE);
-  //need to mask it first
-  
   cairo_set_source(cr, background_pattern);
+  //need to mask it first
+                                                           
+
+  /*mask draws the current surface */
+  //cairo_mask_surface (cr, mask, 0, 0);
+  
   cairo_rectangle(cr, 0, 0, width, height);
   cairo_fill(cr);
   cairo_surface_flush(surface);
+  cairo_surface_destroy(mask);
   cairo_surface_destroy(background);
   cairo_pattern_destroy(background_pattern);
       
   /********** ***********/
   cairo_destroy (cr);  
   cairo_surface_destroy(surface);    
-  
-  if(!pixmap || pixmap == BadPixmap) return;
 
   XUnmapWindow(display, window);
   XSetWindowBackgroundPixmap(display, window, pixmap);

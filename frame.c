@@ -13,6 +13,14 @@
 #include "frame.h"
 #include "frame-actions.h"
 
+
+
+/**
+@file     frame.c
+@brief    Functions for creating and removing frames. A frame is the interactive border placed around another applications top level windows.
+@author   Alysander Stanley
+**/
+
 static void 
 create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *themes, struct Cursors *cursors);
 
@@ -24,7 +32,6 @@ get_frame_state         (Display *display, struct Frame *frame, struct Atoms *at
 
 static void 
 get_frame_wm_hints      (Display *display, struct Frame *frame, struct Themes *themes);
-
 
 static void 
 frame_type_settings     (Display *display, struct Frame *frame);
@@ -39,10 +46,14 @@ supress_xerror(Display *display, XErrorEvent *event) {
   return 0;
 }
 
-/*returns the frame index of the newly created window or -1 if out of memory */
+
+/**
+@brief    Reparents the specified framed_window to a newly created frame.
+@return   returns the frame index of the newly created frame or -1 if out of memory
+**/
 int
 create_frame (Display *display, struct Frame_list* frames
-, Window framed_window, struct Popup_menu *window_menu, struct Seperators *seps, struct Themes *themes
+, Window framed_window, struct Popup_menu *window_menu, struct Separators *seps, struct Themes *themes
 , struct Cursors *cursors, struct Atoms *atoms) {
   Screen* screen = DefaultScreenOfDisplay(display); 
   XWindowAttributes get_attributes;
@@ -82,7 +93,9 @@ create_frame (Display *display, struct Frame_list* frames
   
   frame.w = get_attributes.width; 
   frame.h = get_attributes.height;
- 
+  
+  printf("START: Frame w %d, frame h %d\n", frame.w, frame.h); 
+  
   get_frame_type_and_mode (display, &frame, atoms, themes);
 
   frame.x = get_attributes.x - themes->window_type[frame.theme_type][window].x;
@@ -184,10 +197,14 @@ create_frame (Display *display, struct Frame_list* frames
   XGrabButton(display, Button1, Mod2Mask, frame.widgets[window].widget
   , False, ButtonPressMask, GrabModeSync, GrabModeAsync, None, None);
   
+  frame.w += frame.hspace;
+  frame.h += frame.vspace;
+  
   check_frame_limits(display, &frame, themes);
   resize_frame(display, &frame, themes);
   stack_frame(display, &frame, seps);
   XMoveResizeWindow(display, framed_window, 0, 0, frame.w - frame.hspace, frame.h - frame.vspace);  
+  printf("HERE: Frame w %d, frame h %d\n", frame.w, frame.h);
   XMoveWindow(display, framed_window, 0, 0);
   XMapWindow(display, framed_window);
   
@@ -795,7 +812,7 @@ free_frame_name(struct Frame* frame) {
   }
 } 
 
-/** Update frame with available wm hints (icon, window "group", focus wanted, urgency, withdrawn) **/
+/** Updates the frame with available wm hints (icon, window "group", focus wanted, urgency, withdrawn) **/
 
 void 
 get_frame_wm_hints(Display *display, struct Frame *frame, struct Themes *themes) {
@@ -807,23 +824,22 @@ get_frame_wm_hints(Display *display, struct Frame *frame, struct Themes *themes)
   Pixmap icon_mask_p = 0;
 
   if(wm_hints != NULL) {
-    if(wm_hints->flags & IconPixmapHint
-    && wm_hints->icon_pixmap != 0) {
+    if(wm_hints->flags & IconPixmapHint) {
       icon_p = wm_hints->icon_pixmap;
       //XSetWindowBackgroundPixmap(display, frame->menu_item.icon.item_icon, icon_p);
     }
 
-    if(wm_hints->flags & IconMaskHint  
-    && wm_hints->icon_pixmap != 0) {
+    if(wm_hints->flags & IconMaskHint) {
       icon_mask_p = wm_hints->icon_mask;
-      //XShapeCombineMask (display, frame->menu_item.icon.item_icon, ShapeBounding //ShapeClip or ShapeBounding
+      //icon_mask_p = wm_hints->icon_mask;
+      //XShapeCombineMask (display, icon_p, ShapeBounding //ShapeClip or ShapeBounding
       //,0, 0, icon_mask_p, ShapeSet); 
       //Shapeset or ShapeUnion, ShapeIntersect, ShapeSubtract, ShapeInvert
       //XMapWindow(display, frame->menu_item.icon.item_icon);
       
     }
-    
-    if(icon_p /*&& icon_mask_p */ ) {
+    /* This method of creating the icon is not good, a higher quality method is available in EWMH
+    if(icon_p && icon_mask_p ) {
       for(int i = 0; i <= inactive; i++) {
         create_icon_background(display, frame->widgets[title_menu_lhs].state[i]
         , icon_p, icon_mask_p
@@ -834,6 +850,7 @@ get_frame_wm_hints(Display *display, struct Frame *frame, struct Themes *themes)
       
     }
     XSync(display, False);
+    */
     //get the icon sizes
     //find out it is urgent
     //get the icon if it has one.

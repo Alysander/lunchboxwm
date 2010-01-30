@@ -5,6 +5,13 @@
 #define IDENTICAL(x1,w1,x2,w2)  ((x1 == x2) && (x1 + w1 == x2 + w2))
 #define INTERSECTS(x1, w1, x2, w2) (INTERSECTS_BEFORE(x1, w1, x2, w2) || IDENTICAL(x1, w1, x2, w2) || INTERSECTS_AFTER(x1, w1, x2, w2) || INTERSECTS_WITHIN(x1, w1, x2, w2) || INTERSECTS_OUTSIDE(x1, w1, x2, w2))
 
+/**
+@file     space.h
+@brief    macros/inline functions for determining whether co-ordinates intersect.  Contains a datastructure for manipulating rectangles.
+@author   Alysander Stanley
+**/
+
+
 struct Rectangle {
   int x,y,w,h;
 };

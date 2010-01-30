@@ -16,7 +16,7 @@
 #define PATH_SIZE 400
 #define WIDGET_NAME_SIZE 50
 #define DEFAULT_MENU_ITEM_WIDTH 100
-#define DOUBLE_CLICK_MILLISECONDS 300 /* */
+#define DOUBLE_CLICK_MILLISECONDS 600 /* */
 /****THEME DERIVED CONSTANTS******/
 
 enum Splash_widget {
@@ -184,11 +184,11 @@ struct Menubar {
   struct Widget widgets[menubar_parent + 1];
 };
 
-struct Seperators {
-  Window sinking_seperator;  //this window is always above desktop windows.
-  Window tiling_seperator;   //this window is always above tiled windows.
-  Window floating_seperator; //this window is always above floating windows.
-  Window panel_seperator;    //this window is always above panels and taskbars.
+struct Separators {
+  Window sinking_separator;  //this window is always above desktop windows.
+  Window tiling_separator;   //this window is always above tiled windows.
+  Window floating_separator; //this window is always above floating windows.
+  Window panel_separator;    //this window is always above panels and taskbars.
 };
 
 struct Frame {
@@ -263,6 +263,7 @@ struct Atoms {
   , desktop_geometry           // "_NET_DESKTOP_GEOMETRY" //this is currently the same size as the screen
   , workarea                   // "_NET_WORKAREA" //this will be minus the menubar at the bottom of the screen - added because absense causes a netbook-launcher divide by 0 exception
   , wm_full_placement          // "_NET_WM_FULL_PLACEMENT"
+  , wm_icon                    // "_NET_WM_ICON"
   , frame_extents              // "_NET_FRAME_EXTENTS"
   , wm_window_type             // "_NET_WM_WINDOW_TYPE"
   , wm_window_type_normal      // "_NET_WM_WINDOW_TYPE_NORMAL"

@@ -11,17 +11,24 @@
 #include "menus.h"
 #include "theme.h"
 
-/******************* 
-Prec:  display is valid, themes is valid, cursors is valid.
-Post:  Menubar created and mapped.
-Desc:  This function uses the menubar member of the themes pointer to generate all the windows 
+
+/**
+@file     menus.c
+@brief    Functions for creating/removing popup menus and menubars.
+@author   Alysander Stanley
+**/
+
+
+/**
+@pre   display is valid, themes is valid, cursors is valid.
+@post  Menubar created and mapped.
+@brief This function uses the menubar member of the themes pointer to generate all the windows 
        that comprise the menubar with appropriate pixmap backgrounds.
-todo:  Text needs to be drawn on the theme pixmaps, rater than having text on the menubar.
-todo:  Possibly have an extra parameter that determines whether the menubar is a popup menu and use the shape
+@todo  Possibly have an extra parameter that determines whether the menubar is a popup menu and use the shape
        extention.
-********************/
+**/
 void 
-create_menubar(Display *display, struct Menubar *menubar, struct Seperators *seps, struct Themes *themes, struct Cursors *cursors) {
+create_menubar(Display *display, struct Menubar *menubar, struct Separators *seps, struct Themes *themes, struct Cursors *cursors) {
   /* create new window structure, using theme pixmaps */
   XSetWindowAttributes set_attributes;
   Window root = DefaultRootWindow(display);
@@ -95,7 +102,7 @@ create_menubar(Display *display, struct Menubar *menubar, struct Seperators *sep
     XWindowChanges changes;  
     unsigned int mask = CWSibling | CWStackMode;  
     changes.stack_mode = Below;
-    changes.sibling = seps->panel_seperator;
+    changes.sibling = seps->panel_separator;
     XConfigureWindow(display, menubar->widgets[menubar_parent].widget, mask, &changes);
   }
   /* Show initial state. */
@@ -108,14 +115,14 @@ create_menubar(Display *display, struct Menubar *menubar, struct Seperators *sep
   XFlush(display);
 }
 
-/*******************
-Prec: display is valid, themes is valid, cursors is valid.
-      all widgets are zero'd.
-      inner_width and inner_height members of menu are initialized to a nonzero value.
-      themes is valid and has loaded at least a background for the popup_menu_parent. 
-Post: Menu with borders and background but no items is created but not mapped.
-Desc: This function is used to create a blank and generic menu.  Items must be added by caller.
-********************/
+/**
+@pre   display is valid, themes is valid, cursors is valid.
+@pre   all widgets are zero'd.
+@pre   inner_width and inner_height members of menu are initialized to a nonzero value.
+@pre   themes is valid and has loaded at least a background for the popup_menu_parent. 
+@post  Menu with borders and background but no items is created but not mapped.
+@brief This function is used to create a blank and generic menu.  Items must be added by caller.
+**/
 void 
 create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *themes, struct Cursors *cursors) {
 
@@ -177,6 +184,10 @@ create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *them
 
 }
 
+
+/**
+@brief     Creates the mode menu which can be used by all windows in all workspaces.  The main even loop uses the windows and events to determine if a mode menu item was clicked or interacted with in some way.
+**/
 void 
 create_mode_menu(Display *display, struct Mode_menu *mode_menu
 , struct Themes *themes, struct Cursors *cursors) {
@@ -231,12 +242,11 @@ create_mode_menu(Display *display, struct Mode_menu *mode_menu
 
 }
 
-/********************
-   This function only creates the frame and background for the workspace menu.
-   When a workspace is created it must add itself to this menu.
-   it should also check to see it it is bigger than the current width and enlarge it
-   if required.
-*********************/
+/**
+@brief   This function only creates the frame and background for the workspace menu.
+@brief   When a workspace is created it must add itself to this menu.
+@brief   it should also check to see it it is bigger than the current width and enlarge it if required.
+**/
 void 
 create_workspaces_menu(Display *display, struct Workspace_list *workspaces
 , struct Themes *themes, struct Cursors *cursors) {
@@ -248,10 +258,10 @@ create_workspaces_menu(Display *display, struct Workspace_list *workspaces
   create_popup_menu(display, &workspaces->workspace_menu, themes, cursors);
 }
 
-/**************
-The title menu is used for both the window menu and the dropdown list that appears at the top of the window.
-Does it assume that titles have already been created? 
-***************/
+/**
+@brief The title menu is used for both the window menu and the dropdown list that appears at the top of the window.
+@todo  Does it assume that titles have already been created? 
+**/
 void 
 create_title_menu(Display *display, struct Popup_menu *window_menu
 , struct Themes *themes, struct Cursors *cursors) {
@@ -262,7 +272,9 @@ create_title_menu(Display *display, struct Popup_menu *window_menu
   create_popup_menu(display, window_menu, themes, cursors);
 }
 
-/* Shows */
+/**
+@brief Shows the workspace menu on the screen 
+**/
 void 
 show_workspace_menu(Display *display, Window calling_widget, struct Workspace_list* workspaces
 , int index, int x, int y, struct Themes *themes) {
@@ -296,12 +308,11 @@ show_workspace_menu(Display *display, Window calling_widget, struct Workspace_li
 
 }
 
-/*********************
-  This function pops-up the title menu in the titlebar or the window menu.
-  the index parameter is the window which was clicked, so that it can be shown in bold.
-  This function is also the window menu, which is done by setting the index to -1. 
-**********************/
-
+/**
+@brief  This function pops up the title menu in the titlebar or the window menu.
+@brief  This function is also the window menu, which is done by setting the index to -1. 
+@param  index  the index parameter is the window which was clicked, so that it can be shown in bold.
+**/
 void 
 show_title_menu(Display *display, struct Popup_menu *title_menu, Window calling_widget, struct Frame_list* frames
 , int index, int x, int y, struct Themes *themes) {
@@ -343,6 +354,9 @@ show_title_menu(Display *display, struct Popup_menu *title_menu, Window calling_
   XFlush(display);
 }
 
+/**
+@brief This function pops up the mode menu on the specified active_frame
+**/
 void 
 show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *mode_menu
 , struct Frame *active_frame, int x, int y) {
@@ -367,6 +381,10 @@ show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *mode_m
   place_popup_menu(display, calling_widget, mode_menu->menu.widgets[popup_menu_parent].widget, x, y);
 }
 
+/**
+@brief This function resizes any popup menu based on the Popup_menu struct.
+
+**/
 void 
 resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *themes) {
 
@@ -398,12 +416,11 @@ resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *them
   XFlush(display);
 }
 
-/****
-This function places a popup menu either above or below a particular widget.
-It is placed above the widget to prevent it going off the bottom of the screen.
-The x,y needs to be supplied because the x,y of the calling widget will be relative to its parent
-, not the screen.
-****/
+/**
+@brief   This function places a popup menu either above or below a particular widget.
+@brief   It is placed above the widget to prevent it going off the bottom of the screen.
+@brief   The x,y needs to be supplied because the x,y of the calling widget will be relative to its parent, not the screen.
+**/
 void 
 place_popup_menu(Display *display, Window calling_widget, Window popup_menu, int x, int y) {
   Screen* screen = DefaultScreenOfDisplay(display);

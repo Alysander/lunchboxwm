@@ -13,7 +13,7 @@
 #include <errno.h>
 #include <unistd.h> //for sleep()
 
-#include "basin.h"
+#include "lunchbox.h"
 
 #include "space.h"
 #include "xcheck.h"
@@ -24,18 +24,34 @@
 #include "focus.h"
 #include "workspace.h"
 
+/**
+@file     main.c
+@brief    The main event loop and some simple utility functions.
+@author   Alysander Stanley
+**/
+
 //int main 
 void list_properties  (Display *display, Window window);
-void create_seperators(Display *display, struct Seperators *seps);
+void create_separators(Display *display, struct Separators *seps);
 void create_cursors   (Display *display, struct Cursors *cursors);
 void create_hints     (Display *display, struct Atoms *atoms);
 void free_cursors     (Display *display, struct Cursors *cursors);
-void set_icon_size    (Display *display, Window window, int new_size);
 static XIconSize *create_icon_size (Display *display, int new_size);
 
-
+/**
+@brief Used to terminate the main event loop via the end_event_loop signal handler
+**/
 int done = 0;
 
+/**
+@brief    A function that can be used as a signal handler.  Prevents further cycles of the event loops.
+@return   void
+
+@param    sig	The signal number (e.g., SIGINT)
+
+@pre      none
+@post     done set to non-zero
+**/
 void 
 end_event_loop(int sig) {
   #ifdef SHOW_SIG
@@ -44,6 +60,16 @@ end_event_loop(int sig) {
   done = 1;
 }
 
+/**
+@brief   The main function, including the state variables and event loop.
+@return  0 on success, non-zero on an error
+
+@param    argc  The number of arguments passed to the program on the commandline.
+@param    argv  An array of null-terminated arguments.
+
+@pre      none
+@post     Open windows may have changed.
+**/
 int 
 main (int argc, char* argv[]) {
   Display* display = NULL;
@@ -55,7 +81,7 @@ main (int argc, char* argv[]) {
                    //this reduces state and allows the currently open pop-up to be removed
                    //from the screen.
 
-  struct Seperators seps;
+  struct Separators seps;
   struct Menubar menubar;    
   struct Themes *themes = NULL;
   struct Cursors cursors;
@@ -127,11 +153,11 @@ main (int argc, char* argv[]) {
     return -1;
   }
   
-  XIconSize *icon_size = create_icon_size (display, 16); //This specifies the icon size that we want from programs.
+  XIconSize *icon_size = create_icon_size (display, 32); //This specifies the icon size that we want from programs.
 
   create_cursors (display, &cursors); //load a bunch of XCursors
   create_hints(display, &atoms);      //Create EWMH hints which are atoms
-  create_seperators(display, &seps);
+  create_separators(display, &seps);
   create_menubar(display, &menubar, &seps, themes, &cursors);
   create_mode_menu(display, &mode_menu, themes, &cursors);
   create_title_menu(display, &title_menu, themes, &cursors);
@@ -1042,7 +1068,6 @@ main (int argc, char* argv[]) {
                 /* For some reason the gimp 2.6.3 on intrepid kept on resetting it's size hints for the toolbox 
                    This lead to the window moving and resizing unpredictably.  */
                 if(clicked_frame != i) {
-                  printf("Frame hints %s\n ", frames->list[i].window_name);
                   get_frame_hints(display, &frames->list[i]); 
                   if(frames->list[i].mode == tiling) { 
                     drop_frame (display, frames, i, themes);
@@ -1305,47 +1330,67 @@ create_icon_size (Display *display, int new_size) {
   XIconSize *icon_size = XAllocIconSize(); //this allows us to specify a size for icons when we request them
   if(icon_size == NULL) return NULL;
   icon_size->min_width = new_size;
-  icon_size->max_width = new_size;
+  icon_size->max_width = new_size*2;
   icon_size->min_height = new_size;
-  icon_size->max_height = new_size;
+  icon_size->max_height = new_size*2;
+  icon_size->width_inc = new_size;
+  icon_size->height_inc = new_size;
   //inc amount are already zero from XAlloc
-  XSetIconSizes(display, DefaultRootWindow(display), icon_size, 1); 
+  XSetIconSizes(display, DefaultRootWindow(display), icon_size, 2); 
   return icon_size;
 }
 
 
-/* When windows are created they are placed under one of these seperators (but on top of previous windows at that level
-   The seperators are lowered in case of pre-exising override redirect windows which should be on top.
-*/
+/**
+@brief    When windows are created they are placed under one of these separators (but on top of previous windows at that level
+          The separators are lowered in case of pre-exising override redirect windows which should be on top.
+@return   void
+
+@param    display  The currently open X11 connection.
+@param    seps	   The available seperators.
+
+@pre      display is valid
+@pre      seps is not null
+@post     seps is valid
+**/
 void 
-create_seperators(Display *display, struct Seperators *seps) {
+create_separators(Display *display, struct Separators *seps) {
   XSetWindowAttributes set_attributes;
   Window root = DefaultRootWindow(display);
   Screen *screen = DefaultScreenOfDisplay(display);
 
-  seps->tiling_seperator = XCreateWindow(display, root, 0, 0
+  seps->tiling_separator = XCreateWindow(display, root, 0, 0
   , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
-  seps->sinking_seperator = XCreateWindow(display, root, 0, 0
+  seps->sinking_separator = XCreateWindow(display, root, 0, 0
   , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
-  seps->floating_seperator = XCreateWindow(display, root, 0, 0
+  seps->floating_separator = XCreateWindow(display, root, 0, 0
   , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
-  seps->panel_seperator = XCreateWindow(display, root, 0, 0
+  seps->panel_separator = XCreateWindow(display, root, 0, 0
   , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
   
   set_attributes.override_redirect = True;
-  XChangeWindowAttributes(display, seps->sinking_seperator, CWOverrideRedirect,  &set_attributes);
-  XChangeWindowAttributes(display, seps->tiling_seperator, CWOverrideRedirect,   &set_attributes);
-  XChangeWindowAttributes(display, seps->floating_seperator, CWOverrideRedirect, &set_attributes);
-  XChangeWindowAttributes(display, seps->panel_seperator, CWOverrideRedirect,    &set_attributes);  
+  XChangeWindowAttributes(display, seps->sinking_separator, CWOverrideRedirect,  &set_attributes);
+  XChangeWindowAttributes(display, seps->tiling_separator, CWOverrideRedirect,   &set_attributes);
+  XChangeWindowAttributes(display, seps->floating_separator, CWOverrideRedirect, &set_attributes);
+  XChangeWindowAttributes(display, seps->panel_separator, CWOverrideRedirect,    &set_attributes);  
 
-  XRaiseWindow(display, seps->sinking_seperator);
-  XRaiseWindow(display, seps->tiling_seperator);
-  XRaiseWindow(display, seps->floating_seperator);
-  XRaiseWindow(display, seps->panel_seperator); 
+  XRaiseWindow(display, seps->sinking_separator);
+  XRaiseWindow(display, seps->tiling_separator);
+  XRaiseWindow(display, seps->floating_separator);
+  XRaiseWindow(display, seps->panel_separator); 
   XFlush(display);
 }
 
 
+/**
+@brief    Loads cursors from the default X11 cursor theme.  This is specified by /usr/share/icons/default/index.theme
+@return   void
+
+@param    display  The currently open X11 connection.
+@param    cursors  A pointer to a struct that contains identifiers for each loaded cursor.
+@pre      Cursors is not null
+@post     Curosrs is valid.
+**/
 void 
 create_cursors (Display *display, struct Cursors *cursors) {
   cursors->normal       = XcursorLibraryLoadCursor(display, "left_ptr");
@@ -1360,6 +1405,17 @@ create_cursors (Display *display, struct Cursors *cursors) {
   cursors->resize_tl_br = XcursorLibraryLoadCursor(display, "bd_double_arrow");
 }
 
+
+/**
+@brief    Frees resources associated with loaded cursors in the X server
+@return   void
+
+@param    display  The currently open X11 connection.
+@param    cursors  A pointer to a struct that contains identifiers for each loaded cursor.
+
+@pre      cursors has been loaded
+@post     cursors have been freed and can no longer be used to define cursors for different X windows.
+**/
 void 
 free_cursors (Display *display, struct Cursors *cursors) {
   XFreeCursor(display, cursors->normal);
@@ -1372,6 +1428,17 @@ free_cursors (Display *display, struct Cursors *cursors) {
   XFreeCursor(display, cursors->resize_tl_br);
 }
 
+
+/**
+@brief    Lists properties for a window.
+@return   void
+
+@param    display  The currently open X11 connection.
+@param    window The specified X Window.
+
+@pre      Window is valid, connection is valid.
+@post     All propertiy names printed to stdout.
+**/
 void 
 list_properties(Display *display, Window window) {
   int total;
@@ -1388,8 +1455,19 @@ list_properties(Display *display, Window window) {
   XFree(list);
 }
 
-/**** When changing supported hints here, also update Atoms struct (and add/remove members as required) ******/
 
+/**
+@brief    Gets the atoms that are used to identify hints for both the ICCCM and EWMH standards.  Sets 
+@return   void
+
+@param    display  The currently open X11 connection.
+@param    atoms    struct to save the retrieved atoms.
+
+@pre      Display is valid, atoms is not null
+@post     atoms is valid
+
+@note When changing supported hints here, also update Atoms struct (and add/remove members as required)
+**/
 void 
 create_hints (Display *display, struct Atoms *atoms) {
   Window root = DefaultRootWindow(display);
@@ -1410,8 +1488,10 @@ create_hints (Display *display, struct Atoms *atoms) {
   number_of_atoms++; atoms->supporting_wm_check        = XInternAtom(display, "_NET_SUPPORTING_WM_CHECK", False);
   number_of_atoms++; atoms->number_of_desktops         = XInternAtom(display, "_NET_NUMBER_OF_DESKTOPS", False);
   number_of_atoms++; atoms->desktop_geometry           = XInternAtom(display, "_NET_DESKTOP_GEOMETRY", False);
-  //TODO this will need to be dynamically calculated
+
+  //TODO workarea will need to be dynamically calculated
   number_of_atoms++; atoms->workarea                   = XInternAtom(display, "_NET_WORKAREA", False);
+  number_of_atoms++; atoms->wm_icon                    = XInternAtom(display, "_NET_WM_ICON", False);
   number_of_atoms++; atoms->wm_full_placement          = XInternAtom(display, "_NET_WM_FULL_PLACEMENT", False);
   number_of_atoms++; atoms->frame_extents              = XInternAtom(display, "_NET_FRAME_EXTENTS", False);
   number_of_atoms++; atoms->wm_window_type             = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);

@@ -6,6 +6,25 @@
 #include "lunchbox.h"
 #include "space.h"
 
+
+/**
+@file     space.c
+@brief    Functions for identifying and manipulating free space rectangles.
+@author   Alysander Stanley
+**/
+
+/**
+@brief    Finds the available free spaces on the screen as a Rectangle_list.
+@return   A rectangle_list structure.
+
+@param    display  The currently open X11 connection.
+@param    frames   All the currently open frames - used to establish the currently occupied spaces.
+@param 
+
+
+@pre      
+@post     
+**/
 struct Rectangle_list 
 get_free_screen_spaces (Display *display, struct Frame_list *frames, struct Themes *themes) {
   //the start variable is used to skip windows at the start 
