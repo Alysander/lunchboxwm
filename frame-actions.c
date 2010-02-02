@@ -21,14 +21,12 @@
 **/
 
 
-/*****
-This function ensures that the window is within limits. 
-It sets the frames x,y,w,h to achieve this.
-******/
-
 static void
 change_mode_pulldown_text_pixmap(Display *display, struct Frame *frame, int index, struct Themes *themes);
 
+/**
+@brief This function ensures that the window is within limits. It sets the frames x,y,w,h to achieve this.
+**/
 void 
 check_frame_limits(Display *display, struct Frame *frame, struct Themes *themes) {
   Screen* screen = DefaultScreenOfDisplay(display);  
@@ -65,15 +63,15 @@ check_frame_limits(Display *display, struct Frame *frame, struct Themes *themes)
   }
 }
 
-/****** 
-This function changes the frames mode to the desired mode. 
-It shows the appropriate mode menu on the frame and resizes/moves the frame if appropriate.
-If the mode is "tiling" it cannot ensure that the windows do not overlap because it doesn't have access to the frame list.
-If the mode is set to "unset" then it sets the frame to whatever frame->mode currently is.
-In the create frame function, this must be after create_frame_subwindows is called.
-It is also after the get_frame_mode function, which sets the frame->mode directly before the create_frame_subwindows.
-It should then be called with the mode "unset"
-******/
+/**
+@brief This function changes the frames mode to the desired mode. 
+@brief It shows the appropriate mode menu on the frame and resizes/moves the frame if appropriate.
+@brief If the mode is "tiling" it cannot ensure that the windows do not overlap because it doesn't have access to the frame list.
+@brief If the mode is set to "unset" then it sets the frame to whatever frame->mode currently is.
+@brief In the create frame function, this must be after create_frame_subwindows is called.
+@brief It is also after the get_frame_mode function, which sets the frame->mode directly before the create_frame_subwindows.
+@brief It should then be called with the mode "unset"
+**/
 void 
 change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, struct Themes *themes) {
   Screen* screen = DefaultScreenOfDisplay(display);
@@ -149,8 +147,9 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
   XFlush(display);
 }
 
-/* This is an internal function used to change the frame mode indicated on the frame. It mimics that used to change the frame name,
-but luckily the mode pixmaps can be pre-generated */
+/** 
+@brief This is an internal function used to change the frame mode indicated on the frame. It mimics that used to change the frame name, but luckily the mode pixmaps can be pre-generated 
+**/
 static void
 change_mode_pulldown_text_pixmap(Display *display, struct Frame *frame, int index, struct Themes *themes) {
   if(frame->widgets[mode_dropdown_text].widget) {
@@ -167,7 +166,9 @@ change_mode_pulldown_text_pixmap(Display *display, struct Frame *frame, int inde
     XFlush(display);
   }
 }
-/*This function makes a window fullscreen.  It resizes it, but resets the values back to their originals */
+/**
+@brief  This function makes a window fullscreen.  It resizes it, but resets the values back to their originals 
+**/
 void 
 change_frame_state (Display *display, struct Frame *frame, enum Window_state state
 , struct Separators *seps, struct Themes *themes, struct Atoms *atoms) {
@@ -205,14 +206,14 @@ change_frame_state (Display *display, struct Frame *frame, enum Window_state sta
  
 }
 
-/*******
-This function moves the dropped window to the nearest available space.
-If the window has been enlarged so that it exceeds all available sizes,
-a best-fit algorithm is used to determine the closest size.
-If all spaces are smaller than the window's minimum size 
-(which can only happen if the window's mode is being changed) the window
-remains in it's previous mode. Otherwise the window's mode is changed to tiling.
-********/
+/**
+@brief This function moves the dropped window to the nearest available space.
+@brief If the window has been enlarged so that it exceeds all available sizes,
+@brief a best-fit algorithm is used to determine the closest size.
+@brief If all spaces are smaller than the window's minimum size 
+@brief (which can only happen if the window's mode is being changed) the window
+@brief remains in it's previous mode. Otherwise the window's mode is changed to tiling.
+**/
 void 
 drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, struct Themes *themes) {
   
@@ -345,7 +346,9 @@ drop_frame (Display *display, struct Frame_list *frames, int clicked_frame, stru
 }
 
 
-/*** Moves and resizes the subwindows of the frame ***/
+/** 
+@brief Moves and resizes the subwindows of the frame 
+**/
 void 
 resize_frame(Display* display, struct Frame* frame, struct Themes *themes) {
   /*Do not move or resize fullscreen windows */
@@ -419,9 +422,9 @@ resize_frame(Display* display, struct Frame* frame, struct Themes *themes) {
   XFlush(display);
 }
 
-/****
-This function handles responding to the users click and drag on the resize grips of the window.
-*****/
+/**
+@brief This function handles responding to the users click and drag on the resize grips of the window.
+**/
 void 
 resize_using_frame_grip (Display *display, struct Frame_list *frames, int clicked_frame
 , int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y
@@ -553,11 +556,11 @@ resize_using_frame_grip (Display *display, struct Frame_list *frames, int clicke
 }
 
 
-/******
-This handles moving/resizing the window when the titlebar is dragged.  
-It resizes windows that are pushed against the edge of the screen,
-to sizes between the defined min and max.
-*******/
+/**
+@brief This handles moving/resizing the window when the titlebar is dragged.  
+@brief It resizes windows that are pushed against the edge of the screen,
+@brief to sizes between the defined min and max.
+**/
 void 
 move_frame (Display *display, struct Frame *frame
 , int *pointer_start_x, int *pointer_start_y, int mouse_root_x, int mouse_root_y
@@ -660,9 +663,9 @@ move_frame (Display *display, struct Frame *frame
   XFlush(display);  
 }
 
-/*****
-
-*****/
+/**
+@brief This function is activated from the title menu.  It causes the windows to swap their positions and mode provided they are within each others frame limits.
+**/
 int 
 replace_frame(Display *display, struct Frame *target, struct Frame *replacement
 , struct Separators *seps, struct Themes *themes) {
@@ -736,9 +739,9 @@ replace_frame(Display *display, struct Frame *target, struct Frame *replacement
   return 1;
 }
 
-/**** 
-Implements stacking policy 
-*****/
+/**
+@brief Implements stacking policy 
+**/
 void 
 stack_frame(Display *display, struct Frame *frame, struct Separators *seps) {
   XWindowChanges changes;
@@ -777,30 +780,22 @@ stack_frame(Display *display, struct Frame *frame, struct Separators *seps) {
   XFlush(display);
 }
 
-/******
-
-
-axis is either x or y
-size is the requested size
-position is the requested position
-
-******/
-
+/**
+@brief  Resizes a window and enlarges any adjacent tiled windows in either axis up to a maximum size for the adjacent windows or to a minimum size for the shrinking window.
+@param index is the specified frame in the Frame_list
+@param axis is either x or y
+@param position is the requested position
+@param size is the requested size
+@pre     axis is 'x' or 'y',
+@pre    frames is a valid Frame_list,
+@pre    index is a valid index to frames,
+@pre    size is the new width or height 
+@pre    position is the new x or y co-ordinate and is within a valid range.
+**/
 void 
 resize_tiling_frame(Display *display, struct Frame_list *frames, int index, char axis
 , int position, int size, struct Themes *themes) {
 
-  /******
-  Purpose:  
-    Resizes a window and enlarges any adjacent tiled windows in either axis
-     up to a maximum size for the adjacent windows or to a minimum size for the shrinking window.
-  Preconditions:  
-    axis is 'x' or 'y',
-    frames is a valid Frame_list,
-    index is a valid index to frames,
-    size is the new width or height 
-    position is the new x or y co-ordinate and is within a valid range.
-  *****/
 
   int shrink_margin = 1;
   
@@ -1097,9 +1092,13 @@ resize_tiling_frame(Display *display, struct Frame_list *frames, int index, char
   return;
 }
 
-//This function is called in response to a double click for maximize.  In basin, maximization is not a mode, but a command.
+/** 
+@brief This function is called in response to a double click for maximize.  Maximization is not a mode, but a command.  If a tiled window is maximized 
+@todo if the frame is tiling, make sure the window is enlarged in place, not the biggest one.
+**/
 void 
 maximize_frame (Display *display, struct Frame_list *frames, int clicked_frame, struct Themes *themes) {
+ 
   struct Frame *frame = &frames->list[clicked_frame]; 
   Screen* screen = DefaultScreenOfDisplay(display);
   frame->w = XWidthOfScreen(screen);
