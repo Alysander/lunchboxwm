@@ -36,8 +36,9 @@ get_frame_wm_hints      (Display *display, struct Frame *frame, struct Themes *t
 static void 
 frame_type_settings     (Display *display, struct Frame *frame);
 
-/* Sometimes a client window is killed before it gets unmapped, we only get the unmapnotify event,
- but there is no way to tell so we just supress the error. */
+/** 
+@brief    Sometimes a client window is killed before it gets unmapped, we only get the unmapnotify event, but there is no way to tell so we just supress the error.  This is passed to the XSetErrorHandler function;
+**/
 int 
 supress_xerror(Display *display, XErrorEvent *event) {
   (void) display;
@@ -49,7 +50,7 @@ supress_xerror(Display *display, XErrorEvent *event) {
 
 /**
 @brief    Reparents the specified framed_window to a newly created frame.
-@return   returns the frame index of the newly created frame or -1 if out of memory
+@return   returns the frame index of the newly created frame or -1 if out of memory.
 **/
 int
 create_frame (Display *display, struct Frame_list* frames
@@ -93,8 +94,7 @@ create_frame (Display *display, struct Frame_list* frames
   
   frame.w = get_attributes.width; 
   frame.h = get_attributes.height;
-  
-  printf("START: Frame w %d, frame h %d\n", frame.w, frame.h); 
+ 
   
   get_frame_type_and_mode (display, &frame, atoms, themes);
 
@@ -204,7 +204,6 @@ create_frame (Display *display, struct Frame_list* frames
   resize_frame(display, &frame, themes);
   stack_frame(display, &frame, seps);
   XMoveResizeWindow(display, framed_window, 0, 0, frame.w - frame.hspace, frame.h - frame.vspace);  
-  printf("HERE: Frame w %d, frame h %d\n", frame.w, frame.h);
   XMoveWindow(display, framed_window, 0, 0);
   XMapWindow(display, framed_window);
   
@@ -214,8 +213,10 @@ create_frame (Display *display, struct Frame_list* frames
   return (frames->used - 1);
 }
 
-/* This function reparents a framed window to root and then destroys the frame */
-/* It is used when the framed window has been unmapped or destroyed, or is about to be*/
+/**
+@brief   This function reparents a framed window to root and then destroys the frame. It is used when the framed window has been unmapped or destroyed, or is about to be.
+@return  void
+**/
 void 
 remove_frame(Display* display, struct Frame_list* frames, int index, struct Themes *themes) {
 
@@ -262,7 +263,10 @@ remove_frame(Display* display, struct Frame_list* frames, int index, struct Them
 }
 
 
-/*This function is called when the close button on the frame is pressed */
+/**
+@brief   This function is called when the close button on the frame is pressed.
+@return  void
+**/
 void
 close_window(Display* display, Window framed_window) {
   int n, found = 0;
@@ -299,6 +303,10 @@ close_window(Display* display, Window framed_window) {
   } 
 }
 
+/**
+@brief   This function is used to centre a window on a containing window. It modifieds sets x and y parameters.
+@return  void
+**/
 void 
 centre_frame(const int container_width, const int container_height, const int w, const int h, int *x, int *y) {
   *x = (container_width - w)     / 2;
@@ -308,7 +316,10 @@ centre_frame(const int container_width, const int container_height, const int w,
   //BUGS for some windows this goes off the edge of the screen.
 }
 
-/*** Update frame with available resizing information ***/
+/**
+@brief   Update frame with available resizing information 
+@return  void
+**/
 void 
 get_frame_hints(Display* display, struct Frame* frame) { //use themes
   XSizeHints specified;
@@ -420,7 +431,11 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
   
 }
 
-/* This function is run after get_frame_type_and_mode so that there are fewer inter-dependences between that and get_frame_hints */
+/**
+@brief   This function is run after get_frame_type_and_mode so that there are fewer inter-dependences between that and get_frame_hints. It determines whether to centre a frame or not.
+@note    If windows need to moved or resized because of their height, this is the place to do it.
+@return  void
+**/
 static void frame_type_settings(Display *display, struct Frame *frame) {
   Screen* screen = DefaultScreenOfDisplay(display);
   
@@ -455,6 +470,10 @@ static void frame_type_settings(Display *display, struct Frame *frame) {
   }
 }
 
+/**
+@brief   Determines the frame type and sets the appropriate stacking mode.
+@return  void
+**/
 static void 
 get_frame_type_and_mode(Display *display, struct Frame *frame, struct Atoms *atoms, struct Themes *themes) {
   unsigned char *contents = NULL;
@@ -529,9 +548,12 @@ get_frame_type_and_mode(Display *display, struct Frame *frame, struct Atoms *ato
   if(contents) XFree(contents);
 }
 
-/*This function gets the frame state, which is either, none, demands attention or fullscreen.  
-  Since EWMH considers "modal dialog box" a state, but I consider it a type, it can also change the type
-  and therefor must be called after get frame type. */
+/**
+@brief   This function gets the frame state, which is either, none, demands attention or fullscreen.  
+@brief   Since EWMH considers "modal dialog box" a state, but I consider it a type, it can also change the type
+@brief   and therefore must be called after get_frame_type. 
+@return  void
+**/
 static void 
 get_frame_state(Display *display, struct Frame *frame, struct Atoms *atoms) {
   unsigned char *contents = NULL;
@@ -574,6 +596,10 @@ get_frame_state(Display *display, struct Frame *frame, struct Atoms *atoms) {
   if(contents != NULL) XFree(contents);
 }
 
+/**
+@brief   This function creates the windows which make up the actual frame and its widgets.
+@return  void
+**/
 static void
 create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *themes, struct Cursors *cursors) {
   Window root = DefaultRootWindow(display);
@@ -687,11 +713,12 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
   XFlush(display);
 }
 
-/*** create pixmaps with the specified name if it is available, otherwise use a default name  ***/
 
-/* Problem:  this should create the name for the window itself, and one for the title menu
-   but this function doesn't know parent window of the title menu.  Also, it may need to be in many
-   different title menus so perhaps this should just make a pixmap. */
+
+/**
+@brief   create pixmaps with the specified name if it is available, otherwise use a default name 
+@return  void 
+**/
 void
 create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame *frame
 , struct Themes *themes, struct Atoms *atoms) {
@@ -802,8 +829,10 @@ create_frame_name(Display* display, struct Popup_menu *window_menu, struct Frame
   *frame = temp;
 }
 
-/*This is used to make the transition to the EWMH UTF8 names simpler */
-//free_frame_name(Display* display, struct Frame* frame)
+/**  
+@brief   frees the frame name.  This is used to make the transition to the EWMH UTF8 names simpler, as EWMH names might need to be freed differently.
+@return  void
+**/
 void
 free_frame_name(struct Frame* frame) {
   if(frame->window_name != NULL) {
@@ -812,8 +841,10 @@ free_frame_name(struct Frame* frame) {
   }
 } 
 
-/** Updates the frame with available wm hints (icon, window "group", focus wanted, urgency, withdrawn) **/
-
+/** 
+@brief   Updates the frame with available wm hints (ICCCM icon, window "group", focus wanted, urgency, withdrawn) 
+@return  void
+**/
 void 
 get_frame_wm_hints(Display *display, struct Frame *frame, struct Themes *themes) {
   XWMHints *wm_hints = XGetWMHints(display, frame->framed_window);

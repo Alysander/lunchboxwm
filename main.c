@@ -1323,6 +1323,7 @@ main (int argc, char* argv[]) {
 /* This function sets the icon size property on the window so that the program that created it
 knows what size to make the icon it provides when we call XGetWMHints.  But I don't understand
 why XSetIconSize provides a method to specify a variety of sizes when only one size is returned.
+In any case, this function will soon be deprecated in favor of EWMH hints.
 Also, I am presuming that we can't free XIconSize immediately so I do so at the end of the main function.
 */
 static XIconSize *

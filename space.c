@@ -78,7 +78,8 @@ get_free_screen_spaces (Display *display, struct Frame_list *frames, struct Them
 }
 
 /**
-@brief This implements "Free space modeling for placing rectangles without overlapping" by Marc Bernard and Francois Jacquenet. 
+@brief    This implements "Free space modeling for placing rectangles without overlapping" by Marc Bernard and Francois Jacquenet. 
+@return   returns a Rectangle_list with all largest free spaces
 **/
 struct Rectangle_list 
 largest_available_spaces (struct Rectangle_list *used_spaces, int w, int h) {
@@ -268,7 +269,8 @@ largest_available_spaces (struct Rectangle_list *used_spaces, int w, int h) {
 }
 
 /**
-@brief  Adds rectangles to the list.  Rectangles are checked for validity and independence/inclusion. O(n) 
+@brief    Adds rectangles to the list.  Rectangles are checked for validity and independence/inclusion. O(n) 
+@return   void
 **/
 void 
 add_rectangle(struct Rectangle_list *list, struct Rectangle new) {
@@ -317,7 +319,8 @@ add_rectangle(struct Rectangle_list *list, struct Rectangle new) {
 }
 
 /**
-@brief  Removes the rectangle from the list if it exists. O(n)
+@brief    Removes the rectangle from the list if it exists. O(n)
+@return   void
 **/
 void 
 remove_rectangle(struct Rectangle_list *list, struct Rectangle old) {
@@ -347,9 +350,9 @@ remove_rectangle(struct Rectangle_list *list, struct Rectangle old) {
 }
 
 /**
-@brief  Calculate the displacement squared in each axis and use pythagoras to calculate the net displacement
-@pre  Rectangles a and b must not be overlapping.
-@return  -1 if source is larger than dest
+@brief    Calculate the displacement squared in each axis and use pythagoras to calculate the net displacement
+@pre      Rectangles a and b must not be overlapping.
+@return   -1 if source is larger than dest
 **/
 double 
 calculate_displacement(struct Rectangle source, struct Rectangle dest, int *dx, int *dy) {

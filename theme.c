@@ -13,7 +13,7 @@
 #include "xcheck.h"
 
 /**
-@file     theme.
+@file     theme.c
 @brief    Contains functions relevant to the theming system. It works by using the stored co-ordinates in a set of region files to identify and copy out sections of corresponding image files for each individual widget.
 @author   Alysander Stanley
 **/
@@ -79,10 +79,13 @@ static void show_pixmap (Display *display, Pixmap pixmap) {
 #endif
 
 /**
-@brief  strnadd concatinates s1 and s2 and writes the result into s0 provided the length of s1 and s2 
-@brief  is less that the limit, which is usually defined as the length of s0.  If any of the passed strings are NULL
-@brief  s0 is returned unmodified.  If the limit is less than the length of s2, s0 is returned unmodified. 
-@brief  All strings must be NULL terminated and this function ensures that s0 will always be null terminated 
+@brief    strnadd concatinates s1 and s2 and writes the result into s0 provided the length of s1 and s2 
+          is less that the limit, which is usually defined as the length of s0.  
+          
+@return   If any of the passed strings are NULL
+          s0 is returned unmodified.  If the limit is less than the length of s2, s0 is returned unmodified. 
+@note     All strings must be NULL terminated and this function ensures that s0 will always be null terminated 
+   
 **/
 char *
 strnadd(char *restrict s0, char *restrict s1, char *restrict s2, size_t limit) {
@@ -98,9 +101,11 @@ strnadd(char *restrict s0, char *restrict s1, char *restrict s2, size_t limit) {
 }
 
 /**
-@brief  create_themes opens the theme in the theme folder with the name specified by theme_name.
-@brief  It changes the current working directory before calling create_component_theme each window type.
-@brief  If an error occurs when opening the theme a NULL pointer is returned. */
+@brief    create_themes opens the theme in the theme folder with the name specified by theme_name.
+          It changes the current working directory before calling create_component_theme each window type.
+          If an error occurs when opening the theme a NULL pointer is returned. 
+@return   The completed Themes struct or NULL if an error has occured.
+**/
 struct Themes *
 create_themes(Display *display, char *theme_name) {
   struct Themes *themes = NULL;
@@ -180,8 +185,9 @@ TODO Verify that:
 }
 
 /**
-@brief This function creates the different states for the mode pulldown list (depending on the mode chosen for each frame type 
-@todo  Need to draw a good background and then tile the "text" bit. 
+@brief    This function creates the different states for the mode pulldown list (depending on the mode chosen for each frame type 
+@todo     Need to draw a good background and then tile the "text" bit. 
+@return   void
 **/
 static void
 create_mode_menu_text(Display *display, struct Themes *themes) {
@@ -213,7 +219,8 @@ create_mode_menu_text(Display *display, struct Themes *themes) {
 }
 
 /**
-@brief This function creates the complete set of pixmaps for a particular component of a theme such as the menubar or dialog frame.
+@brief    This function creates the complete set of pixmaps for a particular component of a theme such as the menubar or dialog frame.
+@return   the completed Widget_theme or NULL if an error has occured.
 **/
 static struct Widget_theme *
 create_component_theme(Display *display, char *type) {
@@ -451,7 +458,8 @@ create_component_theme(Display *display, char *type) {
 }
 
 /**
-@brief  This loads the various font settings that are used by functions that draw the text eventually it will load these from a file.
+@brief    This loads the various font settings that are used by functions that draw the text eventually it will load these from a file.
+@return   void
 **/
 static void 
 create_font_themes(struct Themes *restrict themes) {
@@ -471,8 +479,9 @@ create_font_themes(struct Themes *restrict themes) {
 }
 
 /**
-@brief  This copies all the details about the widget theme, but not the pixmaps. 
-@brief  This is so that the region of tile can be used to create the pixmaps for a widget that itself has a different region 
+@brief    This copies all the details about the widget theme, but not the pixmaps. 
+          This is so that the region of tile can be used to create the pixmaps for a widget that itself has a different region 
+@return   void
 **/
 static void 
 swap_widget_theme(struct Widget_theme *from, struct Widget_theme *to) {
@@ -493,10 +502,11 @@ swap_widget_theme(struct Widget_theme *from, struct Widget_theme *to) {
 }
 
 /**
-@brief  This function is used just before and after creating the the pixmaps for the widgets
-@brief  because some widgets need a tiled image (or image subsection) that isn't
-@brief  the same region that the widget itself will be on.  So the region the widget
-@brief  will be at and the image itself need to be temporarily swapped.
+@brief    This function is used just before and after creating the the pixmaps for the widgets
+          because some widgets need a tiled image (or image subsection) that isn't
+          the same region that the widget itself will be on.  So the region the widget
+          will be at and the image itself need to be temporarily swapped.
+@return   void
 **/
 static void 
 swap_tiled_widget_themes(char *type, struct Widget_theme *themes, struct Widget_theme *tiles) {
@@ -523,8 +533,9 @@ swap_tiled_widget_themes(char *type, struct Widget_theme *themes, struct Widget_
 
 
 /**
-@brief  This function looks at the co-ordinates in the widget_theme and uses them to generate the backgrounds from the theme images and saves them onto multiple state windows
-@pre    widget theme has x,y,w,h set correctly
+@brief    This function looks at the co-ordinates in the widget_theme and uses them to generate the backgrounds from the theme images and saves them onto multiple state windows
+@pre      widget theme has x,y,w,h set correctly
+@return   void
 **/
 static void 
 create_widget_theme_pixmap(Display *display,  struct Widget_theme *widget_theme, cairo_surface_t **theme_images) {
@@ -579,7 +590,8 @@ create_widget_theme_pixmap(Display *display,  struct Widget_theme *widget_theme,
 
 
 /**
-@brief This function frees the pixmaps in an array of widget_theme s.  length is the number of elements in the array. 
+@brief    This function frees the pixmaps in an array of widget_theme s.  length is the number of elements in the array. 
+@return   void
 **/
 static void 
 remove_widget_themes (Display *display, struct Widget_theme *themes, int length) {
@@ -595,7 +607,8 @@ remove_widget_themes (Display *display, struct Widget_theme *themes, int length)
 
 
 /**
-@brief This is dependent on struct Themes, so if that changes make corresponding updates here 
+@brief    This is dependent on struct Themes, so if that changes make corresponding updates here 
+@return   void
 **/
 void 
 remove_themes(Display *display, struct Themes *themes) {
@@ -610,10 +623,11 @@ remove_themes(Display *display, struct Themes *themes) {
 
 
 /**
-@pre       Display is open, font_theme is not NULL, background_p is valid
-@post      pixmap using supplied background with the text in the specified style set as background to the window.
-@brief     this function uses the supplied pixmap as the background and draw the supplied text over it.
-@note      this doesn't use the themes struct so that the caller can more easily specify which pixmap to use
+@pre      Display is open, font_theme is not NULL, background_p is valid
+@post     pixmap using supplied background with the text in the specified style set as background to the window.
+@brief    this function uses the supplied pixmap as the background and draw the supplied text over it.
+@note     this doesn't use the themes struct so that the caller can more easily specify which pixmap to use
+@return   void
 **/
 void 
 create_text_background(Display *display, Window window, const char *restrict text
@@ -634,7 +648,8 @@ create_text_background(Display *display, Window window, const char *restrict tex
 
 
 /**
-@brief  This function attempts to put the ICCCM (not the newer EWMH w/ alpha channel) icon onto a background.  It is currently broken.
+@brief    This function attempts to put the ICCCM (not the newer EWMH w/ alpha channel) icon onto a background.  It is currently broken.
+@return   void
 **/
 void 
 create_icon_background(Display *display, Window window
@@ -706,12 +721,12 @@ create_icon_background(Display *display, Window window
 
 
 /**
-@brief  This function combines text and a background into a pixmap.
-@param  text          a null terminated UTF8 string
-@param  background_p  the background pixmap
-@param  b_w           the width of the background
-@param  b_h           the height of the background
-@return The resulting pixmap.
+@brief    This function combines text and a background into a pixmap.
+@param    text          a null terminated UTF8 string
+@param    background_p  the background pixmap
+@param    b_w           the width of the background
+@param    b_h           the height of the background
+@return   The resulting pixmap.
 **/
 static Pixmap
 create_text_background_pixmap(Display *display, const char *restrict text
@@ -811,8 +826,8 @@ create_text_background_pixmap(Display *display, const char *restrict text
 
 /** 
 @brief    This function calculates the width of a title when drawn using the specified font theme in pixels. It is used to calculate popup menu widths.
-@brief    It never returns a length larger than the width of the screen. 
-@return   
+          It never returns a length larger than the width of the screen. 
+@return   the number of pixels the text takes up on the screen.
 **/
 unsigned int 
 get_text_width(Display* display, const char *title, struct Font_theme *font_theme) {

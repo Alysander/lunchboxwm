@@ -24,9 +24,10 @@
 **/
 
 
-/*** Create Workspace ***/
-//create_workspace, returns the index of the created workspace
-/* Creates a new workspace, including separators used for stacking windows in different modes and the workspace menu item for the program menu. */
+/**
+@brief    Creates a new workspace, including separators used for stacking windows in different modes and the workspace menu item for the program menu. 
+@return   the index of the created workspace
+**/
 int 
 create_frame_list(Display *display, struct Workspace_list* workspaces, char *workspace_name, struct Themes *themes, struct Cursors *cursors) {
   Window root = DefaultRootWindow(display);
@@ -121,7 +122,10 @@ create_frame_list(Display *display, struct Workspace_list* workspaces, char *wor
   return workspaces->used - 1;
 }
 
-/*  This is called when the wm is exiting, it doesn't close the open windows. */
+/**  
+@brief    This is called when the wm is exiting, it doesn't close the open windows.
+@return   void
+**/
 void 
 remove_frame_list(Display *display, struct Workspace_list* workspaces, int index, struct Themes *themes) {
 
@@ -151,7 +155,10 @@ remove_frame_list(Display *display, struct Workspace_list* workspaces, int index
   for(int i = index ; i < workspaces->used; i++) workspaces->list[i] = workspaces->list[i + 1];
 }
 
-//returned pointer must be freed with XFree.
+/** 
+@brief    Generates a name for the program frame the XClassHint.  The returned pointer must be freed with XFree.
+@return   A pointer to the null terminated string.
+**/
 char *
 load_program_name(Display* display, Window window) {
   XClassHint program_hint;
@@ -164,7 +171,10 @@ load_program_name(Display* display, Window window) {
   return NULL;
 }
 
-//TODO does the name actually need to be allocated with Xmalloc or something?
+/**
+@brief    Used to generate a default name for the case when the XClassHints are not set correctly.
+@return   void
+**/
 void 
 make_default_program_name(Display *display, Window window, char *name) {
   XClassHint program_hint;
@@ -175,10 +185,13 @@ make_default_program_name(Display *display, Window window, char *name) {
 }
 
 
-/* creates the workspace */
-/* Indirectly creates workspaces and frames.  Gets the program name from the frame using the class hints.
-If the program name doesn't match the name of any workspace, creates a new workspace.
-If the workspace is new, switch to the workspace.  Try and tile the frame if its mode is tiling.  Decide whether to show the frame and whether to focus it. */
+/**
+@brief    Creates a workspace.  Adds a frame to a workspace.
+          Indirectly creates workspaces and frames.  Gets the program name from the frame using the class hints (load_program_name).
+          If the program name doesn't match the name of any workspace, creates a new workspace.
+          If the workspace is new, switch to the workspace.  Try and tile the frame if its mode is tiling.  Decide whether to show the frame and whether to focus it. 
+@return   void
+**/
 int 
 add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window framed_window, int *current_workspace
 , struct Popup_menu *window_menu
@@ -245,7 +258,10 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
   return k;
 }
 
-/* Called when the window manager is starting up.  Adds all frames to workspaces. */
+/**
+@brief    Adds all frames to workspaces.  Called when the window manager is starting up.
+@return   void
+**/
 int 
 create_startup_workspaces(Display *display, struct Workspace_list *workspaces
 , int *current_workspace
@@ -273,17 +289,16 @@ create_startup_workspaces(Display *display, struct Workspace_list *workspaces
   return 1;
 }
 
-/*
-Prec: all parameters intitalized and allocated properly.
-Desc: This function changes the user's workspace to the workspace at the specified index.  
-      If a negative index is passed, it changes to a default workspace which is currently 0.
-      If a negative index is passed but no workspace is open nothing happens.
-      Generally, it is expected that at least one workspace is open.
-      Windows from other workspaces are unmapped.
-Post: The user's workspace has visibly changed.
-*/
-/*Changes the users workspace to the workspace at the specified index.  A default argument can also be provided,
-it which case the workspace is changed to the default workspace (This is done when the currently open workspace is removed).*/
+/**
+@pre      all parameters intitalized and allocated properly.
+@brief    This function changes the user's workspace to the workspace at the specified index.  
+          If a negative index is passed (This is done when the currently open workspace is removed), it changes to a default workspace which is currently 0.
+          If a negative index is passed but no workspace is open nothing happens.
+          Generally, it is expected that at least one workspace is open.
+          Windows from other workspaces are unmapped.
+@post     The user's workspace has visibly changed.
+@return   void
+**/
 void 
 change_to_workspace(Display *display, struct Workspace_list *workspaces, int *current_workspace, int index, struct Themes *themes) {
 
