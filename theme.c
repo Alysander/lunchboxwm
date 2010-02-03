@@ -78,10 +78,12 @@ static void show_pixmap (Display *display, Pixmap pixmap) {
 }
 #endif
 
-/* strnadd concatinates s1 and s2 and writes the result into s0 provided the length of s1 and s2 
-is less that the limit, which is usually defined as the length of s0.  If any of the passed strings are NULL
-s0 is returned unmodified.  If the limit is less than the length of s2, s0 is returned unmodified. 
-All strings must be NULL terminated and this function ensures that s0 will always be null terminated */
+/**
+@brief  strnadd concatinates s1 and s2 and writes the result into s0 provided the length of s1 and s2 
+@brief  is less that the limit, which is usually defined as the length of s0.  If any of the passed strings are NULL
+@brief  s0 is returned unmodified.  If the limit is less than the length of s2, s0 is returned unmodified. 
+@brief  All strings must be NULL terminated and this function ensures that s0 will always be null terminated 
+**/
 char *
 strnadd(char *restrict s0, char *restrict s1, char *restrict s2, size_t limit) {
   size_t length;
@@ -95,9 +97,10 @@ strnadd(char *restrict s0, char *restrict s1, char *restrict s2, size_t limit) {
   return s0;
 }
 
-/* create_themes opens the theme in the theme folder with the name specified by theme_name.
-It changes the current working directory before calling create_component_theme each window type.
-If an error occurs when opening the theme a NULL pointer is returned. */
+/**
+@brief  create_themes opens the theme in the theme folder with the name specified by theme_name.
+@brief  It changes the current working directory before calling create_component_theme each window type.
+@brief  If an error occurs when opening the theme a NULL pointer is returned. */
 struct Themes *
 create_themes(Display *display, char *theme_name) {
   struct Themes *themes = NULL;
@@ -176,9 +179,10 @@ TODO Verify that:
   return NULL;
 }
 
-/*This function creates the different states for the mode pulldown list 
-(depending on the mode chosen for each frame type 
-Problem:  need to draw a good background and then tile the "text" bit. */
+/**
+@brief This function creates the different states for the mode pulldown list (depending on the mode chosen for each frame type 
+@todo  Need to draw a good background and then tile the "text" bit. 
+**/
 static void
 create_mode_menu_text(Display *display, struct Themes *themes) {
   /** This is the custom create mode menu LHS section **/
@@ -208,6 +212,9 @@ create_mode_menu_text(Display *display, struct Themes *themes) {
   //show_pixmap (display,  themes->window_type[unknown][mode_dropdown_text_floating].state_p[normal]);
 }
 
+/**
+@brief This function creates the complete set of pixmaps for a particular component of a theme such as the menubar or dialog frame.
+**/
 static struct Widget_theme *
 create_component_theme(Display *display, char *type) {
   struct Widget_theme *themes = NULL;
@@ -443,8 +450,9 @@ create_component_theme(Display *display, char *type) {
   return NULL;
 }
 
-//This loads the various font settings that are used by functions that draw the text.
-//eventually it will load these from a file.
+/**
+@brief  This loads the various font settings that are used by functions that draw the text eventually it will load these from a file.
+**/
 static void 
 create_font_themes(struct Themes *restrict themes) {
   struct Font_theme font_theme = { .font_name = "Sans", .size = 13.5, .r = 1, .g = 1, .b = 1, .a = 1
@@ -462,8 +470,10 @@ create_font_themes(struct Themes *restrict themes) {
 
 }
 
-/*This copies all the details about the widget theme, but not the pixmaps.
-This is so that the region of tile can be used to create the pixmaps for a widget that itself has a different region */
+/**
+@brief  This copies all the details about the widget theme, but not the pixmaps. 
+@brief  This is so that the region of tile can be used to create the pixmaps for a widget that itself has a different region 
+**/
 static void 
 swap_widget_theme(struct Widget_theme *from, struct Widget_theme *to) {
   struct Widget_theme original_region;
@@ -482,12 +492,12 @@ swap_widget_theme(struct Widget_theme *from, struct Widget_theme *to) {
   else fprintf(stderr, "Warning: background tile missing during theme load.\n");
 }
 
-/*****
-This function is used just before and after creating the the pixmaps for the widgets
-because some widgets need a tiled image (or image subsection) that isn't
-the same region that the widget itself will be on.  So the region the widget
-will be at and the image itself need to be temporarily swapped.
-******/
+/**
+@brief  This function is used just before and after creating the the pixmaps for the widgets
+@brief  because some widgets need a tiled image (or image subsection) that isn't
+@brief  the same region that the widget itself will be on.  So the region the widget
+@brief  will be at and the image itself need to be temporarily swapped.
+**/
 static void 
 swap_tiled_widget_themes(char *type, struct Widget_theme *themes, struct Widget_theme *tiles) {
   if(strstr(type, "frame")) {
@@ -511,6 +521,11 @@ swap_tiled_widget_themes(char *type, struct Widget_theme *themes, struct Widget_
   }
 }
 
+
+/**
+@brief  This function looks at the co-ordinates in the widget_theme and uses them to generate the backgrounds from the theme images and saves them onto multiple state windows
+@pre    widget theme has x,y,w,h set correctly
+**/
 static void 
 create_widget_theme_pixmap(Display *display,  struct Widget_theme *widget_theme, cairo_surface_t **theme_images) {
   Window root = DefaultRootWindow(display); 
@@ -563,7 +578,9 @@ create_widget_theme_pixmap(Display *display,  struct Widget_theme *widget_theme,
 }
 
 
-/* This function frees the pixmaps in an array of widget_theme s.  length is the number of elements in the array. */
+/**
+@brief This function frees the pixmaps in an array of widget_theme s.  length is the number of elements in the array. 
+**/
 static void 
 remove_widget_themes (Display *display, struct Widget_theme *themes, int length) {
 
@@ -577,7 +594,9 @@ remove_widget_themes (Display *display, struct Widget_theme *themes, int length)
 }
 
 
-/* This is dependent on struct Themes, so if that changes make corresponding updates here */
+/**
+@brief This is dependent on struct Themes, so if that changes make corresponding updates here 
+**/
 void 
 remove_themes(Display *display, struct Themes *themes) {
 
@@ -590,20 +609,12 @@ remove_themes(Display *display, struct Themes *themes) {
 }
 
 
-
-/* It needs to know where on the pixmap to start drawing - no more default values. */
-/* It will eventually need to have the font passed in from the theme. */
-/* Need to consider the different displacement for each type. */
-
-/****************
-Preconditions:   Display is open, font_theme is not NULL, background_p is valid
-Postconditions:  pixmap using supplied background with the text in the specified style set as background
-                 to the window.
-Description:     this function uses the supplied pixmap as the background and draw the supplied text over it.
-*****************/
-
-/* this doesn't use the themes struct so that the caller can more easily specify which pixmap to use */
-
+/**
+@pre       Display is open, font_theme is not NULL, background_p is valid
+@post      pixmap using supplied background with the text in the specified style set as background to the window.
+@brief     this function uses the supplied pixmap as the background and draw the supplied text over it.
+@note      this doesn't use the themes struct so that the caller can more easily specify which pixmap to use
+**/
 void 
 create_text_background(Display *display, Window window, const char *restrict text
 , const struct Font_theme *restrict font_theme, Pixmap background_p, int b_w, int b_h) {
@@ -621,6 +632,10 @@ create_text_background(Display *display, Window window, const char *restrict tex
 
 }
 
+
+/**
+@brief  This function attempts to put the ICCCM (not the newer EWMH w/ alpha channel) icon onto a background.  It is currently broken.
+**/
 void 
 create_icon_background(Display *display, Window window
 , Pixmap icon_p, Pixmap icon_mask_p
@@ -689,6 +704,15 @@ create_icon_background(Display *display, Window window
   XFlush(display);
 }
 
+
+/**
+@brief  This function combines text and a background into a pixmap.
+@param  text          a null terminated UTF8 string
+@param  background_p  the background pixmap
+@param  b_w           the width of the background
+@param  b_h           the height of the background
+@return The resulting pixmap.
+**/
 static Pixmap
 create_text_background_pixmap(Display *display, const char *restrict text
 , const struct Font_theme *restrict font_theme, Pixmap background_p, int b_w, int b_h) {
@@ -785,8 +809,11 @@ create_text_background_pixmap(Display *display, const char *restrict text
   return pixmap;
 }
 
-/* This function calculates the width of a title when drawn using the specified font theme in pixels. It is used to calculate popup menu widths.
-   It never returns a length larger than the width of the screen. */
+/** 
+@brief    This function calculates the width of a title when drawn using the specified font theme in pixels. It is used to calculate popup menu widths.
+@brief    It never returns a length larger than the width of the screen. 
+@return   
+**/
 unsigned int 
 get_text_width(Display* display, const char *title, struct Font_theme *font_theme) {
   int screen_number = DefaultScreen (display);
