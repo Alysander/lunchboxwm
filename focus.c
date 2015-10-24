@@ -1,3 +1,20 @@
+/**************************************************************************
+    Lunchbox Window Manager
+    Copyright (C) 2008 Alysander Stanley
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -19,7 +36,7 @@
 @author   Alysander Stanley
 **/
 
-/****
+/*
 (implemented in add_frame_to_workspace called from main)
 Give focus to new windows if
  1) It is the only window in the workspace
@@ -39,10 +56,11 @@ Remove focus if any window is hidden - because giving focus shouldn't have to ra
 
 (implemented in ButtonPress) 
 Change focus to another window whenever the user clicks on it.
-****/
+*/
 
 /**
 @brief Adds another window (the framed window) to the focus list
+@return void
 **/
 void add_focus(Window new, struct Focus_list* focus) {
   remove_focus(new, focus); //remove duplicates
@@ -67,6 +85,7 @@ void add_focus(Window new, struct Focus_list* focus) {
 
 /**
 @brief Removes a window from the focus list. This is called when the window has been unmapped. 
+@return void
 **/
 void remove_focus(Window old, struct Focus_list* focus) {
   int i;
@@ -104,7 +123,9 @@ void check_new_frame_focus (Display *display, struct Frame_list *frames, int ind
 
 
 /**
-@brief Resets the appearance of all the frames. Used when changing the focused window.
+@pre  This assumes that no widgets will be active on the focussed frame when this is called.
+@brief Resets the appearance of all the frames. Used when changing the focussed window.
+@return void
 **/
 void unfocus_frames(Display *display, struct Frame_list *frames) {
   for(int i = 0; i < frames->used; i++) 
@@ -144,5 +165,4 @@ void recover_focus(Display *display, struct Frame_list *frames, struct Themes *t
     change_frame_mode(display, &frames->list[i], frames->list[i].mode, themes);
     break;
   }
-  
 }

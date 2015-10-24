@@ -1,19 +1,16 @@
 
-Virtual view ports -
-related properties:
-
 Root Window Properties (and Related Messages)
     _NET_SUPPORTED                yes
-    _NET_CLIENT_LIST              no (find out if this is needed)
-    _NET_NUMBER_OF_DESKTOPS       not yet
-    _NET_DESKTOP_GEOMETRY         screen size
-    _NET_DESKTOP_VIEWPORT         0,0 not yet
-    _NET_CURRENT_DESKTOP          not yet
+    _NET_CLIENT_LIST              yes
+    _NET_NUMBER_OF_DESKTOPS       not properly - not sure how this will integrate with pager
+    _NET_DESKTOP_GEOMETRY         not properly
+    _NET_DESKTOP_VIEWPORT         yes (0,0)
+    _NET_CURRENT_DESKTOP          yes
     _NET_DESKTOP_NAMES            not yet
-    _NET_ACTIVE_WINDOW            not yet
+    _NET_ACTIVE_WINDOW            yes
     _NET_WORKAREA                 not yet (largest free space)
     _NET_SUPPORTING_WM_CHECK      yes
-    _NET_VIRTUAL_ROOTS            not yet (different background for each program)
+    _NET_VIRTUAL_ROOTS            no
     _NET_DESKTOP_LAYOUT           n/a (done by pager)
     _NET_SHOWING_DESKTOP          no
 
@@ -27,12 +24,12 @@ Other Root Window Messages
 
 Application Window Properties
 
-    _NET_WM_NAME                not yet
+    _NET_WM_NAME                only if cairo can render it by default
     _NET_WM_VISIBLE_NAME        no (maybe for identically named windows)
     _NET_WM_ICON_NAME           no
     _NET_WM_VISIBLE_ICON_NAME   no
-    _NET_WM_DESKTOP             not yet (could be used by programs to keep the window in their workspace)
-    _NET_WM_WINDOW_TYPE         not yet (doesn't include status windows)
+    _NET_WM_DESKTOP             no
+    _NET_WM_WINDOW_TYPE         yes
         _NET_WM_WINDOW_TYPE_DESKTOP, ATOM        not yet
         _NET_WM_WINDOW_TYPE_DOCK, ATOM           maybe
         _NET_WM_WINDOW_TYPE_TOOLBAR, ATOM  (torn offs) maybe   
@@ -51,13 +48,13 @@ Application Window Properties
     _NET_WM_STATE
         _NET_WM_STATE_MODAL, ATOM              not yet
         _NET_WM_STATE_STICKY, ATOM             not yet
-        _NET_WM_STATE_MAXIMIZED_VERT, ATOM     no
-        _NET_WM_STATE_MAXIMIZED_HORZ, ATOM     no
+        _NET_WM_STATE_MAXIMIZED_VERT, ATOM     not yet
+        _NET_WM_STATE_MAXIMIZED_HORZ, ATOM     not yet
         _NET_WM_STATE_SHADED, ATOM             no
         _NET_WM_STATE_SKIP_TASKBAR, ATOM       no
         _NET_WM_STATE_SKIP_PAGER, ATOM         no
-        _NET_WM_STATE_HIDDEN, ATOM             not yet
-        _NET_WM_STATE_FULLSCREEN, ATOM         not yet
+        _NET_WM_STATE_HIDDEN, ATOM             yes
+        _NET_WM_STATE_FULLSCREEN, ATOM         yes
         _NET_WM_STATE_ABOVE, ATOM              not yet (floating/rise)
         _NET_WM_STATE_BELOW, ATOM              not yet (sinking/sink)
         _NET_WM_STATE_DEMANDS_ATTENTION, ATOM  not yet
