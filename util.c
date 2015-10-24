@@ -37,13 +37,13 @@ clean_realloc(void *ptr, size_t old_size, size_t new_size) {
 }
 
 /**
-@brief    strnadd concatinates s1 and s2 and writes the result into s0 provided the length of s1 and s2 
-          is less that the limit, which is usually defined as the length of s0.  
-          
+@brief    strnadd concatinates s1 and s2 and writes the result into s0 provided the length of s1 and s2
+          is less that the limit, which is usually defined as the length of s0.
+
 @return   If any of the passed strings are NULL
-          s0 is returned unmodified.  If the limit is less than the length of s2, s0 is returned unmodified. 
-@note     All strings must be NULL terminated and this function ensures that s0 will always be null terminated 
-   
+          s0 is returned unmodified.  If the limit is less than the length of s2, s0 is returned unmodified.
+@note     All strings must be NULL terminated and this function ensures that s0 will always be null terminated
+
 **/
 char *
 strnadd(char *restrict s0, char *restrict s1, char *restrict s2, size_t limit) {

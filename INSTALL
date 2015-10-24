@@ -1,5 +1,5 @@
-Since this is only a beta version I haven't written a full installer and launcher program yet 
-but to run it under ubuntu linux, simply copy the themes folder to ~/.lunchbox and then logout, 
+Since this is only a beta version I haven't written a full installer and launcher program yet
+but to run it under ubuntu linux, simply copy the themes folder to ~/.lunchbox and then logout,
 login to a "xterm failsafe session" by clicking session on the login screen, cd to wherever
  you extracted the files and run:
 

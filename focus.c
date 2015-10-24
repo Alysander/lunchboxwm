@@ -43,7 +43,7 @@ Give focus to new windows if
  2) It is a transient window and it's parent has focus.
 
 (implemented in UnmapNotify case in main)
-Remove focus when any frame is closed 
+Remove focus when any frame is closed
 Remove focus and change it to previously focussed window when:
  1) The currently focussed frame is closed.
 
@@ -54,7 +54,7 @@ Remove focus and change it to previously focussed window when:
 (same section as "window is replaced" above)
 Remove focus if any window is hidden - because giving focus shouldn't have to raise a window.
 
-(implemented in ButtonPress) 
+(implemented in ButtonPress)
 Change focus to another window whenever the user clicks on it.
 */
 
@@ -71,7 +71,7 @@ void add_focus(Window new, struct Focus_list* focus) {
       temp = malloc(sizeof(Window) * focus->max);
       focus->max = focus->max / 2;
     }
-    
+
     if(temp != NULL) {
       focus->list = temp;
       focus->max *= 2;
@@ -84,7 +84,7 @@ void add_focus(Window new, struct Focus_list* focus) {
 }
 
 /**
-@brief Removes a window from the focus list. This is called when the window has been unmapped. 
+@brief Removes a window from the focus list. This is called when the window has been unmapped.
 @return void
 **/
 void remove_focus(Window old, struct Focus_list* focus) {
@@ -101,7 +101,7 @@ void remove_focus(Window old, struct Focus_list* focus) {
 /**
 @brief Determines if newly created windows should get focussed automatically.
        This is the case if no windows are currently focussed or if it is a transient window and its parent is focussed.
-       Caller then checks if the frame structure   has the "selected" member set to 1. 
+       Caller then checks if the frame structure   has the "selected" member set to 1.
        This doesn't actually focus the window in case it is in the wrong workspace the caller must determine that and then run recover focus.
 @return void
 **/
@@ -109,18 +109,18 @@ void check_and_set_new_frame_focus (Display *display, struct Frame *frame, struc
   int set_focus = 0;
 
   if(frame->type == panel) return; /* TODO use hints to establish whether it is focussable */
-    
+
   if(frames->focus.used == 0) set_focus=1;
-  else if(frames->focus.used > 0  
-  && frames->focus.list 
+  else if(frames->focus.used > 0
+  && frames->focus.list
   && frame->transient == frames->focus.list[frames->focus.used - 1]) { //parent has focus
     unfocus_frames(display, frames); //make frames look normal
     set_focus=1;
   }
-  
+
   if(set_focus) {
     add_focus(frame->framed_window, &frames->focus);
-    frame->focussed = True;    
+    frame->focussed = True;
     for(int widget_index = 0; widget_index <= frame_parent; widget_index++) {
       change_frame_widget_state(display, frame, widget_index, normal);
     }
@@ -148,15 +148,15 @@ void unfocus_frames(Display *display, struct Workspace *frames) {
 }
 
 /**
-@brief After a focussed window is closed, use this function to set the focus to another window. It actually does set the focus using XSetInputFocus. 
+@brief After a focussed window is closed, use this function to set the focus to another window. It actually does set the focus using XSetInputFocus.
 @return void
-**/  
+**/
 
 void recover_focus(Display *display, struct Workspace *frames, struct Themes *themes, struct Atoms *atoms) {
   Window root = DefaultRootWindow(display);
   if(frames->focus.used == 0) return;
   //printf("Recovering focus\n");
-  for(int i = frames->used - 1; i >= 0; i--) { 
+  for(int i = frames->used - 1; i >= 0; i--) {
     if(frames->list[i]->framed_window == frames->focus.list[frames->focus.used - 1]) {
       //_NET_ACTIVE_WINDOW
       #ifdef CRASH_ON_BUG
@@ -168,7 +168,7 @@ void recover_focus(Display *display, struct Workspace *frames, struct Themes *th
       XChangeProperty(display, root, atoms->active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&frames->list[i]->framed_window, 1);
       #ifdef CRASH_ON_BUG
       XSync(display, False);
-      XSetErrorHandler(NULL);    
+      XSetErrorHandler(NULL);
       XUngrabServer(display);
       #endif
       XFlush(display);

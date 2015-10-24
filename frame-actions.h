@@ -20,7 +20,7 @@ void resize_tiling_frame    (Display *display, struct Workspace* frames, int ind
 void stack_frame            (Display *display, struct Frame *frame, struct Separators *seps);
 
 int replace_frame           (Display *display, struct Frame *target
-, struct Frame *replacement, struct Separators *seps, struct Themes *themes);  
+, struct Frame *replacement, struct Separators *seps, struct Themes *themes);
 
 void maximize_frame         (Display *display, struct Workspace *frames, int clicked_frame, struct Themes *themes);
 

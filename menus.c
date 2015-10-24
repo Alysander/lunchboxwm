@@ -39,13 +39,13 @@
 /**
 @pre      display is valid, menubar is not null but not initialized, seps is valid, themes is valid, cursors is valid.
 @post     Menubar created and mapped.
-@brief    This function uses the menubar member of the themes pointer to generate all the windows 
+@brief    This function uses the menubar member of the themes pointer to generate all the windows
           that comprise the menubar with appropriate pixmap backgrounds.
 @todo     Possibly have an extra parameter that determines whether the menubar is a popup menu and use the shape
           extention.
 @return   void
 **/
-void 
+void
 create_menubar(Display *display, struct Menubar *menubar, struct Separators *seps, struct Themes *themes, struct Cursors *cursors) {
   /* create new window structure, using theme pixmaps */
   XSetWindowAttributes set_attributes;
@@ -55,16 +55,16 @@ create_menubar(Display *display, struct Menubar *menubar, struct Separators *sep
   unsigned int spacing;
 
   spacing = (XWidthOfScreen(screen) - themes->menubar[program_menu].w )/4;
-  
+
   menubar->widgets[menubar_parent].widget = XCreateSimpleWindow(display, root
   , 0, XHeightOfScreen(screen) - themes->menubar[menubar_parent].h, XWidthOfScreen(screen)
   , themes->menubar[menubar_parent].h, 0, black, black);
-  
+
   xcheck_setpixmap(display, menubar->widgets[menubar_parent].widget
   , themes->menubar[menubar_parent].state_p[normal]);
-  
+
   for(int i = 0; i < menubar_parent; i++) {
-        
+
     menubar->widgets[i].widget = XCreateSimpleWindow(display, menubar->widgets[menubar_parent].widget
     , spacing*i, 0, themes->menubar[i].w, themes->menubar[i].h, 0, black, black);
     XSelectInput(display, menubar->widgets[i].widget,  Button1MotionMask | ButtonPressMask | ButtonReleaseMask);
@@ -80,7 +80,7 @@ create_menubar(Display *display, struct Menubar *menubar, struct Separators *sep
         char Options[] = "Options";
         char Links[] = "Links";
         char Tool[] = "Tool";
-        
+
         switch(i) {
           case program_menu: label = Program;
           break;
@@ -94,7 +94,7 @@ create_menubar(Display *display, struct Menubar *menubar, struct Separators *sep
           break;
         }
 
-        
+
         if(label) {
           create_text_background(display, menubar->widgets[i].state[j], label
           , &themes->font_theme[j], themes->menubar[i].state_p[j]
@@ -103,7 +103,7 @@ create_menubar(Display *display, struct Menubar *menubar, struct Separators *sep
         else {
           xcheck_setpixmap(display, menubar->widgets[i].state[j], themes->menubar[i].state_p[j]);
         }
-       
+
         xcheck_map(display, menubar->widgets[i].state[j]);
       }
       //else printf("Warning:  Skipping state pixmap\n");
@@ -111,14 +111,14 @@ create_menubar(Display *display, struct Menubar *menubar, struct Separators *sep
     xcheck_map(display, menubar->widgets[i].widget);
   }
 
-  set_attributes.override_redirect = True; 
-  
+  set_attributes.override_redirect = True;
+
   XChangeWindowAttributes(display, menubar->widgets[menubar_parent].widget
   , CWOverrideRedirect, &set_attributes);
 
   {
-    XWindowChanges changes;  
-    unsigned int mask = CWSibling | CWStackMode;  
+    XWindowChanges changes;
+    unsigned int mask = CWSibling | CWStackMode;
     changes.stack_mode = Below;
     changes.sibling = seps->panel_separator;
     XConfigureWindow(display, menubar->widgets[menubar_parent].widget, mask, &changes);
@@ -127,7 +127,7 @@ create_menubar(Display *display, struct Menubar *menubar, struct Separators *sep
   xcheck_raisewin(display, menubar->widgets[program_menu].state[normal]);
   xcheck_raisewin(display, menubar->widgets[window_menu].state[normal]);
   XFlush(display);
-  
+
   /* Show everything */
   XMapWindow(display, menubar->widgets[menubar_parent].widget);
   XFlush(display);
@@ -136,22 +136,22 @@ create_menubar(Display *display, struct Menubar *menubar, struct Separators *sep
 /**
 @pre      display is valid, themes is valid, cursors is valid.
 @pre      all widgets are zero'd.
-@pre      themes is valid and has loaded at least a background for the popup_menu_parent. 
+@pre      themes is valid and has loaded at least a background for the popup_menu_parent.
 @post     Menu with borders and background but no items is created but not mapped.
 @brief    This function is used to create a blank and generic menu.  Items must be added by caller.
 @return   void
 **/
-void 
+void
 create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *themes, struct Cursors *cursors) {
 
   XSetWindowAttributes set_attributes;
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
-  
+
   const int width = menu->inner_width + themes->popup_menu[popup_l_edge].w + themes->popup_menu[popup_r_edge].w;
   const int height = menu->inner_height + themes->popup_menu[popup_t_edge].h + themes->popup_menu[popup_b_edge].h;
-  
+
   menu->widgets[popup_menu_parent].widget = XCreateSimpleWindow(display, root
   , 0, 0
   , width, height, 0, black, black);
@@ -159,7 +159,7 @@ create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *them
   XDefineCursor(display, menu->widgets[popup_menu_parent].widget, cursors->normal);
   XSetWindowBackgroundPixmap(display, menu->widgets[popup_menu_parent].widget
   , themes->popup_menu[popup_menu_parent].state_p[normal]);
-   
+
   //Currently, this is the "base" of the popup menu.
   //A similar loop will be needed for the actual menu items but not in this function
   for(int i = popup_t_edge; i < popup_menu_parent; i++) { //popup_menu_parent already done
@@ -168,18 +168,18 @@ create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *them
     int y = themes->popup_menu[i].y;
     int w = themes->popup_menu[i].w;
     int h = themes->popup_menu[i].h;
-    
+
     if(x < 0)  x += width;
-    if(y < 0)  y += height; 
+    if(y < 0)  y += height;
     if(w <= 0) w += width;
     if(h <= 0) h += height;
-  
+
     menu->widgets[i].widget = XCreateSimpleWindow(display
     , menu->widgets[popup_menu_parent].widget
     , x, y, w, h, 0, black, black);
-    
+
     if(themes->popup_menu[i].w <= 0) w = XWidthOfScreen(screen);
-    if(themes->popup_menu[i].h <= 0) h = XWidthOfScreen(screen);    
+    if(themes->popup_menu[i].h <= 0) h = XWidthOfScreen(screen);
     for(int j = 0; j <= inactive; j++) {
       if(themes->popup_menu[i].state_p[j]) {
         menu->widgets[i].state[j] = XCreateSimpleWindow(display, menu->widgets[i].widget
@@ -191,9 +191,9 @@ create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *them
     }
 
     XMapWindow(display, menu->widgets[i].widget);
-  } 
+  }
 
-  set_attributes.override_redirect = True; 
+  set_attributes.override_redirect = True;
   XChangeWindowAttributes(display, menu->widgets[popup_menu_parent].widget, CWOverrideRedirect, &set_attributes);
 
 //  XMapWindow(display, menu->widgets[popup_menu_parent].widget);
@@ -207,7 +207,7 @@ create_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *them
 @brief    Creates the mode menu which can be used by all windows in all workspaces.  The main even loop uses the windows and events to determine if a mode menu item was clicked or interacted with in some way.
 @return   void
 **/
-void 
+void
 create_mode_menu(Display *display, struct Mode_menu *mode_menu
 , struct Themes *themes, struct Cursors *cursors) {
 
@@ -216,7 +216,7 @@ create_mode_menu(Display *display, struct Mode_menu *mode_menu
 
   mode_menu->menu.inner_width = DEFAULT_MENU_ITEM_WIDTH;
   mode_menu->menu.inner_height = themes->popup_menu[menu_item_mid].h * (hidden + 1);
-  
+
   create_popup_menu(display, &mode_menu->menu, themes, cursors);
 
   //Create the menu items
@@ -267,11 +267,11 @@ create_mode_menu(Display *display, struct Mode_menu *mode_menu
           it should also check to see it it is bigger than the current width and enlarge it if required.
 @return   void
 **/
-void 
+void
 create_workspaces_menu(Display *display, struct Workspace_list *workspaces
 , struct Themes *themes, struct Cursors *cursors) {
 
-  
+
   workspaces->workspace_menu.inner_width = DEFAULT_MENU_ITEM_WIDTH; //TODO this must come from the theme
   workspaces->workspace_menu.inner_height = themes->popup_menu[menu_item_mid].h;
 
@@ -281,9 +281,9 @@ create_workspaces_menu(Display *display, struct Workspace_list *workspaces
 /**
 @brief    The title menu is used for both the window menu and the dropdown list that appears at the top of the window.
 @return   void
-@todo     Does it assume that titles have already been created? 
+@todo     Does it assume that titles have already been created?
 **/
-void 
+void
 create_title_menu(Display *display, struct Popup_menu *window_menu
 , struct Themes *themes, struct Cursors *cursors) {
 
@@ -294,16 +294,16 @@ create_title_menu(Display *display, struct Popup_menu *window_menu
 }
 
 /**
-@brief    Shows the workspace menu on the screen 
+@brief    Shows the workspace menu on the screen
 @return   void
 **/
-void 
+void
 show_workspace_menu(Display *display, Window calling_widget, struct Workspace_list* workspaces
 , int index, int x, int y, struct Themes *themes) {
   int max_length = 100;
 
-  for(int i = 0; i < workspaces->used_workspaces; i++)  
-  if(workspaces->list[i].workspace_menu.width > max_length) 
+  for(int i = 0; i < workspaces->used_workspaces; i++)
+  if(workspaces->list[i].workspace_menu.width > max_length)
     max_length = workspaces->list[i].workspace_menu.width;
 
   //If this is the title menu show the title of the window that the menu appeared on in bold.
@@ -311,7 +311,7 @@ show_workspace_menu(Display *display, Window calling_widget, struct Workspace_li
     if(i == index) xcheck_raisewin(display, workspaces->list[i].workspace_menu.state[active]);
     else  xcheck_raisewin(display, workspaces->list[i].workspace_menu.state[normal]);
   }
-  
+
   //Make all the menu items the same width and height.
   for(int i = 0; i < workspaces->used_workspaces; i++) if(workspaces->list[i].workspace_menu.item) {
     //TODO menu_item_mid + lhs +rhs
@@ -322,7 +322,7 @@ show_workspace_menu(Display *display, Window calling_widget, struct Workspace_li
 
   workspaces->workspace_menu.inner_width = max_length;
   workspaces->workspace_menu.inner_height = themes->popup_menu[menu_item_mid].h * workspaces->used_workspaces;
-   
+
   resize_popup_menu(display, &workspaces->workspace_menu, themes);
 
   place_popup_menu(display, calling_widget, workspaces->workspace_menu.widgets[popup_menu_parent].widget
@@ -332,11 +332,11 @@ show_workspace_menu(Display *display, Window calling_widget, struct Workspace_li
 
 /**
 @brief    This function pops up the title menu in the titlebar or the window menu.
-          This function is also the window menu, which is done by setting the index to -1. 
+          This function is also the window menu, which is done by setting the index to -1.
 @return   void
 @param    index  the index parameter is the window which was clicked, so that it can be shown in bold.
 **/
-void 
+void
 show_title_menu(Display *display, struct Popup_menu *title_menu, Window calling_widget, struct Workspace* frames
 , int index, int x, int y, struct Themes *themes) {
   if(!frames) return;
@@ -346,10 +346,10 @@ show_title_menu(Display *display, struct Popup_menu *title_menu, Window calling_
   for(int i = 0; i < frames->used; i++)  if(frames->list[i]->menu.width > max_length) {
     max_length = frames->list[i]->menu.width;
   }
-  
+
   if(index == -1) for(int i = 0; i < frames->used; i++) {
 //TODO check that the tiled window can actually fit on the screen
-//    if(frames->list[i].mode == tiling) xcheck_raisewin(display, frames->list[i].menu.state[inactive]); 
+//    if(frames->list[i].mode == tiling) xcheck_raisewin(display, frames->list[i].menu.state[inactive]);
     xcheck_raisewin(display, frames->list[i]->menu.state[normal]);
   }
   //If this is the title menu show the title of the window that the menu appeared on in bold.
@@ -365,7 +365,7 @@ show_title_menu(Display *display, struct Popup_menu *title_menu, Window calling_
     , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[menu_item_mid].h * i);
     XResizeWindow(display, frames->list[i]->menu.item, max_length, themes->popup_menu[menu_item_mid].h);
   }
-  
+
 
   //printf("Showing title menu at %d %d\n", x,y);
 
@@ -381,19 +381,19 @@ show_title_menu(Display *display, struct Popup_menu *title_menu, Window calling_
 @brief    This function pops up the mode menu on the specified active_frame
 @return   void
 **/
-void 
+void
 show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *mode_menu
 , struct Frame *active_frame, int x, int y) {
 
-  if(active_frame->mode == floating) 
+  if(active_frame->mode == floating)
     xcheck_raisewin(display, mode_menu->items[floating].state[active]);
   else xcheck_raisewin(display, mode_menu->items[floating].state[normal]);
 
-  if(active_frame->mode == tiling) 
+  if(active_frame->mode == tiling)
     xcheck_raisewin(display, mode_menu->items[tiling].state[active]);
   else  xcheck_raisewin(display, mode_menu->items[tiling].state[normal]);
 
-  if(active_frame->mode == desktop) 
+  if(active_frame->mode == desktop)
     xcheck_raisewin(display, mode_menu->items[desktop].state[active]);
   else  xcheck_raisewin(display, mode_menu->items[desktop].state[normal]);
 
@@ -408,7 +408,7 @@ show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *mode_m
 @brief    This function resizes any popup menu based on the Popup_menu struct.
 @return   void
 **/
-void 
+void
 resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *themes) {
 
   const int width  = menu->inner_width  + themes->popup_menu[popup_l_edge].w + themes->popup_menu[popup_r_edge].w;
@@ -428,13 +428,13 @@ resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *them
     //only move or resize those which are dependent on the width.
     if(x < 0  ||  y < 0  ||  w <= 0  ||  h <= 0) {
       if(x < 0)  x += width;
-      if(y < 0)  y += height; 
+      if(y < 0)  y += height;
       if(w <= 0) w += width;
       if(h <= 0) h += height;
 
       XMoveResizeWindow(display, menu->widgets[i].widget, x, y, w, h);
     }
-  } 
+  }
 
   XFlush(display);
 }
@@ -445,22 +445,22 @@ resize_popup_menu(Display *display, struct Popup_menu *menu, struct Themes *them
           The x,y needs to be supplied because the x,y of the calling widget will be relative to its parent, not the screen.
 @return   void
 **/
-void 
+void
 place_popup_menu(Display *display, Window calling_widget, Window popup_menu, int x, int y) {
   Screen* screen = DefaultScreenOfDisplay(display);
   XWindowAttributes details;
   XWindowAttributes popup_details;
 
   XGetWindowAttributes(display, calling_widget, &details);
-  XGetWindowAttributes(display, popup_menu, &popup_details);  
-  
+  XGetWindowAttributes(display, popup_menu, &popup_details);
+
   int width  = popup_details.width;
   int height = popup_details.height;
 
   y += details.height;
 
   if(y + height > XHeightOfScreen(screen)) y = y - (details.height + height); //either side of the widget
-  if(y < 0) y = XHeightOfScreen(screen) - height;  
+  if(y < 0) y = XHeightOfScreen(screen) - height;
   if(x + width > XWidthOfScreen(screen)) x = XWidthOfScreen(screen) - width;
   //printf("width is %d\n", width);
   XMoveWindow(display, popup_menu, x, y);

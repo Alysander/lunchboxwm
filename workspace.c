@@ -57,7 +57,7 @@ ensure_empty_frame_reference_slots(struct Workspace *workspace);
 
 /**
 @brief    Find a frame with a matching menu item, (each frame has keeps track of it's correspoding window/title menu item)
-@return   index of the frame in the global frame_list if found, -1 otherwise.  
+@return   index of the frame in the global frame_list if found, -1 otherwise.
 @param    window the desired framed_window
 **/
 int
@@ -73,7 +73,7 @@ find_frame_with_menu_item_in_workspace(Window window, struct Workspace_list* wor
 
 /**
 @brief    Find a workspace with a matching menu item, (each workspace has keeps track of it's correspoding program menu item)
-@return   index of the workspace if found, -1 otherwise.  
+@return   index of the workspace if found, -1 otherwise.
 @param    window the desired framed_window
 **/
 int
@@ -86,7 +86,7 @@ find_workspace_with_menu_item(Window window, struct Workspace_list* workspaces) 
 
 /**
 @brief    Find a frame with a particular framed_window
-@return   1 if found, -1 otherwise.  
+@return   1 if found, -1 otherwise.
 @param    window the desired framed_window
 @param    i   is set to the index of the frame in the global frame_list
 **/
@@ -101,7 +101,7 @@ find_frame_with_framed_window(Window window, struct Workspace_list* workspaces) 
 
 /**
 @brief    Find a frame with a particular framed_window in a specified workspace
-@return   1 if found, -1 otherwise.  
+@return   1 if found, -1 otherwise.
 @param    window the desired framed_window
 @param    i   is set to the index of the frame in the workspaces frame list
 **/
@@ -163,15 +163,15 @@ find_frame_with_widget_in_workspace(Window key_window, struct Workspace_list* wo
 }
 
 /**
-@brief    Creates a new workspace, including separators used for stacking windows in different modes and the workspace menu item for the program menu. 
+@brief    Creates a new workspace, including separators used for stacking windows in different modes and the workspace menu item for the program menu.
 @return   the index of the created workspace
 **/
-int 
+int
 create_workspace(Display *display, struct Workspace_list* workspaces, char *workspace_name, struct Themes *themes) {
 //  Window root = DefaultRootWindow(display);
-  Screen* screen =  DefaultScreenOfDisplay(display);  
+  Screen* screen =  DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
-//  XSetWindowAttributes attributes; 
+//  XSetWindowAttributes attributes;
   struct Workspace *frames;
 
   if(workspaces->list == NULL) {
@@ -204,7 +204,7 @@ create_workspace(Display *display, struct Workspace_list* workspaces, char *work
   //attributes.cursor = cursors->normal;
   //attributes.override_redirect = True;
   //attributes.background_pixmap = ParentRelative;
-  //XChangeWindowAttributes(display, frames->virtual_desktop 
+  //XChangeWindowAttributes(display, frames->virtual_desktop
   //, CWOverrideRedirect | CWBackPixmap | CWCursor , &attributes);
   //XLowerWindow(display, frames->virtual_desktop);
 
@@ -218,7 +218,7 @@ create_workspace(Display *display, struct Workspace_list* workspaces, char *work
   , 0, black, black);
 
   XSelectInput(display, frames->workspace_menu.item,  ButtonReleaseMask | EnterWindowMask | LeaveWindowMask);
-  
+
   for(int i = 0; i <= inactive; i++) { //if(themes->popup_menu[menu_item].state_p[i])
     frames->workspace_menu.state[i] = XCreateSimpleWindow(display
     , frames->workspace_menu.item
@@ -255,23 +255,23 @@ create_workspace(Display *display, struct Workspace_list* workspaces, char *work
       load_initial_states(&frames->states[i], &workspaces->frame_list[i]);
     }
   }
-  
+
   workspaces->used_workspaces++;
   XSync(display, False);
-  
+
   return workspaces->used_workspaces - 1;
 }
 
-/**  
+/**
 @brief    This is called when the wm is exiting, it doesn't close the open windows.  It shuffles all the workspaces along to fill the gap.
 @return   void
 **/
-void 
+void
 remove_workspace(Display *display, struct Workspace_list* workspaces, int index) {
 
   assert(index < workspaces->used_workspaces);
   assert(index >= 0);
-  
+
   struct Workspace *frames = &workspaces->list[index];
 
   if(frames->list) {
@@ -302,7 +302,7 @@ remove_workspace(Display *display, struct Workspace_list* workspaces, int index)
   for(int i = index ; i < workspaces->used_workspaces; i++) workspaces->list[i] = workspaces->list[i + 1];
 }
 
-/** 
+/**
 @brief    Generates a name for the program frame the XClassHint.  The returned pointer must be freed with XFree.
 @return   A pointer to the null terminated string.
 **/
@@ -311,7 +311,7 @@ load_program_name(Display* display, Window window) {
   XClassHint program_hint;
   if(XGetClassHint(display, window, &program_hint)) {
    // printf("res_name %s, res_class %s\n", program_hint.res_name, program_hint.res_class);
-    if(program_hint.res_name != NULL) XFree(program_hint.res_name);    
+    if(program_hint.res_name != NULL) XFree(program_hint.res_name);
     if(program_hint.res_class != NULL)
       return program_hint.res_class;
   }
@@ -322,13 +322,13 @@ load_program_name(Display* display, Window window) {
 @brief    Used to generate a default name for the case when the XClassHints are not set correctly.
 @return   void
 **/
-void 
+void
 make_default_program_name(Display *display, Window window, char *name) {
   XClassHint program_hint;
   program_hint.res_name = name;
   program_hint.res_class = name;
   XSetClassHint(display, window, &program_hint);
-  XFlush(display);  
+  XFlush(display);
 }
 
 /**
@@ -394,7 +394,7 @@ ensure_empty_frame_slots(struct Workspace_list *workspaces) {
   if(workspaces->used_frames == workspaces->max_frames) {
     struct Frame* temp = realloc(workspaces->frame_list, sizeof(struct Frame) * workspaces->max_frames * 2);
     if(!temp) { perror("Error: could not reallocate frame list"); return False;}
-    
+
     //all the saved pointers in all the workspaces are now invalid.  Time to update them.
     for(int k = 0; k < workspaces->used_workspaces; k++) {
       struct Workspace *frames = &workspaces->list[k];
@@ -427,7 +427,7 @@ ensure_empty_frame_slots(struct Workspace_list *workspaces) {
 static Bool
 ensure_empty_frame_reference_slots(struct Workspace *workspace) {
   //number of references in the workspace reached.
-  if(workspace->list  
+  if(workspace->list
   &&  workspace->used == workspace->max) {
     struct Frame** temp = NULL;
     temp = realloc(workspace->list, sizeof(struct Frame*) * workspace->max * 2);
@@ -444,10 +444,10 @@ ensure_empty_frame_reference_slots(struct Workspace *workspace) {
           Indirectly creates workspaces and frames.  Gets the program name from the frame using the class hints (load_program_name).
           If the program name doesn't match the name of any workspace, creates a new workspace.
           If the workspace is new, switch to the workspace.  Try and tile the frame if its mode is tiling.
-          Decide whether to show the frame and whether to focus it. 
+          Decide whether to show the frame and whether to focus it.
 @return   the index of the workspace the frame was inserted into or -1 if an error occurred.
 **/
-int 
+int
 add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window framed_window, int *current_workspace, struct Workspace **frames
 , struct Popup_menu *window_menu
 , struct Separators *seps
@@ -455,20 +455,20 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
 
   int home_w;  //index of the home workspace of the frame
   int true_frame_index; //index of the frame in the global frame list in workspaces
-  
+
   Bool new_workspace = False;  //boolean indicator to check if a workspace was just created.
   char *program_name = load_program_name(display, framed_window);
-  
+
   if(program_name == NULL) {
     #ifdef SHOW_MAP_REQUEST_EVENT
-    printf("Warning, could not load program name for window %lu. ", framed_window);  
+    printf("Warning, could not load program name for window %lu. ", framed_window);
     printf("Creating default workspace\n");
     #endif
     make_default_program_name(display, framed_window, "Other Programs");
     program_name = load_program_name(display, framed_window);
   }
   if(program_name == NULL) {perror("Error: out of memory"); return -1;} //probably out of memory
-  
+
   for(home_w = 0; home_w < workspaces->used_workspaces; home_w++) {
     if(strcmp(program_name, workspaces->list[home_w].workspace_name) == 0) {
       XFree(program_name);
@@ -490,19 +490,19 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
     if(new_workspace) { remove_workspace(display, workspaces, home_w);  }
     return -1;
   }
- 
-  workspaces->used_frames++;   
+
+  workspaces->used_frames++;
   #ifdef SHOW_MAP_REQUEST_EVENT
   printf("Workspace %d, real frame index %d, frame_name %s, window %lu, workspace_name %s\n", home_w, true_frame_index
   , workspaces->frame_list[true_frame_index].window_name, framed_window, workspaces->list[home_w].workspace_name);
   #endif
 
   check_and_set_new_frame_focus (display, &workspaces->frame_list[true_frame_index], &workspaces->list[home_w]);
-  
+
   //check if it's neutral
   Bool show_in_other_workspaces = suitable_for_foreign_workspaces(&workspaces->frame_list[true_frame_index]);
   enum Window_state original_state = workspaces->frame_list[true_frame_index].state; //in case it is fullscreen
-  
+
   { //save state of window in home workspace and other workspaces if it's meant to be shown in other workspaces.
     //Otherwise the saved state entry will simply zero'd.
     int workspace_index = 0;
@@ -511,19 +511,19 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
       if(!show_in_other_workspaces) workspace_index = home_w; //only do one pass if we don't want to make it available
 
       workspaces->list[workspace_index].states[true_frame_index].need_to_tile = 0; //reset
-       
+
       if(workspace_index == home_w) {
         workspaces->list[workspace_index].states[true_frame_index].available = 1;
         if(workspaces->frame_list[true_frame_index].mode == tiling  &&  home_w != *current_workspace) {
-          workspaces->list[workspace_index].states[true_frame_index].need_to_tile = 1; 
+          workspaces->list[workspace_index].states[true_frame_index].need_to_tile = 1;
         }
         change_frame_state(display, &workspaces->frame_list[true_frame_index], original_state, seps, themes, atoms);
-        save_frame_state(&workspaces->list[workspace_index].states[true_frame_index], &workspaces->frame_list[true_frame_index]);   
+        save_frame_state(&workspaces->list[workspace_index].states[true_frame_index], &workspaces->frame_list[true_frame_index]);
       }
       else if (show_in_other_workspaces) {
         workspaces->list[workspace_index].states[true_frame_index].available = 2;
         change_frame_state(display, &workspaces->frame_list[true_frame_index], minimized, seps, themes, atoms);
-        save_frame_state(&workspaces->list[workspace_index].states[true_frame_index], &workspaces->frame_list[true_frame_index]);   
+        save_frame_state(&workspaces->list[workspace_index].states[true_frame_index], &workspaces->frame_list[true_frame_index]);
       }
 
       workspace_index++;
@@ -537,14 +537,14 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
     int frame_ref_index = workspace->used;
     workspace->list[frame_ref_index] = &workspaces->frame_list[true_frame_index];
     workspace->used++;
-    
+
     change_frame_state(display, &workspaces->frame_list[true_frame_index], original_state, seps, themes, atoms);
     if(workspace->list[frame_ref_index]->mode == tiling  &&  workspace->list[frame_ref_index]->state != fullscreen) {
       if(!redrop_frame(display, workspace, frame_ref_index, themes)) {
         change_frame_state(display, workspace->list[frame_ref_index], minimized, seps, themes, atoms);
       }
     }
-    #ifdef SHOW_MAP_REQUEST_EVENT      
+    #ifdef SHOW_MAP_REQUEST_EVENT
     printf("Created and mapped window in workspace %d\n", *current_workspace);
     #endif
     if(workspaces->frame_list[true_frame_index].state != minimized) XMapWindow(display, workspace->list[frame_ref_index]->widgets[frame_parent].widget);
@@ -555,11 +555,11 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
 
     update_client_list(display, &workspaces->list[*current_workspace], atoms);
   }
-    
+
   if(home_w != *current_workspace) {
     change_to_workspace(display, workspaces, current_workspace, frames, home_w, seps, themes, atoms);
   }
-  
+
   XFlush(display);
   return home_w;
 }
@@ -581,10 +581,10 @@ create_startup_workspaces(Display *display, struct Workspace_list *workspaces
 
   workspaces->frame_list = malloc(sizeof(struct Frame) * workspaces->max_frames);
   if(!workspaces->frame_list) return False;
-  
-  create_workspaces_menu(display, workspaces, themes, cursors);  
 
-  XQueryTree(display, root, &parent, &children, &windows, &windows_length);  
+  create_workspaces_menu(display, workspaces, themes, cursors);
+
+  XQueryTree(display, root, &parent, &children, &windows, &windows_length);
 
   if(windows != NULL) {
     for(unsigned int i = 0; i < windows_length; i++)  {
@@ -602,7 +602,7 @@ create_startup_workspaces(Display *display, struct Workspace_list *workspaces
 
 /**
 @pre      all parameters intitalized and allocated properly.
-@brief    This function changes the user's workspace to the workspace at the specified index.  
+@brief    This function changes the user's workspace to the workspace at the specified index.
           If a negative index is passed (This is done when the currently open workspace is removed), it changes to a default workspace which is currently 0.
           If a negative index is passed but no workspace is open nothing happens.
           Generally, it is expected that at least one workspace is open.
@@ -610,12 +610,12 @@ create_startup_workspaces(Display *display, struct Workspace_list *workspaces
 @post     The user's workspace has visibly changed.
 @return   void
 **/
-void 
+void
 change_to_workspace(Display *display, struct Workspace_list *workspaces, int *current_workspace, struct Workspace **frames, int index, struct Separators *seps, struct Themes *themes, struct Atoms *atoms) {
-  
+
   struct Workspace *workspace = &workspaces->list[*current_workspace];
   if(*current_workspace != -1) *frames = workspace;
-  
+
   struct Saved_frame_state *frame_state;
   if(workspaces->used_workspaces == 0) {
     *frames = NULL;
@@ -629,7 +629,7 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
     for(int i = 0; i < workspace->used; i++) {
       //So we can figure out where to save the frame state we need to calculate the pointer offset.
       int real_frame_index = get_offset_in_array(workspace->list[i], workspaces->frame_list, sizeof(struct Frame));
-      
+
       if(workspace->list[i]->sticky == False) {
         XUnmapWindow(display, workspace->list[i]->widgets[frame_parent].widget);
         XUnmapWindow(display, workspace->list[i]->menu.item);
@@ -644,11 +644,11 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
     workspace->used = 0;
   }
   XSync(display, False);
-  
+
   //if index is -1, change to default workspace which is 0
   if(index < 0  &&  workspaces->used_workspaces > 0) index = 0;
   *current_workspace = index;
-  
+
   workspace = &workspaces->list[*current_workspace];
   *frames = workspace;
   //XMapWindow(display, workspace->virtual_desktop);
@@ -677,7 +677,7 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
       workspace->used++;
     }
   }
-  
+
 
   for(int i = 0; i < workspaces->used_frames; i++) {
     frame_state =  &workspace->states[i];
@@ -686,7 +686,7 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
 
       int ref_index = workspace->used;
       struct Frame *frame = workspace->list[ref_index] = &workspaces->frame_list[i];
-      
+
       load_frame_state(display, frame_state, frame, seps, themes, atoms);
       if(workspace->states[i].need_to_tile) {
         if(drop_frame(display, workspace, ref_index, False, themes)) { //this should be easy as they should already be non-overlapping
@@ -702,16 +702,16 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
         if(!drop_frame(display, workspace, ref_index, True, themes)) {
           change_frame_state(display, frame, minimized, seps, themes, atoms);
           //TODO set urgency hint
-        }        
+        }
       }
       resize_frame(display, frame, themes);
       stack_frame(display, frame, seps);
-      if(frame->state != minimized) XMapWindow(display, frame->widgets[frame_parent].widget); 
+      if(frame->state != minimized) XMapWindow(display, frame->widgets[frame_parent].widget);
       XMapWindow(display, workspace->list[ref_index]->menu.item);
       workspace->used++;
     }
   }
-  update_client_list(display, workspace, atoms);  
+  update_client_list(display, workspace, atoms);
   // printf("changing focus to one in new workspace\n");
   recover_focus(display, workspace, themes, atoms);
   XFlush(display);
@@ -724,7 +724,7 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
 @todo  Stacking order is not correctly reported.
 **/
 
-void 
+void
 update_client_list(Display *display, struct Workspace *frames, struct Atoms *atoms) {
 /**
   _NET_CLIENT_LIST
@@ -735,13 +735,13 @@ update_client_list(Display *display, struct Workspace *frames, struct Atoms *ato
   These arrays contain all X Windows managed by the Window Manager
   . _NET_CLIENT_LIST has initial mapping order, starting with the oldest window
   . _NET_CLIENT_LIST_STACKING has bottom-to-top stacking order.
-   These properties SHOULD be set and updated by the Window Manager. 
-**/ 
+   These properties SHOULD be set and updated by the Window Manager.
+**/
   Window root = DefaultRootWindow(display);
   Window *windows = malloc(sizeof(Window) * frames->used);
   for(int i = 0; i < frames->used; i++) windows[i] = frames->list[i]->framed_window;
   if(!windows) { perror("Out of memory to update client list"); return;}
-  
+
   XChangeProperty(display, root, atoms->client_list, XA_WINDOW, 32, PropModeReplace, (unsigned char *)windows, frames->used);
   XChangeProperty(display, root, atoms->client_list_stacking, XA_WINDOW, 32, PropModeReplace, (unsigned char *)windows, frames->used);
   free(windows);

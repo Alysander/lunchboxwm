@@ -49,7 +49,7 @@
 @author   Alysander Stanley
 **/
 
-//int main 
+//int main
 void list_properties  (Display *display, Window window);
 void create_separators(Display *display, struct Separators *seps);
 void create_cursors   (Display *display, struct Cursors *cursors);
@@ -71,7 +71,7 @@ int done = 0;
 @pre      none
 @post     done set to non-zero
 **/
-void 
+void
 end_event_loop(int sig) {
   #ifdef SHOW_SIG
   printf("Caught signal %d\n", sig);
@@ -80,10 +80,10 @@ end_event_loop(int sig) {
   done = 1;
 }
 
-/** 
+/**
 @brief    This is set as the error handler when we try to select the substructureredirectmask on the root window.
 **/
-int 
+int
 conflicting_wm_xerror(Display *display, XErrorEvent *event) {
   (void) display;
   (void) event;
@@ -102,19 +102,19 @@ conflicting_wm_xerror(Display *display, XErrorEvent *event) {
 @pre      none
 @post     Open windows may have changed.
 **/
-int 
+int
 main (int argc, char* argv[]) {
   Display* display = NULL;
   XEvent event; /* 96 bytes per events */
   Window root;
 
-  Window pulldown = 0; //this is a sort of "pointer" window.  
+  Window pulldown = 0; //this is a sort of "pointer" window.
                    //it has the window ID of the currently open pop-up
                    //this reduces state and allows the currently open pop-up to be removed
                    //from the screen.
 
   struct Separators seps;
-  struct Menubar menubar;    
+  struct Menubar menubar;
   struct Themes *themes = NULL;
   struct Cursors cursors;
   struct Workspace_list workspaces = {.used_workspaces = 0, .max_workspaces = 16, .list = NULL, .used_frames = 0, .max_frames = 16, .frame_list = NULL};
@@ -122,7 +122,7 @@ main (int argc, char* argv[]) {
 
   struct Mode_menu mode_menu;  //this menu is created and reused for all framed windows.
   struct Popup_menu title_menu;//this menu is created and reused across workspaces and framed windows.
-  
+
   int do_click_to_focus = 0;   //used by EnterNotify and ButtonPress to determine when to set focus
                                //TODO currently requires num_lock to be off
 
@@ -130,23 +130,23 @@ main (int argc, char* argv[]) {
 
   int pointer_start_x, pointer_start_y; //used by ButtonPress and motionNotify for window movement arithmetic
   int r_edge_dx, b_edge_dy;             //used by resize_frame_grip for maintaining cursor distance from RHS and bottom edges.
-  
+
   int clicked_frame = -1;     //identifies the window being moved/resized by frame index and the frame the title menu was opened on.
   int current_workspace = -1; //determines the workspace the clicked_frame was in, if any.
   Window clicked_widget = 0;  //clicked_widget is used to determine if close buttons etc. should be activated
-  int resize_x_direction = 0; //used in motionNotify, 1 means LHS, -1 means RHS 
+  int resize_x_direction = 0; //used in motionNotify, 1 means LHS, -1 means RHS
   int resize_y_direction = 0; //used in motionNotify, 1 means top, -1 means bottom
 
   Time last_click_time = CurrentTime;  //this is used for implementing double click
   Window last_click_window = -1;       //this is used for implementing double click
 
   struct Workspace *frames = NULL;  //this is a pointer to the current_workspace. if it is NULL, there is no current workspace.
-  
+
   if(signal(SIGINT, end_event_loop) == SIG_ERR) {
     perror("\nError: Could not set the error handler\n Is this a POSIX conformant system?\n");
     return EXIT_FAILURE;
   }
-  
+
   #ifdef SHOW_WELCOME_MESSAGE
   printf("\nOpening Lunchbox using the DISPLAY environment variable\n");
   printf("This can hang if the wrong screen number is given\n");
@@ -163,17 +163,17 @@ main (int argc, char* argv[]) {
     fprintf(stderr, "Where screen_num is the correct screen number (0.0 by default)\n");
     return EXIT_FAILURE;
   }
-  
+
   #ifdef ALLOW_XLIB_DEBUG
   XSynchronize(display, True);
   #endif
-  
+
   root = DefaultRootWindow(display);
-  
-  XSetErrorHandler(conflicting_wm_xerror); //show a meaningful error message 
+
+  XSetErrorHandler(conflicting_wm_xerror); //show a meaningful error message
   XSync(display, False);
 
-  XSelectInput(display, root, SubstructureRedirectMask | ButtonMotionMask 
+  XSelectInput(display, root, SubstructureRedirectMask | ButtonMotionMask
   | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask | FocusChangeMask);
 
   XSync(display, False);
@@ -181,18 +181,18 @@ main (int argc, char* argv[]) {
   #ifdef CRASH_ON_BUG
   XSetErrorHandler(NULL);
   #else
-  XSetErrorHandler(supress_xerror);  
+  XSetErrorHandler(supress_xerror);
   #endif
 
   if(argc <= 1) themes = create_themes(display, "original");
   else themes = create_themes(display, argv[1]);
-  
+
   if(themes == NULL) {
     perror("Error: Could not load theme \"original\".\n\n");
     XCloseDisplay(display);
     return EXIT_FAILURE;
   }
-  
+
   create_cursors (display, &cursors); //load a bunch of XCursors
   create_hints(display, &atoms);      //Create EWMH hints which are atoms
   create_separators(display, &seps);
@@ -200,7 +200,7 @@ main (int argc, char* argv[]) {
   create_mode_menu(display, &mode_menu, themes, &cursors);
   create_title_menu(display, &title_menu, themes, &cursors);
   create_startup_workspaces(display, &workspaces, &current_workspace, &frames, &seps, &title_menu, themes, &cursors, &atoms);
-  
+
   change_to_workspace(display, &workspaces, &current_workspace, &frames, -1, &seps, themes, &atoms);
 
   /* Passive grab for alt+click moving windows. Mod2Mask is assumed to be numlock. */
@@ -209,9 +209,9 @@ main (int argc, char* argv[]) {
 
   XGrabButton(display, Button1, Mod1Mask, root, False, ButtonPressMask | ButtonMotionMask
   , GrabModeAsync, GrabModeAsync, None, cursors.grab);
-  
+
   XFlush(display);
-  
+
   while(!done) {
     //always look for windows that have been destroyed first
     /* Sometimes closing multiple windows (e.g., exiting GIMP) can cause BadWindows otherwise */
@@ -226,7 +226,7 @@ main (int argc, char* argv[]) {
     //Events are generated from the StructureNotifyMask on each reparented window
     /* Resets clicked_frame, pulldown and clicked_widget and uses frames to remove a frame */
     switch(event.type) {
-      case DestroyNotify:  
+      case DestroyNotify:
         #ifdef SHOW_UNMAP_NOTIFY_EVENT
         printf("Destroy window: %lu\n", (unsigned long)event.xdestroywindow.window);
         #endif
@@ -234,7 +234,7 @@ main (int argc, char* argv[]) {
         #ifdef SHOW_UNMAP_NOTIFY_EVENT
         printf("Unmapping window: %lu\n", (unsigned long)event.xunmap.window);
         #endif
-        
+
         {
           Window removed;
           if(event.type == DestroyNotify) removed = event.xdestroywindow.window;
@@ -242,7 +242,7 @@ main (int argc, char* argv[]) {
 
           int i = find_frame_with_framed_window(removed, &workspaces); //index of the frame
           int k = find_frame_with_framed_window_in_workspace(removed, &workspaces, current_workspace);
-          
+
           if(i >= 0) {
             #ifdef SHOW_UNMAP_NOTIFY_EVENT
             printf("Unmapping window %s\n", workspaces.frame_list[i].window_name);
@@ -266,25 +266,25 @@ main (int argc, char* argv[]) {
             printf("Removed frame i:%d, framed_window %lu\n", i, (unsigned long)removed);
             #endif
             if((k >= 0)
-            && frames->focus.used > 0  
+            && frames->focus.used > 0
             && frames->focus.list[frames->focus.used - 1] == frames->list[k]->framed_window) {
               remove_focus(frames->list[k]->framed_window, &frames->focus);
               unfocus_frames(display, frames);
             }
             //don't bother the focussed window if it wasn't the window being unmapped
             else if((k >= 0) && frames->focus.used > 0) remove_focus(frames->list[k]->framed_window, &frames->focus);
-            
+
             remove_frame(display, &workspaces, i, current_workspace, &atoms, themes);
             //how to establish that there are no more windows in a workspace?
             //argh! j*l
             if(k >= 0) update_client_list(display, frames, &atoms);
-            
+
             for(int j = 0; j < workspaces.used_workspaces; j++) { //go through all the workspaces and check if the removed window was the last one in that workspace
               int l = 0;
               for( ; l < workspaces.used_frames; l++) {
                 if(workspaces.list[j].states[l].available == 1) break;
               }
-              if(l == workspaces.used_frames) {    
+              if(l == workspaces.used_frames) {
                 #ifdef SHOW_UNMAP_NOTIFY_EVENT
                 printf("Removed workspace %d, name %s\n", j, workspaces.list[j].workspace_name);
                 #endif
@@ -297,7 +297,7 @@ main (int argc, char* argv[]) {
           }
         }
       break;
-      
+
       /* modifies workspaces to create a new frame*/
       case MapRequest:
         #ifdef SHOW_MAP_REQUEST_EVENT
@@ -318,8 +318,8 @@ main (int argc, char* argv[]) {
           }
         }
       break;
-            
-      /* uses grab_move, pointer_start_x, pointer_start_y, 
+
+      /* uses grab_move, pointer_start_x, pointer_start_y,
          resize_x_direction, resize_y_direction and do_click_to_focus. */
       case ButtonPress:
         if(!frames) break;
@@ -329,7 +329,7 @@ main (int argc, char* argv[]) {
         /* Ignore all button presses except for a button1 press */
         #ifdef SHOW_BUTTON_PRESS_EVENT
         printf("state is %d\n", event.xbutton.state);
-        #endif          
+        #endif
         if(event.xbutton.button != Button1  &&  !do_click_to_focus && !grab_move) {
           #ifdef SHOW_BUTTON_PRESS_EVENT
           printf("Cancelling click\n");
@@ -339,7 +339,7 @@ main (int argc, char* argv[]) {
         {
           enum Frame_widget found_widget = -1; //this is used to identify which widget has been clicked on a frame.
           int i;
-        
+
           resize_x_direction = 0;
           resize_y_direction = 0;
           if(grab_move) {
@@ -350,7 +350,7 @@ main (int argc, char* argv[]) {
               #endif
               clicked_frame = i;
               clicked_widget = 0;
-              
+
               pointer_start_x = event.xbutton.x - frames->list[i]->x;
               pointer_start_y = event.xbutton.y - frames->list[i]->y;
 
@@ -360,11 +360,11 @@ main (int argc, char* argv[]) {
             }
             break;
           }
-          
+
           if(pulldown) {
             break;  //Since the pulldown has been created, ignore button presses.  Only button releases activate menuitems.
           }
-          
+
           /* Menubar menu setup for activation */
           if(event.xbutton.window == menubar.widgets[window_menu].widget) {
             #ifdef SHOW_BUTTON_PRESS_EVENT
@@ -403,7 +403,7 @@ main (int argc, char* argv[]) {
           || found_widget == close_button_hotspot
           || found_widget == title_menu_hotspot
           || found_widget == t_edge
-          || found_widget == b_edge            
+          || found_widget == b_edge
           || found_widget == l_edge  //need to show that these have been disabled for sinking windows.
           || found_widget == r_edge
           || found_widget == tl_corner
@@ -438,8 +438,8 @@ main (int argc, char* argv[]) {
               last_click_window = event.xbutton.window;
             }
             else {  //this is the second click, reset
-              if( last_click_time   != CurrentTime  
-              &&  last_click_window == event.xbutton.window 
+              if( last_click_time   != CurrentTime
+              &&  last_click_window == event.xbutton.window
               &&  found_widget != window //ignore double click on these
               &&  event.xbutton.time - last_click_time < DOUBLE_CLICK_MILLISECONDS) {      //ignore double click on these
                 maximize_frame(display, frames, i, themes);
@@ -464,7 +464,7 @@ main (int argc, char* argv[]) {
             XGrabPointer(display,  root, True
             , PointerMotionMask | ButtonPressMask | ButtonReleaseMask
             , GrabModeAsync,  GrabModeAsync, None, cursors.grab, CurrentTime);
-  
+
             {  //we use an XQueryPointer here rather than using theme information and the event offset because the actual position of the mode menu isn't kept track of.
               Window mouse_root, mouse_child;
               int mouse_child_x, mouse_child_y;
@@ -477,7 +477,7 @@ main (int argc, char* argv[]) {
               pointer_start_y = mouse_root_y - frames->list[i]->y;
             }
             clicked_frame = i;
-            
+
             if(found_widget == mode_dropdown_hotspot) {
               #ifdef SHOW_BUTTON_PRESS_EVENT
               printf("pressed mode pulldown %lu on window %lu\n", frames->list[i]->widgets[mode_dropdown_hotspot].widget
@@ -515,19 +515,19 @@ main (int argc, char* argv[]) {
 
             clicked_widget = frames->list[i]->widgets[close_button_hotspot].widget;
             XFlush(display);
-            XSync(display, False);              
+            XSync(display, False);
             XGrabPointer(display,  root, True
             , PointerMotionMask | ButtonReleaseMask
             , GrabModeAsync,  GrabModeAsync, None, None, CurrentTime);
             XSync(display, True); //this is required in order to supress the leavenotify event from the grab window
-    
+
             #ifdef SHOW_BUTTON_PRESS_EVENT
             printf("raising window\n");
             #endif
             change_frame_widget_state(display, frames->list[i], close_button, active);
             XFlush(display);
           }
-          else 
+          else
           if(found_widget == l_edge
           || found_widget == r_edge
           || found_widget == t_edge
@@ -671,22 +671,22 @@ main (int argc, char* argv[]) {
           #endif
           int i; //index of the frame and the workspace
           enum Frame_widget found_widget = find_frame_with_widget_in_workspace(clicked_widget, &workspaces, current_workspace, &i);
-          
+
           if(found_widget == close_button_hotspot) {
 
             if(event.type == EnterNotify)
               change_frame_widget_state(display, frames->list[i], close_button, active);
-              
+
             else if (event.type == LeaveNotify)
               change_frame_widget_state(display, frames->list[i], close_button, normal);
-              
+
             XFlush(display);
           }
         }
         else if(clicked_widget  &&  current_workspace != -1  &&  pulldown) { //clicked frame checked?
           int frame_with_menu_item_index = find_frame_with_menu_item_in_workspace(event.xcrossing.window, &workspaces, current_workspace);
           int workspace_with_menu_item_index = find_workspace_with_menu_item(event.xcrossing.window, &workspaces); //index of the frame and the workspace
-          
+
           if(event.xcrossing.window == mode_menu.items[floating].item  &&  clicked_frame != -1) {
             //this prevents enter/leave notify events from being generated
             if(frames->list[clicked_frame]->mode == floating) {
@@ -753,7 +753,7 @@ main (int argc, char* argv[]) {
               }
               else {
                 hover_w = workspaces.list[workspace_with_menu_item_index].workspace_menu.state[normal_hover];
-                normal_w = workspaces.list[workspace_with_menu_item_index].workspace_menu.state[normal];                
+                normal_w = workspaces.list[workspace_with_menu_item_index].workspace_menu.state[normal];
               }
               if(event.type == EnterNotify)      xcheck_raisewin(display, hover_w);
               else if (event.type == LeaveNotify)xcheck_raisewin(display, normal_w);
@@ -819,7 +819,7 @@ main (int argc, char* argv[]) {
                 else if(event.xbutton.window == mode_menu.items[hidden].item) {
                   change_frame_state(display, frames->list[i], minimized, &seps, themes, &atoms);
                   XUnmapWindow(display, frames->list[i]->widgets[frame_parent].widget);
-                  //FOCUS    
+                  //FOCUS
                   remove_focus(frames->list[i]->framed_window, &frames->focus);
                   unfocus_frames(display, frames);
                 }
@@ -853,7 +853,7 @@ main (int argc, char* argv[]) {
               }
             }
           }
-          
+
           pulldown = 0;
           clicked_widget = 0;
           XUngrabPointer(display, CurrentTime);
@@ -862,7 +862,7 @@ main (int argc, char* argv[]) {
           break;
         }
         /*** End pulldown handling ***/
-        
+
         /*** ButtonRelease.  If no pulldown was open, try and activate a widget. ***/
         else if(clicked_widget &&  clicked_widget == event.xbutton.window) {
           if(clicked_widget == menubar.widgets[window_menu].widget ) {
@@ -953,7 +953,7 @@ main (int argc, char* argv[]) {
             #endif
             if(found_widget == close_button_hotspot) {
               change_frame_widget_state(display, frames->list[found_index], close_button, normal);
-              
+
               XFlush(display);
             }
             clicked_widget = 0;
@@ -981,7 +981,7 @@ main (int argc, char* argv[]) {
           //considering making a deadzone
           //also, if a move is large, cancel the last_click_window and last_click_time so it isn't considered a double click
           // (makes a resize flash)
-          
+
           unsigned int mask;
           //If a menu on the titlebar is dragged, cancel the menu and move the window.
           if(clicked_widget == frames->list[clicked_frame]->widgets[mode_dropdown_hotspot].widget) {  //cancel the pulldown lists opening
@@ -1059,7 +1059,7 @@ main (int argc, char* argv[]) {
 
       case ConfigureRequest:
         #ifdef SHOW_CONFIGURE_REQUEST_EVENT
-        printf("ConfigureRequest window %lu, x: %d: y: %d, w: %d, h %d, ser %lu, send %d\n", 
+        printf("ConfigureRequest window %lu, x: %d: y: %d, w: %d, h %d, ser %lu, send %d\n",
           event.xconfigurerequest.window,
           event.xconfigurerequest.x,
           event.xconfigurerequest.y,
@@ -1086,18 +1086,18 @@ main (int argc, char* argv[]) {
 
             /* TODO, should we allow programs to change their position? Probably not. */
             if(frame->type == panel) { //leads to gimp-toolbox jumpiness for that window type
-              frame->x = event.xconfigurerequest.x; 
-              frame->y = event.xconfigurerequest.y; 
+              frame->x = event.xconfigurerequest.x;
+              frame->y = event.xconfigurerequest.y;
             }
             frame->w = event.xconfigurerequest.width + frame->hspace;
             frame->h = event.xconfigurerequest.height + frame->vspace;
             if(frame->type == panel) {
               make_frame_coordinates_minmax(display, frame);
             }
-            if(k >= 0) { 
+            if(k >= 0) {
               redrop_frame(display, frames, k, themes);
             }
-            
+
             #ifdef SHOW_CONFIGURE_REQUEST_EVENT
             printf("new width %d, new height %d\n", frame->w, frame->h);
             #endif
@@ -1113,7 +1113,7 @@ main (int argc, char* argv[]) {
                   XMapWindow(display, frame->widgets[frame_parent].widget);
                   frame->state = none;
                   reset_frame_titlebar(display, frame);
-                }                 
+                }
               }
               stack_frame(display, frame, &seps);
             }
@@ -1123,7 +1123,7 @@ main (int argc, char* argv[]) {
           //frame not found in any workspace because this window hasn't been mapped yet, let it update it's size and position
           else {
             XWindowAttributes attributes;
-            XWindowChanges premap_config; 
+            XWindowChanges premap_config;
 
             #ifdef CRASH_ON_BUG
             XGrabServer(display);
@@ -1178,17 +1178,17 @@ main (int argc, char* argv[]) {
 
       break;
       case ClientMessage:
-        /*      
+        /*
           _NET_ACTIVE_WINDOW
           window  = window to activate
           message_type = _NET_ACTIVE_WINDOW
           format = 32
-          data.l[0] = source indication 
+          data.l[0] = source indication
           data.l[1] = timestamp
           data.l[2] = requestor's currently active window, 0 if none
           other data.l[] elements = 0
         */
-                
+
         #ifdef SHOW_CLIENT_MESSAGE
         printf("Client message %d\n", (int)event.xclient.message_type);
         #endif
@@ -1201,8 +1201,8 @@ main (int argc, char* argv[]) {
             recover_frame(display, frames, k, &seps, themes);
           }
         }
-  
-        
+
+
         /*  FULLSCREEN REQUEST RESPONSE
           window  = the respective client window
           message_type = _NET_WM_STATE
@@ -1212,13 +1212,13 @@ main (int argc, char* argv[]) {
           data.l[2] = second property to alter
           data.l[3] = source indication
           other data.l[] elements = 0
-          
-          _NET_WM_STATE_REMOVE        0     remove/unset property 
+
+          _NET_WM_STATE_REMOVE        0     remove/unset property
           _NET_WM_STATE_ADD           1     add/set property
-          _NET_WM_STATE_TOGGLE        2     toggle property  
+          _NET_WM_STATE_TOGGLE        2     toggle property
           ////
           There should be only one window in fullscreen as overrideredirect windows often appear.
-        */        
+        */
         if(event.xclient.message_type == atoms.wm_state) {
           #ifdef SHOW_CLIENT_MESSAGE
           printf("It is a state change\n");
@@ -1269,7 +1269,7 @@ main (int argc, char* argv[]) {
       case ReparentNotify:
       case ConfigureNotify:
         #ifdef SHOW_CONFIGURE_NOTIFY_EVENT
-        printf("ConfigureNotify window %lu, x: %d, y %d, w: %d, h %d, ser %lu, send %d\n", 
+        printf("ConfigureNotify window %lu, x: %d, y %d, w: %d, h %d, ser %lu, send %d\n",
           event.xconfigure.window,
           event.xconfigure.x,
           event.xconfigure.y,
@@ -1294,7 +1294,7 @@ main (int argc, char* argv[]) {
   //when shutting down and restarting this is required for XGrabButton to be successful
   XUngrabButton(display, AnyButton, AnyModifier, root);
   XUngrabPointer(display, CurrentTime);
-  
+
   while( workspaces.used_workspaces > 0 ) remove_workspace(display, &workspaces, workspaces.used_workspaces - 1);
   free(workspaces.list);
   for(int k = workspaces.used_frames - 1; k >= 0; k--) remove_frame(display, &workspaces, k, -1, &atoms, themes);
@@ -1302,7 +1302,7 @@ main (int argc, char* argv[]) {
   free_cursors(display, &cursors);
 
   remove_themes(display,themes);
-  
+
   /* This will close all open windows, but not free any dangling pixmaps. Valgrind won't notice any leaked pixmaps as they are in another address space. */
   XCloseDisplay(display);
 
@@ -1322,7 +1322,7 @@ main (int argc, char* argv[]) {
 @pre      seps is not null
 @post     seps is valid
 **/
-void 
+void
 create_separators(Display *display, struct Separators *seps) {
   XSetWindowAttributes set_attributes;
   Window root = DefaultRootWindow(display);
@@ -1336,17 +1336,17 @@ create_separators(Display *display, struct Separators *seps) {
   , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
   seps->panel_separator = XCreateWindow(display, root, 0, 0
   , XWidthOfScreen(screen), XHeightOfScreen(screen), 0, CopyFromParent, InputOnly, CopyFromParent, 0, NULL);
-  
+
   set_attributes.override_redirect = True;
   XChangeWindowAttributes(display, seps->sinking_separator, CWOverrideRedirect,  &set_attributes);
   XChangeWindowAttributes(display, seps->tiling_separator, CWOverrideRedirect,   &set_attributes);
   XChangeWindowAttributes(display, seps->floating_separator, CWOverrideRedirect, &set_attributes);
-  XChangeWindowAttributes(display, seps->panel_separator, CWOverrideRedirect,    &set_attributes);  
+  XChangeWindowAttributes(display, seps->panel_separator, CWOverrideRedirect,    &set_attributes);
 
   XRaiseWindow(display, seps->sinking_separator);
   XRaiseWindow(display, seps->tiling_separator);
   XRaiseWindow(display, seps->floating_separator);
-  XRaiseWindow(display, seps->panel_separator); 
+  XRaiseWindow(display, seps->panel_separator);
   XFlush(display);
 }
 
@@ -1360,7 +1360,7 @@ create_separators(Display *display, struct Separators *seps) {
 @pre      Cursors is not null
 @post     Curosrs is valid.
 **/
-void 
+void
 create_cursors (Display *display, struct Cursors *cursors) {
   cursors->normal       = XcursorLibraryLoadCursor(display, "left_ptr");
   cursors->pressable    = XcursorLibraryLoadCursor(display, "hand2");
@@ -1385,7 +1385,7 @@ create_cursors (Display *display, struct Cursors *cursors) {
 @pre      cursors has been loaded
 @post     cursors have been freed and can no longer be used to define cursors for different X windows.
 **/
-void 
+void
 free_cursors (Display *display, struct Cursors *cursors) {
   XFreeCursor(display, cursors->normal);
   XFreeCursor(display, cursors->pressable);
@@ -1408,7 +1408,7 @@ free_cursors (Display *display, struct Cursors *cursors) {
 @pre      Window is valid, connection is valid.
 @post     All propertiy names printed to stdout.
 **/
-void 
+void
 list_properties(Display *display, Window window) {
   int total = 0;
   Atom *list = XListProperties(display, window, &total);
@@ -1416,8 +1416,8 @@ list_properties(Display *display, Window window) {
   for(int i = 0; i < total; i++) {
     name = NULL;
     name = XGetAtomName(display, list[i]);
-    if(name != NULL) { 
-      printf("Property: %s\n", name);  
+    if(name != NULL) {
+      printf("Property: %s\n", name);
       XFree(name);
     }
   }
@@ -1425,7 +1425,7 @@ list_properties(Display *display, Window window) {
 }
 
 /**
-@brief    Gets the atoms that are used to identify hints for both the ICCCM and EWMH standards.  Sets 
+@brief    Gets the atoms that are used to identify hints for both the ICCCM and EWMH standards.  Sets
 @return   void
 
 @param    display  The currently open X11 connection.
@@ -1436,7 +1436,7 @@ list_properties(Display *display, Window window) {
 
 @note When changing supported hints here, also update Atoms struct (and add/remove members as required)
 **/
-void 
+void
 create_hints (Display *display, struct Atoms *atoms) {
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
@@ -1445,8 +1445,8 @@ create_hints (Display *display, struct Atoms *atoms) {
   int number_of_atoms = 0;
   static int desktops = 1;
   static int current_desktop = 0;
-  static int showing = 1; 
-  
+  static int showing = 1;
+
   static int32_t viewport[2] = {0, 0};
   int32_t desktop_geometry[2] = {XWidthOfScreen(screen), XHeightOfScreen(screen)};
   int32_t workarea[4] = {0, 0, XWidthOfScreen(screen), XHeightOfScreen(screen)};
@@ -1487,7 +1487,7 @@ create_hints (Display *display, struct Atoms *atoms) {
 
   //list all ewmh hints supported.
   XChangeProperty(display, root, atoms->supported, XA_ATOM, 32, PropModeReplace, (unsigned char *)ewmh_atoms, number_of_atoms);
-    
+
   //this is a type
   atoms->utf8 = XInternAtom(display, "UTF8_STRING", False);
 
@@ -1499,7 +1499,7 @@ create_hints (Display *display, struct Atoms *atoms) {
   XChangeProperty(display, root, atoms->desktop_geometry, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)desktop_geometry, 2);
   XChangeProperty(display, root, atoms->desktop_viewport, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)viewport, 2);
   XChangeProperty(display, root, atoms->workarea, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)workarea, 4);
-  
+
   //list_properties(display, root);
-  
+
 }

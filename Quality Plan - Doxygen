@@ -1,4 +1,4 @@
-Header 
+Header
 
 /**
 @file     main.c
@@ -8,17 +8,17 @@ Header
 
 
 /**
-@brief 
+@brief
 **/
 A variable or structure.
 
 /**
-@brief    
-@return   
+@brief
+@return
 
-@param    
+@param
 
-@pre      
-@post     
+@pre
+@post
 **/
 A function

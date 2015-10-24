@@ -32,7 +32,7 @@ Application Window Properties
     _NET_WM_WINDOW_TYPE         yes
         _NET_WM_WINDOW_TYPE_DESKTOP, ATOM        not yet
         _NET_WM_WINDOW_TYPE_DOCK, ATOM           maybe
-        _NET_WM_WINDOW_TYPE_TOOLBAR, ATOM  (torn offs) maybe   
+        _NET_WM_WINDOW_TYPE_TOOLBAR, ATOM  (torn offs) maybe
         _NET_WM_WINDOW_TYPE_MENU, ATOM     (torn offs) maybe
         _NET_WM_WINDOW_TYPE_UTILITY, ATOM        not yet
         _NET_WM_WINDOW_TYPE_SPLASH, ATOM         not yet
@@ -44,7 +44,7 @@ Application Window Properties
         _NET_WM_WINDOW_TYPE_COMBO, ATOM          no
         _NET_WM_WINDOW_TYPE_DND, ATOM            no
         _NET_WM_WINDOW_TYPE_NORMAL, ATOM         not yet
-      
+
     _NET_WM_STATE
         _NET_WM_STATE_MODAL, ATOM              not yet
         _NET_WM_STATE_STICKY, ATOM             not yet
@@ -58,7 +58,7 @@ Application Window Properties
         _NET_WM_STATE_ABOVE, ATOM              not yet (floating/rise)
         _NET_WM_STATE_BELOW, ATOM              not yet (sinking/sink)
         _NET_WM_STATE_DEMANDS_ATTENTION, ATOM  not yet
-                           
+
     _NET_WM_ALLOWED_ACTIONS     maybe
     _NET_WM_STRUT               not yet
     _NET_WM_STRUT_PARTIAL       not yet
@@ -67,7 +67,7 @@ Application Window Properties
     _NET_WM_PID                 not yet
     _NET_WM_HANDLED_ICONS       maybe
     _NET_WM_USER_TIME           not yet
-    _NET_WM_USER_TIME_WINDOW    not yet 
+    _NET_WM_USER_TIME_WINDOW    not yet
     _NET_FRAME_EXTENTS          not yet
 
 Window Manager Protocols

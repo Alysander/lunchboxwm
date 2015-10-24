@@ -35,7 +35,7 @@
 /**** Configure behaviour *****/
 
 /* This is an old hint which is considered obsolete by the ICCCM. */
-//  #define ALLOW_POSITION_HINTS 
+//  #define ALLOW_POSITION_HINTS
 
 /* Allows synchronized xlib calls - useful when debugging */
 //  #define ALLOW_XLIB_DEBUG

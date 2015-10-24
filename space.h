@@ -18,7 +18,7 @@ struct Rectangle {
 
 struct Rectangle_list {
   unsigned int used, max;
-  struct Rectangle *list;  
+  struct Rectangle *list;
 };
 
 void add_rectangle                             (struct Rectangle_list *list, struct Rectangle new);

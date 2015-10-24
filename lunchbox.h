@@ -4,7 +4,7 @@
 
 #define M_PI 3.14159265359
 
-#define M_DOUBLE_MAX 1.7e+308 
+#define M_DOUBLE_MAX 1.7e+308
 
 #define MAX_WM_NAME_LENGTH 200
 #define PIXMAP_SIZE 16
@@ -37,7 +37,7 @@ enum Menubar_widget {
   links_menu,
   tool_menu,
   menubar_parent      /* menubar_parent must be last      */
-}; 
+};
 
 enum Popup_menu_widget {
   menu_item_lhs,
@@ -50,7 +50,7 @@ enum Popup_menu_widget {
   popup_tl_corner,
   popup_tr_corner,
   popup_bl_corner,
-  popup_br_corner,    
+  popup_br_corner,
   popup_menu_parent /* popup_menu_parent must be last */
 };
 
@@ -66,7 +66,7 @@ enum Frame_widget {
   bl_corner,
   br_corner,
   selection_indicator,
-  selection_indicator_hotspot,  
+  selection_indicator_hotspot,
   title_menu_lhs,
   title_menu_icon,
   title_menu_text,   //fill -- must be before rhs and hotspot for minimum size in resize frame
@@ -98,7 +98,7 @@ enum Window_state {
   none,
   fullscreen,
   minimized
-  //lurking,       /* The lurking state will be used when the window attemps to tile and fails*/  
+  //lurking,       /* The lurking state will be used when the window attemps to tile and fails*/
 };
 
 /**
@@ -130,7 +130,7 @@ enum Widget_state {
   normal, /**< Normal State**/
   active, /**< Pressed/checked/chosen item **/
   normal_hover, /**< for when the pointer is above a normal widget **/
-  active_hover, /**< for when the pointer is above an activated widget **/ 
+  active_hover, /**< for when the pointer is above an activated widget **/
   normal_focussed,  /**< for when a normal widget is focussed **/
   active_focussed,  /**< for when an activated widget is focussed **/
   normal_focussed_hover, /**< for when a normal widget is focussed and has a pointer above it **/
@@ -159,7 +159,7 @@ struct Font_theme {
 };
 
 struct Themes { //these are all individually malloc'd, and window type is an array of malloc'd arrays
-  struct Widget_theme *window_type[system_program + 1]; 
+  struct Widget_theme *window_type[system_program + 1];
   struct Widget_theme *menubar;
   struct Widget_theme *popup_menu;
   struct Font_theme font_theme[inactive + 1];
@@ -209,11 +209,11 @@ struct Frame {
     int x,y,w,h;
     enum Window_mode mode;
   } initial_state;  /**< stores the starting values for the window so that when it is made available in another workspace it has meaningful defaults. **/
-  
+
   enum Window_mode mode;  /**< the stacking mode. **/
-  
+
   int frame_hspace, frame_vspace;  /**< amount used by the frame theme **/
-  enum Window_type type;     
+  enum Window_type type;
   enum Window_type theme_type;  /**< this is used in case the theme is actually from a different window type **/
   enum Window_state state;      /**< currently fullscreen, minimized or none **/
   Bool focussed;
@@ -272,9 +272,9 @@ struct Workspace {
   struct Saved_frame_state* states; /**< should always be the same size as the global framelist **/
 
   char *workspace_name; /**< UTF8 formatted name, but probably non latin characters won't be outputted correctly **/
-  
+
   struct Menu_item workspace_menu; /**< this the workspaces menu item **/
-  
+
   //Window virtual_desktop; /**< The background of this is the same as the root, so it's an easy way to get the root to redraw by mapping and unmapping this **/
 };
 
@@ -285,8 +285,8 @@ struct Workspace_list {
   int used_workspaces, max_workspaces; /**< number of used_workspaces and number of allocated slots for workspaces. This must be an int because index may initially be set as -1 **/
   struct Workspace* list; /**< contains all the workspace structures **/
   struct Popup_menu workspace_menu; /**< the workspace menu contains the list of open programs **/
-  
-  int used_frames, max_frames;  /**< number of used frames and number of allocated slots for frames **/  
+
+  int used_frames, max_frames;  /**< number of used frames and number of allocated slots for frames **/
   struct Frame* frame_list; /**< frame_list contains all the frames structures **/
 };
 
@@ -327,15 +327,15 @@ struct Atoms {
   , wm_window_type_utility     /** "_NET_WM_WINDOW_TYPE_UTILITY" //can be transient  **/
   , wm_strut_partial
   , wm_state                   /** "_NET_WM_STATE"   **/
-  , wm_state_above             /** "_NET_WM_STATE_ABOVE"   **/  
+  , wm_state_above             /** "_NET_WM_STATE_ABOVE"   **/
   , wm_state_below             /** "_NET_WM_STATE_ABOVE"   **/
   , wm_state_hidden            /** "_NET_WM_STATE_HIDDEN"   **/
   , wm_state_demands_attention /** "_NET_WM_STATE_DEMANDS_ATTENTION"   **/
   , wm_state_modal             /** "_NET_WM_STATE_MODAL"  //can be transient - for the specified window   **/
   , wm_state_fullscreen;       /** "_NET_WM_STATE_FULLSCREEN"  **/
-  //make sure this comes last  
+  //make sure this comes last
 
   Atom supported;                  /** "_NET_SUPPORTED"  **/
   //this is a type
-  Atom utf8; 
+  Atom utf8;
 };
