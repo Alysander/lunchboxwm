@@ -4,7 +4,7 @@
 
 #define M_PI 3.14159265359
 
-#define M_DOUBLE_MAX 1.7e+308 
+#define M_DOUBLE_MAX 1.7e+308
 
 #define MAX_WM_NAME_LENGTH 200
 #define PIXMAP_SIZE 16
@@ -30,7 +30,7 @@ enum Menubar_widget {
   links_menu,
   tool_menu,
   menubar_parent      /* menubar_parent must be last      */
-}; 
+};
 
 enum Popup_menu_widget {
   menu_item_lhs,
@@ -43,7 +43,7 @@ enum Popup_menu_widget {
   popup_tl_corner,
   popup_tr_corner,
   popup_bl_corner,
-  popup_br_corner,    
+  popup_br_corner,
   popup_menu_parent /* popup_menu_parent must be last */
 };
 
@@ -59,7 +59,7 @@ enum Frame_widget {
   bl_corner,
   br_corner,
   selection_indicator,
-  selection_indicator_hotspot,  
+  selection_indicator_hotspot,
   title_menu_lhs,
   title_menu_icon,
   title_menu_text,   //fill -- must be before rhs and hotspot for minimum size in resize frame
@@ -91,7 +91,7 @@ enum Window_state {
   fullscreen,
   demands_attention,
 
-  //lurking,       /* The lurking state is used when the window attemps to tile and fails*/  
+  //lurking,       /* The lurking state will be used when the window attemps to tile and fails*/
   none
 };
 
@@ -99,10 +99,10 @@ enum Window_type {
   unknown,
   file,
   program,
-  dialog,  
+  dialog,
   modal_dialog,
   utility,
-  status, 
+  status,
   system_program, /* must be last, items following this will not be included in themes */
   splash, //this is ignored in the themes as splash screens are not managed
   panel   //this is ignored in the themes as splash screens are not managed
@@ -120,9 +120,9 @@ enum Window_type {
 
 enum Widget_state {
   normal,
-  active,  
+  active,
   normal_hover,
-  active_hover,  
+  active_hover,
   normal_focussed,
   active_focussed,
   normal_focussed_hover,
@@ -153,7 +153,7 @@ struct Font_theme {
 };
 
 struct Themes { //these are all individually malloc'd, and window type is an array of malloc'd arrays
-  struct Widget_theme *window_type[system_program + 1]; 
+  struct Widget_theme *window_type[system_program + 1];
   struct Widget_theme *menubar;
   struct Widget_theme *popup_menu;
   struct Font_theme font_theme[inactive + 1];
@@ -195,8 +195,9 @@ struct Frame {
   char *window_name;
 
   int x,y,w,h;
-  int frame_hspace, frame_vspace; //amount used by the frame theme
   enum Window_mode mode;
+
+  int frame_hspace, frame_vspace; //amount used by the frame theme
   enum Window_type type;
   enum Window_type theme_type; //this is used in case the theme is actually from a different window type
   enum Window_state state;
@@ -209,7 +210,7 @@ struct Frame {
   int height_inc; //increments for incremental resize
   int w_inc_offset;
   int h_inc_offset;
-  
+
   Window transient; //the calling window of this dialog box - not structural
 
   Window framed_window; //the window which is reparented.
@@ -233,11 +234,11 @@ struct Frame_list {
   int used, max;
   struct Frame* list; //2d array = 1d array of pointers
   struct Focus_list focus;
-  
+
   char *workspace_name;
-  
+
   struct Menu_item workspace_menu; //this is a menu item
-  
+
   Window virtual_desktop;
 };
 
@@ -252,13 +253,13 @@ struct Cursors {
 };
 
 
-struct Atoms {    
+struct Atoms {
   Atom name                    // "WM_NAME"
   , normal_hints               // "WM_NORMAL_HINTS"
 
   //make sure this is the first Extended window manager hint
   , supported                  // "_NET_SUPPORTED"
-  , supporting_wm_check        // "_NET_SUPPORTING_WM_CHECK"    
+  , supporting_wm_check        // "_NET_SUPPORTING_WM_CHECK"
   , number_of_desktops         // "_NET_NUMBER_OF_DESKTOPS" //always 1
   , desktop_geometry           // "_NET_DESKTOP_GEOMETRY" //this is currently the same size as the screen
   , workarea                   // "_NET_WORKAREA" //this will be minus the menubar at the bottom of the screen - added because absense causes a netbook-launcher divide by 0 exception
@@ -268,16 +269,16 @@ struct Atoms {
   , wm_window_type             // "_NET_WM_WINDOW_TYPE"
   , wm_window_type_normal      // "_NET_WM_WINDOW_TYPE_NORMAL"
   , wm_window_type_dock        // "_NET_WM_WINDOW_TYPE_DOCK"
-  , wm_window_type_desktop     // "_NET_WM_WINDOW_TYPE_DESKTOP"  
-  , wm_window_type_splash      // "_NET_WM_WINDOW_TYPE_SPLASH"  
+  , wm_window_type_desktop     // "_NET_WM_WINDOW_TYPE_DESKTOP"
+  , wm_window_type_splash      // "_NET_WM_WINDOW_TYPE_SPLASH"
   , wm_window_type_dialog      // "_NET_WM_WINDOW_TYPE_DIALOG"  //can be transient
   , wm_window_type_utility     // "_NET_WM_WINDOW_TYPE_UTILITY" //can be transient
   , wm_state                   // "_NET_WM_STATE"
   , wm_state_demands_attention // "_NET_WM_STATE_DEMANDS_ATTENTION"
   , wm_state_modal             // "_NET_WM_STATE_MODAL"  //can be transient - for the specified window
   , wm_state_fullscreen;       // "_NET_WM_STATE_FULLSCREEN"
-  //make sure this comes last  
+  //make sure this comes last
 
   //this is a type
-  Atom utf8; 
+  Atom utf8;
 };
