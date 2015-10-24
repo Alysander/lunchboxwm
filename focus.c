@@ -99,15 +99,20 @@ void remove_focus(Window old, struct Focus_list* focus) {
 }
 
 /**
-@brief Determines if newly created windows should get focussed automatically. This is the case if no windows are currently focussed or if it is a transient window and its parent is focussed.  Caller then checks if the frame structure   has the "selected" member set to 1. this doesn't actually focus the window in case it is in the wrong workspace the caller must determine that and then run recover focus.
+@brief Determines if newly created windows should get focussed automatically.
+       This is the case if no windows are currently focussed or if it is a transient window and its parent is focussed.
+       Caller then checks if the frame structure   has the "selected" member set to 1. 
+       This doesn't actually focus the window in case it is in the wrong workspace the caller must determine that and then run recover focus.
+@return void
 **/
-void check_new_frame_focus (Display *display, struct Frame_list *frames, int index) {
-  struct Frame *frame = &frames->list[index];
+void check_and_set_new_frame_focus (Display *display, struct Frame *frame, struct Workspace *frames) {
   int set_focus = 0;
-  
+
+  if(frame->type == panel) return; /* TODO use hints to establish whether it is focussable */
+    
   if(frames->focus.used == 0) set_focus=1;
-  else 
-  if(frames->focus.used > 0  
+  else if(frames->focus.used > 0  
+  && frames->focus.list 
   && frame->transient == frames->focus.list[frames->focus.used - 1]) { //parent has focus
     unfocus_frames(display, frames); //make frames look normal
     set_focus=1;
@@ -115,8 +120,10 @@ void check_new_frame_focus (Display *display, struct Frame_list *frames, int ind
   
   if(set_focus) {
     add_focus(frame->framed_window, &frames->focus);
-    frame->selected = 1;    
-    xcheck_raisewin(display, frames->list[index].widgets[selection_indicator].state[active]);
+    frame->focussed = True;    
+    for(int widget_index = 0; widget_index <= frame_parent; widget_index++) {
+      change_frame_widget_state(display, frame, widget_index, normal);
+    }
     XFlush(display);
   }
 }
@@ -127,42 +134,49 @@ void check_new_frame_focus (Display *display, struct Frame_list *frames, int ind
 @brief Resets the appearance of all the frames. Used when changing the focussed window.
 @return void
 **/
-void unfocus_frames(Display *display, struct Frame_list *frames) {
-  for(int i = 0; i < frames->used; i++) 
-  if(frames->list[i].selected) {
-    frames->list[i].selected = 0;
-    xcheck_raisewin(display, frames->list[i].widgets[selection_indicator].state[normal]);
-    XFlush(display);
+void unfocus_frames(Display *display, struct Workspace *frames) {
+  if(!frames->list) return;
+  for(int i = 0; i < frames->used; i++) {
+    if(frames->list[i]->focussed) {
+      frames->list[i]->focussed = False;
+      for(int widget_index = 0; widget_index <= frame_parent; widget_index++) {
+        change_frame_widget_state(display, frames->list[i], widget_index, normal);
+      }
+      XFlush(display);
+    }
   }
 }
 
 /**
-@brief After a focused window is closed, use this function to set the focus to another window. It actually does set the focus using XSetInputFocus. 
+@brief After a focussed window is closed, use this function to set the focus to another window. It actually does set the focus using XSetInputFocus. 
+@return void
 **/  
-//So it turns out that if selection indicators are present this introduces a linear behaviour
-//rather than a constant time one.  The alternative would be to always keep the frame list
-//in focus order, but copying around reasonably large structs seems more expensive than
-//zipping through them once in a while.
-void recover_focus(Display *display, struct Frame_list *frames, struct Themes *themes) {
+
+void recover_focus(Display *display, struct Workspace *frames, struct Themes *themes, struct Atoms *atoms) {
+  Window root = DefaultRootWindow(display);
   if(frames->focus.used == 0) return;
   //printf("Recovering focus\n");
-  for(int i = frames->used - 1; i >= 0; i--) 
-  if(frames->list[i].framed_window == frames->focus.list[frames->focus.used - 1]) {
-    //_NET_ACTIVE_WINDOW
-    #ifdef CRASH_ON_BUG
-    XGrabServer(display);
-    XSetErrorHandler(supress_xerror);
-    #endif
-    //seems excessive but closing windows can cause bad window errors
-    XSetInputFocus(display, frames->list[i].framed_window, RevertToPointerRoot, CurrentTime);
-    #ifdef CRASH_ON_BUG
-    XSync(display, False);
-    XSetErrorHandler(NULL);    
-    XUngrabServer(display);
-    #endif
-    XFlush(display);
-    frames->list[i].selected = 1;
-    change_frame_mode(display, &frames->list[i], frames->list[i].mode, themes);
-    break;
+  for(int i = frames->used - 1; i >= 0; i--) { 
+    if(frames->list[i]->framed_window == frames->focus.list[frames->focus.used - 1]) {
+      //_NET_ACTIVE_WINDOW
+      #ifdef CRASH_ON_BUG
+      XGrabServer(display);
+      XSetErrorHandler(supress_xerror);
+      #endif
+      //seems excessive but closing windows can cause bad window errors
+      XSetInputFocus(display, frames->list[i]->framed_window, RevertToPointerRoot, CurrentTime);
+      XChangeProperty(display, root, atoms->active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&frames->list[i]->framed_window, 1);
+      #ifdef CRASH_ON_BUG
+      XSync(display, False);
+      XSetErrorHandler(NULL);    
+      XUngrabServer(display);
+      #endif
+      XFlush(display);
+      frames->list[i]->focussed = True;
+      for(int widget_index = 0; widget_index <= frame_parent; widget_index++) {
+        change_frame_widget_state(display, frames->list[i], widget_index, normal);
+      }
+      break;
+    }
   }
 }
