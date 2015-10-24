@@ -5,13 +5,8 @@ LDFLAGS+=-lX11 -lXcursor -lXext -lcairo
 CFLAGS= -g -Wall -Wextra -pedantic -std=c99 `pkg-config --cflags cairo`
 OBJS=bin/
 COMPILE=${CC} ${CFLAGS} -c $< -o $@
-# Some variables useful for building debian packages
-VERSION=0.5
-#remember to change the version in the debian changelog as well.
 bindir=/usr/bin
 datadir=/usr/local
-
-#make runs the first one by default
 
 all:folder lunchbox
 folder:
@@ -49,21 +44,11 @@ ${OBJS}util.o: util.c  *.h
 clean:
 	rm -f ${OBJS}*.o
 
+#This install rule only installs a .desktop file
+#which allows most login managagers to show a different session.
 install:
-	mkdir -p $(DESTDIR)$(datadir)/lunchbox
-	cp -r themes $(DESTDIR)$(datadir)/lunchbox
-	#Allow anyone to read the themes
-	chmod -R a+r $(DESTDIR)$(datadir)/lunchbox
-	chmod -R a+X $(DESTDIR)$(datadir)/lunchbox
 	mkdir -p $(DESTDIR)/usr/share/xsessions
 	cp -r ./lunchbox.desktop $(DESTDIR)/usr/share/xsessions
-	cp lunchbox $(DESTDIR)$(bindir)
 
 uninstall:
-	rm -f $(DESTDIR)$(bindir)/lunchbox
-	rm -Rf $(DESTDIR)$(datadir)/lunchbox/themes
 	rm -f $(DESTDIR)/usr/share/xsessions/lunchbox.desktop
-
-distprep:
-	make clean
-	tar cvzf lunchbox-${VERSION}.tgz *.c *.h lunchbox gpl-3.0.txt lunchbox.desktop TODO EWMH_SUPPORT PLAN INSTALL Makefile themes bin debian
