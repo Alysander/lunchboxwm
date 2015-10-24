@@ -37,7 +37,7 @@
 
 
 /**
-@pre      display is valid, themes is valid, cursors is valid.
+@pre      display is valid, menubar is not null but not initialized, seps is valid, themes is valid, cursors is valid.
 @post     Menubar created and mapped.
 @brief    This function uses the menubar member of the themes pointer to generate all the windows 
           that comprise the menubar with appropriate pixmap backgrounds.
@@ -136,7 +136,6 @@ create_menubar(Display *display, struct Menubar *menubar, struct Separators *sep
 /**
 @pre      display is valid, themes is valid, cursors is valid.
 @pre      all widgets are zero'd.
-@pre      inner_width and inner_height members of menu are initialized to a nonzero value.
 @pre      themes is valid and has loaded at least a background for the popup_menu_parent. 
 @post     Menu with borders and background but no items is created but not mapped.
 @brief    This function is used to create a blank and generic menu.  Items must be added by caller.
@@ -303,18 +302,18 @@ show_workspace_menu(Display *display, Window calling_widget, struct Workspace_li
 , int index, int x, int y, struct Themes *themes) {
   int max_length = 100;
 
-  for(int i = 0; i < workspaces->used; i++)  
+  for(int i = 0; i < workspaces->used_workspaces; i++)  
   if(workspaces->list[i].workspace_menu.width > max_length) 
     max_length = workspaces->list[i].workspace_menu.width;
 
   //If this is the title menu show the title of the window that the menu appeared on in bold.
-  for(int i = 0; i < workspaces->used; i++) {
+  for(int i = 0; i < workspaces->used_workspaces; i++) {
     if(i == index) xcheck_raisewin(display, workspaces->list[i].workspace_menu.state[active]);
     else  xcheck_raisewin(display, workspaces->list[i].workspace_menu.state[normal]);
   }
   
   //Make all the menu items the same width and height.
-  for(int i = 0; i < workspaces->used; i++) if(workspaces->list[i].workspace_menu.item) {
+  for(int i = 0; i < workspaces->used_workspaces; i++) if(workspaces->list[i].workspace_menu.item) {
     //TODO menu_item_mid + lhs +rhs
     XMoveWindow(display,  workspaces->list[i].workspace_menu.item
     , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[menu_item_mid].h * i);
@@ -322,7 +321,7 @@ show_workspace_menu(Display *display, Window calling_widget, struct Workspace_li
   }
 
   workspaces->workspace_menu.inner_width = max_length;
-  workspaces->workspace_menu.inner_height = themes->popup_menu[menu_item_mid].h * workspaces->used;
+  workspaces->workspace_menu.inner_height = themes->popup_menu[menu_item_mid].h * workspaces->used_workspaces;
    
   resize_popup_menu(display, &workspaces->workspace_menu, themes);
 
@@ -338,33 +337,33 @@ show_workspace_menu(Display *display, Window calling_widget, struct Workspace_li
 @param    index  the index parameter is the window which was clicked, so that it can be shown in bold.
 **/
 void 
-show_title_menu(Display *display, struct Popup_menu *title_menu, Window calling_widget, struct Frame_list* frames
+show_title_menu(Display *display, struct Popup_menu *title_menu, Window calling_widget, struct Workspace* frames
 , int index, int x, int y, struct Themes *themes) {
-
+  if(!frames) return;
   //TODO this does not consider what to do if a window is created when the menu is open
   int max_length = DEFAULT_MENU_ITEM_WIDTH;
 
-  for(int i = 0; i < frames->used; i++)  if(frames->list[i].menu.width > max_length) {
-    max_length = frames->list[i].menu.width;
+  for(int i = 0; i < frames->used; i++)  if(frames->list[i]->menu.width > max_length) {
+    max_length = frames->list[i]->menu.width;
   }
   
   if(index == -1) for(int i = 0; i < frames->used; i++) {
 //TODO check that the tiled window can actually fit on the screen
 //    if(frames->list[i].mode == tiling) xcheck_raisewin(display, frames->list[i].menu.state[inactive]); 
-    xcheck_raisewin(display, frames->list[i].menu.state[normal]);
+    xcheck_raisewin(display, frames->list[i]->menu.state[normal]);
   }
   //If this is the title menu show the title of the window that the menu appeared on in bold.
   else for(int i = 0; i < frames->used; i++) {
-    if(i == index) xcheck_raisewin(display, frames->list[i].menu.state[active]);
-    else xcheck_raisewin(display, frames->list[i].menu.state[normal]);
+    if(i == index) xcheck_raisewin(display, frames->list[i]->menu.state[active]);
+    else xcheck_raisewin(display, frames->list[i]->menu.state[normal]);
   }
 
   //Make all the menu items the same width and height.
 
   for(int i = 0; i < frames->used; i++) {
-    XMoveWindow(display, frames->list[i].menu.item
+    XMoveWindow(display, frames->list[i]->menu.item
     , themes->popup_menu[popup_l_edge].w, themes->popup_menu[popup_t_edge].h + themes->popup_menu[menu_item_mid].h * i);
-    XResizeWindow(display, frames->list[i].menu.item, max_length, themes->popup_menu[menu_item_mid].h);
+    XResizeWindow(display, frames->list[i]->menu.item, max_length, themes->popup_menu[menu_item_mid].h);
   }
   
 
@@ -386,7 +385,6 @@ void
 show_mode_menu(Display *display, Window calling_widget, struct Mode_menu *mode_menu
 , struct Frame *active_frame, int x, int y) {
 
-  //printf("Showing mode mode\n");
   if(active_frame->mode == floating) 
     xcheck_raisewin(display, mode_menu->items[floating].state[active]);
   else xcheck_raisewin(display, mode_menu->items[floating].state[normal]);
