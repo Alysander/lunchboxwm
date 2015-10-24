@@ -37,11 +37,12 @@
 @param    display  The currently open X11 connection.
 @param    frames   All the currently open frames - used to establish the currently occupied spaces.
 @param    themes   the current theme.
+@param    only_panels  Only consider tiling panels and not other tiling windows if True, consider all tiling windows including panels if False.
 
-@pre      All tiled windows are actually not overlapping.
+@pre      All tiled windows are not overlapping.
 **/
 struct Rectangle_list 
-get_free_screen_spaces (Display *display, struct Frame_list *frames, struct Themes *themes) {
+get_free_screen_spaces (Display *display, Bool only_panels, struct Workspace *frames, struct Themes *themes) {
   //the start variable is used to skip windows at the start 
   //in the handle_frame_retile function these are the intersecting tiled windows.
   
@@ -53,23 +54,21 @@ get_free_screen_spaces (Display *display, struct Frame_list *frames, struct Them
   used_spaces.list = malloc(used_spaces.max * sizeof(struct Rectangle));
   if(used_spaces.list == NULL) {
     //probably could do something more intelligent here
-    #ifdef SHOW_FREE_SPACE_STEPS   
-    printf("Error: out of memory for calculating free spaces on the screen.\n");
-    #endif
+    perror("Error: out of memory for calculating free spaces on the screen.\n");
     return used_spaces; //i.e., NULL
   }
   
   //ideally we would be certain that all tiled windows are not overlapping.  However, this is hard so we have to double check.
   for(int i = 0; i < frames->used; i++) {
-    if(frames->list[i].mode == tiling) {
-      struct Rectangle current = {.x = frames->list[i].x, .y = frames->list[i].y, .w = frames->list[i].w, .h = frames->list[i].h};
+    if( ((only_panels == False) || (only_panels  &&  frames->list[i]->type == panel))  &&  frames->list[i]->mode == tiling  &&  frames->list[i]->state == none) {
+      struct Rectangle current = {.x = frames->list[i]->x, .y = frames->list[i]->y, .w = frames->list[i]->w, .h = frames->list[i]->h};
 
       #ifdef SHOW_FREE_SPACE_STEPS   
-      printf("Tiled window %s, x %d, y %d, w %d, h %d\n", frames->list[i].window_name
-      , frames->list[i].x, frames->list[i].y, frames->list[i].w, frames->list[i].h);
+      printf("Tiled window %s, x %d, y %d, w %d, h %d\n", frames->list[i]->window_name
+      , frames->list[i]->x, frames->list[i]->y, frames->list[i]->w, frames->list[i]->h);
       #endif
       for(unsigned int j = 0; j < used_spaces.used; j++) {
-        printf("%d, %d, %d, %d vs %d, %d, %d, %d\n", current.x, current.y, current.w, current.h,  used_spaces.list[j].x, used_spaces.list[j].y, used_spaces.list[j].w, used_spaces.list[j].h);
+        //printf("%d, %d, %d, %d vs %d, %d, %d, %d\n", current.x, current.y, current.w, current.h,  used_spaces.list[j].x, used_spaces.list[j].y, used_spaces.list[j].w, used_spaces.list[j].h);
         if(INTERSECTS(current.x, current.w, used_spaces.list[j].x, used_spaces.list[j].w)
         && INTERSECTS(current.y, current.h, used_spaces.list[j].y, used_spaces.list[j].h)) {
           
@@ -95,7 +94,8 @@ get_free_screen_spaces (Display *display, struct Frame_list *frames, struct Them
 }
 
 /**
-@brief    This implements "Free space modeling for placing rectangles without overlapping" by Marc Bernard and Francois Jacquenet. 
+@brief    This implements "Free space modeling for placing rectangles without overlapping" 
+          by Marc Bernard and Francois Jacquenet. 
 @return   returns a Rectangle_list with all largest free spaces
 **/
 struct Rectangle_list 
@@ -111,9 +111,7 @@ largest_available_spaces (struct Rectangle_list *used_spaces, int w, int h) {
   if(free_spaces.list == NULL) {
     free(used_spaces->list);
     //probably could do something more intelligent here
-    #ifdef SHOW_FREE_SPACE_STEPS   
-    printf("Error: out of memory for calculating free spaces on the screen.\n");
-    #endif
+    perror("Error: out of memory for calculating free spaces on the screen.\n");
     return free_spaces;
   }
   
@@ -132,9 +130,7 @@ largest_available_spaces (struct Rectangle_list *used_spaces, int w, int h) {
       free(used_spaces->list);
       used_spaces->list = NULL;
       //probably could do something more intelligent here
-      #ifdef SHOW_FREE_SPACE_STEPS     
-      printf("Error: out of memory for calculating free spaces on the screen.\n");
-      #endif
+      perror("Error: out of memory for calculating free spaces on the screen.\n");
       return free_spaces;
     }
     #ifdef SHOW_FREE_SPACE_STEPS     

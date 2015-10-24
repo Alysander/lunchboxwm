@@ -25,4 +25,4 @@ void add_rectangle                             (struct Rectangle_list *list, str
 void remove_rectangle                          (struct Rectangle_list *list, struct Rectangle old);
 struct Rectangle_list largest_available_spaces (struct Rectangle_list *used_spaces, int w, int h);
 double calculate_displacement                  (struct Rectangle source, struct Rectangle dest, int *dx, int *dy);
-struct Rectangle_list get_free_screen_spaces   (Display *display, struct Frame_list *frames, struct Themes *themes);
+struct Rectangle_list get_free_screen_spaces   (Display *display, Bool only_panels, struct Workspace *frames, struct Themes *themes);
