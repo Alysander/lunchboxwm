@@ -27,6 +27,7 @@
 #include "lunchbox.h"
 #include "theme.h"
 #include "xcheck.h"
+#include "util.h"
 
 /**
 @file     theme.c
@@ -76,45 +77,6 @@ static Pixmap create_text_background_pixmap(Display *display, const char *restri
 static void remove_widget_themes (Display *display, struct Widget_theme *themes, int length);
 static void create_mode_menu_text(Display *display, struct Themes *themes);
 
-#if 0
-//internal pixmap testing function
-static void show_pixmap (Display *display, Pixmap pixmap); 
-
-static void show_pixmap (Display *display, Pixmap pixmap) {
-  Window root = DefaultRootWindow(display);
-  Screen *screen    = DefaultScreenOfDisplay(display);
-  int black = BlackPixelOfScreen(screen);	  
-  Window temp = XCreateSimpleWindow(display, root
-  , 20, 20
-  , 120, 120, 0, black, black); 
-
-  XSetWindowBackgroundPixmap(display, temp, pixmap);
-  XMapWindow(display, temp);
-  XFlush(display);
-}
-#endif
-
-/**
-@brief    strnadd concatinates s1 and s2 and writes the result into s0 provided the length of s1 and s2 
-          is less that the limit, which is usually defined as the length of s0.  
-          
-@return   If any of the passed strings are NULL
-          s0 is returned unmodified.  If the limit is less than the length of s2, s0 is returned unmodified. 
-@note     All strings must be NULL terminated and this function ensures that s0 will always be null terminated 
-   
-**/
-char *
-strnadd(char *restrict s0, char *restrict s1, char *restrict s2, size_t limit) {
-  size_t length;
-  if(!s0  ||  !s1  ||  !s2)  return s0;
-  length = strlen(s1) + strlen(s2) + 1;
-  if(length > limit) return s0;
-  if(s0 != s1) strcpy(s0, s1);
-  strcat(s0, s2);
-  s0[length-1] = '\0';
-  //printf("s0: %s\n", s0);
-  return s0;
-}
 
 /**
 @brief    create_themes opens the theme in the theme folder with the name specified by theme_name.
@@ -126,20 +88,16 @@ struct Themes *
 create_themes(Display *display, char *theme_name) {
   struct Themes *themes = NULL;
   char *path = NULL;
-  char *home = getenv("HOME");
 
-  if(!home) {
-    fprintf(stderr, "Could not access HOME environmental variable\n");
-    return NULL;
-  }
-  
   path = malloc(PATH_SIZE * sizeof(char));
   if(!path) {
     fprintf(stderr, "Out of memory\n");
     return NULL;
   }
   
-  strnadd(path, home, "/.lunchbox/themes/", PATH_SIZE);
+
+  strncat(path, "themes/", PATH_SIZE);
+  
   strncat(path, theme_name, PATH_SIZE);
   printf("The theme path is: %s\n", path);
   if(chdir(path)) {
