@@ -436,8 +436,7 @@ main (int argc, char* argv[]) {
             if(!last_click_window  ||  last_click_window != event.xbutton.window) {  //this is the first click
               last_click_time = event.xbutton.time;
               last_click_window = event.xbutton.window;
-            }
-            else {  //this is the second click, reset
+            } else {  //this is the second click, reset
               if( last_click_time   != CurrentTime
               &&  last_click_window == event.xbutton.window
               &&  found_widget != window //ignore double click on these
@@ -448,6 +447,14 @@ main (int argc, char* argv[]) {
               last_click_time = CurrentTime;
               last_click_window = 0;
             }
+            // We have grabbed the pointer in case the user wants to
+            // alt click drag the window (set inside create_frame)
+            // and we normally ungrab it inside the enternotify
+            // which works fine *unless* you are inside a vm
+            // (which means the user can click directly inside a
+            // window without triggering enter notify).
+            // So allow events or we will accidentally lock up the event queue
+            XAllowEvents(display, ReplayPointer, event.xbutton.time);
           }
           /** Frame widget press registration. **/
           if(found_widget == frame_parent
