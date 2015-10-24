@@ -1,6 +1,6 @@
-menu_item_lhs         1     1     2   19
-menu_item_mid         1     1    58   19
-menu_item_rhs         1     1     2   19
+menu_item_lhs         1     1     2   26
+menu_item_mid         1     1    58   26
+menu_item_rhs         1     1     2   26
 popup_t_edge          1     0    -2    1
 popup_l_edge          0     1     1   -2
 popup_b_edge          1    -1    -2    1

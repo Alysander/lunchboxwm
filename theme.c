@@ -114,17 +114,18 @@ create_themes(Display *display, char *theme_name) {
 //TODO make the file name come from another theme file in case things are being reused.
   themes->window_type[unknown]        = create_component_theme(display, "program_frame");
   if(!themes->window_type[unknown]) goto error;
-/*****
-  themes->window_type[splash]         = create_component_theme(display, "program_frame");
-  themes->window_type[file]           = create_component_theme(display, "program_frame");
+
+//  themes->window_type[splash]         = create_component_theme(display, "splash_frame");
+  themes->window_type[file]           = create_component_theme(display, "file_frame");
   themes->window_type[program]        = create_component_theme(display, "program_frame");
-  themes->window_type[dialog]         = create_component_theme(display, "program_frame");
-  themes->window_type[modal_dialog]   = create_component_theme(display, "program_frame");
-  themes->window_type[utility]        = create_component_theme(display, "program_frame"); 
-  themes->window_type[status]         = create_component_theme(display, "program_frame");
-  themes->window_type[system_program] = create_component_theme(display, "program_frame");
-  themes->window_type[popup_menubar]  = create_component_theme(display, "program_frame");  
-*****/
+  themes->window_type[dialog]         = create_component_theme(display, "dialog_frame");
+  themes->window_type[modal_dialog]   = create_component_theme(display, "modal_dialog_frame"); 
+  themes->window_type[utility]        = create_component_theme(display, "utility_frame"); 
+  themes->window_type[status]         = create_component_theme(display, "status_frame");
+  themes->window_type[system_program] = create_component_theme(display, "system_program_frame");
+  themes->window_type[panel]          = create_component_theme(display, "panel_frame");
+//  themes->window_type[popup_menubar]  = create_component_theme(display, "program_frame");  
+
 
 /****
 TODO Verify that: 
@@ -206,6 +207,7 @@ create_component_theme(Display *display, char *type) {
   unsigned int nwidgets = 0;
   unsigned int ntiles = 0;
   cairo_surface_t *theme_images[inactive + 1];
+  for(int i = 0; i <= inactive; i++) theme_images[i] = NULL;
 
   /*Check that the theme set name is valid */
   if(strcmp(type, "program_frame")
@@ -214,9 +216,10 @@ create_component_theme(Display *display, char *type) {
   && strcmp(type, "modal_dialog_frame")
   && strcmp(type, "utility_frame")
   && strcmp(type, "unknown_frame")
+  && strcmp(type, "panel_frame")  
   && strcmp(type, "popup_menu")
   && strcmp(type, "popup_menubar")
-  && strcmp(type, "splash")   
+  && strcmp(type, "splash")
   && strcmp(type, "menubar"))  {
     fprintf(stderr, "Unknown theme component \"%s\" specified\n", type);
     return NULL;
@@ -367,7 +370,6 @@ create_component_theme(Display *display, char *type) {
   /* Load the different state image files */
   theme_images[normal]  
   = cairo_image_surface_create_from_png(strnadd(filename, type, "_normal.png", WIDGET_NAME_SIZE));
-  //printf("filename %s\n", filename);
   theme_images[active]  
   = cairo_image_surface_create_from_png(strnadd(filename, type, "_active.png", WIDGET_NAME_SIZE));
   theme_images[normal_hover] 
@@ -388,19 +390,20 @@ create_component_theme(Display *display, char *type) {
   //TODO perhaps check to make sure that they have the same dimensions
   for(int i = 0; i <= inactive; i++) {
     if(cairo_surface_status(theme_images[i]) == CAIRO_STATUS_FILE_NOT_FOUND) {
-      if(i != normal  &&  i != active  &&  i != inactive) {  /* Focussed variations are optional */
         cairo_surface_destroy(theme_images[i]);
         theme_images[i] = NULL;
-      }
-      else {
-        fprintf(stderr, "Error:  Image file for theme component %s - %d\n not found\n", type, i);
-        goto error;
-      }
+        fprintf(stderr, "(Optional): Image file for theme component %s - %d not found\n", type, i);
     }
     else 
-    if(cairo_surface_status(theme_images[i]) == CAIRO_STATUS_NO_MEMORY ) fprintf(stderr, "surface %d no memory\n", i);
+    if(cairo_surface_status(theme_images[i]) == CAIRO_STATUS_NO_MEMORY ) {
+      fprintf(stderr, "Error: surface %d no memory\n", i);
+      goto error;
+    }
     else 
-    if(cairo_surface_status(theme_images[i]) == CAIRO_STATUS_READ_ERROR) fprintf(stderr, "surface %d read error\n", i);
+    if(cairo_surface_status(theme_images[i]) == CAIRO_STATUS_READ_ERROR) {
+      fprintf(stderr, "Error: surface %d read error\n", i);
+      goto error;
+    }
   }
 
   //backup the position and size of the widget before replacing with the corresponding tiles region
@@ -472,7 +475,7 @@ swap_widget_theme(struct Widget_theme *from, struct Widget_theme *to) {
     from->w = original_region.w;
     from->h = original_region.h;
   }
-  else fprintf(stderr, "Warning: background tile missing during theme load.\n");
+  else fprintf(stderr, "(Optional): background tile missing during theme load.\n");
 }
 
 /**
@@ -627,8 +630,7 @@ create_text_background(Display *display, Window window, const char *restrict tex
 **/
 void 
 create_icon_background(Display *display, Window window
-, Pixmap icon_p, Pixmap icon_mask_p
-, Pixmap background_p, int b_w, int b_h) {
+, Pixmap icon_p, Pixmap icon_mask_p, int b_w, int b_h) {
 
   Window root       = DefaultRootWindow(display); 
   int screen_number = DefaultScreen(display);
@@ -695,7 +697,7 @@ create_icon_background(Display *display, Window window
 
 
 /**
-@brief    This function combines text and a background into a pixmap.
+@brief    This function combines text and a background into a pixmap. If the text is Tiling, Floating, Desktop or Hidden, it also draws an icon.
 @param    text          a null terminated UTF8 string
 @param    background_p  the background pixmap
 @param    b_w           the width of the background
