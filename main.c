@@ -834,23 +834,22 @@ main (int argc, char* argv[]) {
               if(clicked_widget == frames->list[i]->widgets[mode_dropdown_hotspot].widget) {
                 if(event.xbutton.window == mode_menu.items[floating].item) {
                   change_frame_mode(display, frames->list[i], floating, themes);
-                }
-                else if(event.xbutton.window == mode_menu.items[hidden].item) {
+                  stack_frame(display, frames->list[i], &seps);
+                } else if(event.xbutton.window == mode_menu.items[hidden].item) {
                   change_frame_state(display, frames->list[i], minimized, &seps, themes, &atoms);
                   XUnmapWindow(display, frames->list[i]->widgets[frame_parent].widget);
                   //FOCUS
                   remove_focus(frames->list[i]->framed_window, &frames->focus);
                   unfocus_frames(display, frames);
-                }
-                else if(event.xbutton.window == mode_menu.items[tiling].item) {
+                } else if(event.xbutton.window == mode_menu.items[tiling].item) {
                   #ifdef SHOW_BUTTON_RELEASE_EVENT
                   printf("retiling frame\n");
                   #endif
                   if(drop_frame(display, frames, clicked_frame, False, themes)) {
                     change_frame_mode(display, frames->list[i], tiling, themes);
+                    stack_frame(display, frames->list[i], &seps);
                   }
-                }
-                else if(event.xbutton.window == mode_menu.items[desktop].item) {
+                } else if(event.xbutton.window == mode_menu.items[desktop].item) {
                   change_frame_mode(display, frames->list[i], desktop, themes);
                   stack_frame(display, frames->list[i], &seps);
                 }
