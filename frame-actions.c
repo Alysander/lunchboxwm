@@ -242,8 +242,13 @@ change_frame_state (Display *display, struct Frame *frame, enum Window_state sta
 **/
 Bool
 redrop_frame (Display *display, struct Workspace *frames, int clicked_frame, struct Themes *themes) {
-  if(frames->list[clicked_frame]->mode == floating) return drop_frame(display, frames, clicked_frame, True, themes);
-  else return drop_frame(display, frames, clicked_frame, False, themes);
+  if(frames->list[clicked_frame]->mode == floating) {
+    //Floating windows only need to avoid panels
+    return drop_frame(display, frames, clicked_frame, True, themes);
+  } else {
+    return drop_frame(display, frames, clicked_frame, False, themes);
+  }
+
 }
 
 /**
