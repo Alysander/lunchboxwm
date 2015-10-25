@@ -404,7 +404,7 @@ main (int argc, char* argv[]) {
           || found_widget == title_menu_hotspot
           || found_widget == t_edge
           || found_widget == b_edge
-          || found_widget == l_edge  //need to show that these have been disabled for sinking windows.
+          || found_widget == l_edge
           || found_widget == r_edge
           || found_widget == tl_corner
           || found_widget == tr_corner
@@ -436,12 +436,24 @@ main (int argc, char* argv[]) {
             if(!last_click_window  ||  last_click_window != event.xbutton.window) {  //this is the first click
               last_click_time = event.xbutton.time;
               last_click_window = event.xbutton.window;
-            } else {  //this is the second click, reset
+            } else {  //this is the second click
               if( last_click_time   != CurrentTime
               &&  last_click_window == event.xbutton.window
               &&  found_widget != window //ignore double click on these
               &&  event.xbutton.time - last_click_time < DOUBLE_CLICK_MILLISECONDS) {      //ignore double click on these
-                maximize_frame(display, frames, i, themes);
+                // maximize in the direction specified
+                switch(found_widget) {
+                  case l_edge:
+                  case r_edge:
+                    maximize_frame(display, frames, i, 'x', themes);
+                  break;
+                  case b_edge:
+                  case t_edge:
+                    maximize_frame(display, frames, i, 'y', themes);
+                  break;
+                  default:
+                  maximize_frame(display, frames, i, 0, themes);
+                }
                 XFlush(display);
               }
               last_click_time = CurrentTime;

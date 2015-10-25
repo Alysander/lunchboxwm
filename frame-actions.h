@@ -22,6 +22,6 @@ void stack_frame            (Display *display, struct Frame *frame, struct Separ
 int replace_frame           (Display *display, struct Frame *target
 , struct Frame *replacement, struct Separators *seps, struct Themes *themes);
 
-void maximize_frame         (Display *display, struct Workspace *frames, int clicked_frame, struct Themes *themes);
+void maximize_frame         (Display *display, struct Workspace *frames, int clicked_frame, char direction, struct Themes *themes);
 
 void reset_frame_titlebar   (Display *display, struct Frame *frame);

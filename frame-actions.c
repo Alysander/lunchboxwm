@@ -1194,21 +1194,26 @@ resize_tiling_frame(Display *display, struct Workspace *frames, int index, char 
 @return   void
 **/
 void
-maximize_frame (Display *display, struct Workspace *frames, int clicked_frame, struct Themes *themes) {
+maximize_frame (Display *display, struct Workspace *frames, int clicked_frame, const char direction, struct Themes *themes) {
 
   struct Frame *frame = frames->list[clicked_frame];
   Screen* screen = DefaultScreenOfDisplay(display);
 
   if(frame->state == fullscreen) return;
 
-  frame->w = XWidthOfScreen(screen);
-  frame->h = XWidthOfScreen(screen);
+  // expand in the direction specified
+  if(direction == 'x' || !direction) {
+    //This ensures the window is larger than the biggest space
+    frame->w = XWidthOfScreen(screen);
+  }
+  if(direction == 'y' || !direction) {
+    frame->h = XHeightOfScreen(screen);
+  }
+
   if(frame->mode == tiling) {
     redrop_frame(display, frames, clicked_frame, themes);
   }
-  else {
-    check_frame_limits(display, frame, themes);
-    resize_frame(display, frame, themes);
-  }
+  check_frame_limits(display, frame, themes);
+  resize_frame(display, frame, themes);
 }
 
