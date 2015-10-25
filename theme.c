@@ -610,7 +610,13 @@ void
 create_text_background(Display *display, Window window, const char *restrict text
 , const struct Font_theme *restrict font_theme, Pixmap background_p, int b_w, int b_h) {
 
-  Pixmap pixmap = create_text_background_pixmap(display, text, font_theme, background_p, b_w, b_h);
+  Screen* screen = DefaultScreenOfDisplay(display);
+
+  // We don't need to make menus more than half the width of the screen.
+  // This also fixes the title menu not rendering a background on recent cairo.
+  unsigned int width = XWidthOfScreen(screen) /2 ;
+
+  Pixmap pixmap = create_text_background_pixmap(display, text, font_theme, background_p, width, b_h);
 
   if(!pixmap || pixmap == BadPixmap) return;
 
