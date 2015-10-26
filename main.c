@@ -1108,6 +1108,24 @@ main (int argc, char* argv[]) {
             }
             frame->w = event.xconfigurerequest.width + frame->hspace;
             frame->h = event.xconfigurerequest.height + frame->vspace;
+            // It is _very_ tricky to properly cooperate with windows
+            // that demand to have height or width increments (e.g., terminals, gimp toolbox)
+            // because if they aren't a size they like they will send us ConfigureRequests that
+            // we must listen to. This can result in a loop if we aren't careful that will
+            // result in crunching a window down to a minimum size.
+            // It's not just a matter of having the frame dimension be a multiple of a constant
+            // it must also consider another base aomunt that can be added.
+            // In the case of gnome-terminal, this is the menubar. (that is not a character height)
+            // I normally use the min_width, min_height hints to derive this information,
+            // but this doesn't always work. (e.g., the menubar is hidden on gnome-terminal)
+            // So I'm going to calculate this offset again to prevent this feedback loop.
+            if(frame->width_inc > 1) {
+              frame->w_inc_offset = event.xconfigurerequest.width % frame->width_inc;
+            }
+            if(frame->height_inc > 1) {
+              frame->h_inc_offset = event.xconfigurerequest.height % frame->height_inc;
+            }
+
             if(frame->type == panel) {
               make_frame_coordinates_minmax(display, frame);
             }
