@@ -1,15 +1,20 @@
-Since this is only a beta version I haven't written a full installer and launcher program yet
-but to run it under ubuntu linux, simply copy the themes folder to ~/.lunchbox and then logout,
-login to a "xterm failsafe session" by clicking session on the login screen, cd to wherever
- you extracted the files and run:
 
-./lunchbox minimal &
+There are only a few dependencies required to build lunchbox:
 
-Then I would suggest opening some normal linux programs from the same window:
-(if you need to change between programs after they are open click on the program menu on the bottom LHS).
+libx11-dev
+libxcursor-dev
+libcairo2-dev
 
-nautilus &
-firefox &
+To run the lunchbox window manager first login to X without a window manager using an xterm session.
 
+If you don't have an xterm session you can install one with `sudo make install` in the project directory.
+This copies the `lunchbox.desktop` file to `/usr/share/xsessions`.
 
+Then run `make` and the `lunchbox` executable:
+
+`./lunchbox &`
+
+Then open some other programs from the commandline as there is no inbuilt launcher.
+
+If you need to change between programs after they are open click on the program menu on the bottom LHS.
 To exit, type exit from the xterm window after closing all the other windows.
