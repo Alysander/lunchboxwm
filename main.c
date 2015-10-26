@@ -830,6 +830,7 @@ main (int argc, char* argv[]) {
             int i;
             enum Frame_widget found_widget = find_frame_with_widget_in_workspace(clicked_widget, &workspaces, current_workspace, &i);
             if(found_widget <= frame_parent) {
+              reset_frame_titlebar(display, frames->list[i]);
               stack_frame(display, frames->list[i], &seps);
               if(clicked_widget == frames->list[i]->widgets[mode_dropdown_hotspot].widget) {
                 if(event.xbutton.window == mode_menu.items[floating].item) {
@@ -857,9 +858,7 @@ main (int argc, char* argv[]) {
               /* Handle title menu. This replaces frame with the user's chosen frame */
               else if(clicked_widget == frames->list[i]->widgets[title_menu_hotspot].widget) {
                 int j = find_frame_with_menu_item_in_workspace(event.xbutton.window, &workspaces, current_workspace);
-                change_frame_widget_state(display, frames->list[i], title_menu_lhs, normal);
-                change_frame_widget_state(display, frames->list[i], title_menu_text, normal);
-                change_frame_widget_state(display, frames->list[i], title_menu_rhs, normal);
+
                 //Now we need to identify which window to put here.
                 if(j >= 0) {
                   replace_frame(display, frames->list[i], frames->list[j], &seps, themes);
