@@ -89,7 +89,7 @@ create_themes(Display *display, char *theme_name) {
   struct Themes *themes = NULL;
   char *path = NULL;
 
-  path = malloc(PATH_SIZE * sizeof(char));
+  path = calloc(PATH_SIZE, sizeof(char));
   if(!path) {
     fprintf(stderr, "Out of memory\n");
     return NULL;
