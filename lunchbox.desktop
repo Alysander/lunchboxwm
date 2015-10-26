@@ -1,7 +1,7 @@
 [Desktop Entry]
 Encoding=UTF-8
-Name=Lunchbox
-Comment=Loads the Lunchbox Window Manager
+Name=xterm
+Comment=standard terminal emulator for the X window system
 Exec=xterm
 Terminal=False
 Icon=

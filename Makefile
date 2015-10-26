@@ -46,7 +46,7 @@ clean:
 
 #This install rule only installs a .desktop file
 #which allows most login managagers to show a different session.
-install:
+install: lunchbox.desktop
 	mkdir -p $(DESTDIR)/usr/share/xsessions
 	cp -r ./lunchbox.desktop $(DESTDIR)/usr/share/xsessions
 
