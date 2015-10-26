@@ -1152,8 +1152,9 @@ main (int argc, char* argv[]) {
               }
               stack_frame(display, frame, &seps);
             }
-            resize_frame(display, frame, themes);
+
             check_frame_limits(display, frame, themes);
+            resize_frame(display, frame, themes);
           }
           //frame not found in any workspace because this window hasn't been mapped yet, let it update it's size and position
           else {
