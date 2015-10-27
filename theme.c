@@ -250,7 +250,10 @@ create_component_theme(Display *display, char *type) {
 
   regions = fopen(strnadd(filename, type, "_regions", WIDGET_NAME_SIZE), "r");
   if(regions == NULL) {
+    #ifdef SHOW_THEME_LOADING
+    // TODO probably in the wrong spot
     fprintf(stderr, "Error:  A required theme file \"%s_regions\" could not be accessed\n", type);
+    #endif
     goto error;
   }
 
@@ -390,7 +393,9 @@ create_component_theme(Display *display, char *type) {
     if(cairo_surface_status(theme_images[i]) == CAIRO_STATUS_FILE_NOT_FOUND) {
         cairo_surface_destroy(theme_images[i]);
         theme_images[i] = NULL;
+        #ifdef SHOW_THEME_LOADING
         fprintf(stderr, "(Optional): Image file for theme component %s - %d not found\n", type, i);
+        #endif
     }
     else
     if(cairo_surface_status(theme_images[i]) == CAIRO_STATUS_NO_MEMORY ) {
@@ -473,7 +478,11 @@ swap_widget_theme(struct Widget_theme *from, struct Widget_theme *to) {
     from->w = original_region.w;
     from->h = original_region.h;
   }
-  else fprintf(stderr, "(Optional): background tile missing during theme load.\n");
+  else {
+    #ifdef SHOW_THEME_LOADING
+    fprintf(stderr, "(Optional): background tile missing during theme load.\n");
+    #endif
+  }
 }
 
 /**

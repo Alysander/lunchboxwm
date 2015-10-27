@@ -26,6 +26,7 @@
 //  #define SHOW_PROPERTIES
 //  #define SHOW_PROPERTY_NOTIFY
 //  #define SHOW_SIG
+//  #define SHOW_THEME_LOADING
   #define SHOW_STARTUP
 //  #define SHOW_UNMAP_NOTIFY_EVENT
 //  #define SHOW_WORKSPACE
