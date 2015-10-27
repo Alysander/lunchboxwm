@@ -1129,7 +1129,7 @@ main (int argc, char* argv[]) {
             if(frame->type == panel) {
               make_frame_coordinates_minmax(display, frame);
             }
-            if(k >= 0) {
+            if(k >= 0 && clicked_frame != k) {
               redrop_frame(display, frames, k, themes);
             }
 
