@@ -111,7 +111,6 @@ enum Window_type {
   dialog,  /**< Traditional dialog box/transient window. **/
   modal_dialog, /**< The window forces the user to deal with it before continuing with their task. **/
   utility, /**< The window is for interacting indirectly with another window. **/
-  status,  /**< The window is not interactive, it merely communicates status information (e.g., a clock) .**/
   panel,   /**< The window is a panel and is almost unmanaged. **/
   system_program, /**< must be last, items following this will not be included in the struct Themes */
   splash /**< this is ignored in the themes as splash screens are not managed **/

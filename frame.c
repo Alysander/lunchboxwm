@@ -1016,8 +1016,6 @@ suitable_for_foreign_workspaces(struct Frame *frame) {
     case unknown:
     case file:
     case program: //this should change later on when the other types are properly detected.
-    case status:
-    case system_program:
     case splash:
     case panel:  //we don't want it in the window menu.
     return True;

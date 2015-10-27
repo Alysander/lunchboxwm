@@ -121,8 +121,6 @@ create_themes(Display *display, char *theme_name) {
   themes->window_type[dialog]         = create_component_theme(display, "dialog_frame");
   themes->window_type[modal_dialog]   = create_component_theme(display, "modal_dialog_frame");
   themes->window_type[utility]        = create_component_theme(display, "utility_frame");
-  themes->window_type[status]         = create_component_theme(display, "status_frame");
-  themes->window_type[system_program] = create_component_theme(display, "system_program_frame");
   themes->window_type[panel]          = create_component_theme(display, "panel_frame");
 //  themes->window_type[popup_menubar]  = create_component_theme(display, "program_frame");
 
@@ -270,7 +268,7 @@ create_component_theme(Display *display, char *type) {
     unsigned int current_tile;
     char widget_name[WIDGET_NAME_SIZE];
     int x,y,w,h;
-    int was_tile = 0;
+
     returned = fscanf(regions, "%s %d %d %d %d\n", widget_name, &x, &y, &w, &h);
     if(returned != 5) {
       fprintf(stderr, "Error in theme format, required string int int int int\n");
@@ -303,13 +301,13 @@ create_component_theme(Display *display, char *type) {
       else if(!strcmp(widget_name, "close_button"))         current_widget = close_button;
       else if(!strcmp(widget_name, "close_button_hotspot")) current_widget = close_button_hotspot ;
       else if(!strcmp(widget_name, "frame_parent"))         current_widget = frame_parent;
-      else if(!strcmp(widget_name, "tile_titlebar")) {         was_tile = 1; current_tile = tile_titlebar;  }
-      else if(!strcmp(widget_name, "tile_t_edge")) {           was_tile = 1; current_tile = tile_t_edge;    }
-      else if(!strcmp(widget_name, "tile_l_edge")) {           was_tile = 1; current_tile = tile_l_edge;    }
-      else if(!strcmp(widget_name, "tile_b_edge")) {           was_tile = 1; current_tile = tile_b_edge;    }
-      else if(!strcmp(widget_name, "tile_r_edge")) {           was_tile = 1; current_tile = tile_r_edge;    }
-      else if(!strcmp(widget_name, "tile_title_menu_text")) {  was_tile = 1; current_tile = tile_title_menu_text; }
-      else if(!strcmp(widget_name, "tile_frame_parent")) {     was_tile = 1; current_tile = tile_frame_parent;    }
+      else if(!strcmp(widget_name, "tile_titlebar")) {          current_tile = tile_titlebar;  }
+      else if(!strcmp(widget_name, "tile_t_edge")) {            current_tile = tile_t_edge;    }
+      else if(!strcmp(widget_name, "tile_l_edge")) {            current_tile = tile_l_edge;    }
+      else if(!strcmp(widget_name, "tile_b_edge")) {            current_tile = tile_b_edge;    }
+      else if(!strcmp(widget_name, "tile_r_edge")) {            current_tile = tile_r_edge;    }
+      else if(!strcmp(widget_name, "tile_title_menu_text")) {   current_tile = tile_title_menu_text; }
+      else if(!strcmp(widget_name, "tile_frame_parent")) {      current_tile = tile_frame_parent;    }
 
       else goto name_error;
     }
@@ -320,7 +318,7 @@ create_component_theme(Display *display, char *type) {
       else if(!strcmp(widget_name, "links_menu"))     current_widget = links_menu;
       else if(!strcmp(widget_name, "tool_menu"))      current_widget = tool_menu;
       else if(!strcmp(widget_name, "menubar_parent")) current_widget = menubar_parent;
-      else if(!strcmp(widget_name, "tile_menubar_parent")) {was_tile = 1; current_tile = tile_menubar_parent;}
+      else if(!strcmp(widget_name, "tile_menubar_parent")) { current_tile = tile_menubar_parent;}
       else goto name_error;
     }
     else if(!strcmp(type, "popup_menu")) {
@@ -337,11 +335,11 @@ create_component_theme(Display *display, char *type) {
       else if(!strcmp(widget_name, "popup_bl_corner"))   current_widget = popup_bl_corner;
       else if(!strcmp(widget_name, "popup_br_corner"))   current_widget = popup_br_corner;
       else if(!strcmp(widget_name, "popup_menu_parent")) current_widget = popup_menu_parent;
-      else if(!strcmp(widget_name, "tile_popup_t_edge")) { was_tile = 1; current_tile = tile_popup_t_edge; }
-      else if(!strcmp(widget_name, "tile_popup_l_edge")) { was_tile = 1; current_tile = tile_popup_l_edge; }
-      else if(!strcmp(widget_name, "tile_popup_b_edge")) { was_tile = 1; current_tile = tile_popup_b_edge; }
-      else if(!strcmp(widget_name, "tile_popup_r_edge")) { was_tile = 1; current_tile = tile_popup_r_edge; }
-      else if(!strcmp(widget_name, "tile_popup_parent")) { was_tile = 1; current_tile = tile_popup_parent; }
+      else if(!strcmp(widget_name, "tile_popup_t_edge")) {  current_tile = tile_popup_t_edge; }
+      else if(!strcmp(widget_name, "tile_popup_l_edge")) {  current_tile = tile_popup_l_edge; }
+      else if(!strcmp(widget_name, "tile_popup_b_edge")) {  current_tile = tile_popup_b_edge; }
+      else if(!strcmp(widget_name, "tile_popup_r_edge")) {  current_tile = tile_popup_r_edge; }
+      else if(!strcmp(widget_name, "tile_popup_parent")) {  current_tile = tile_popup_parent; }
       else goto name_error;
     }
 
@@ -610,6 +608,8 @@ void
 create_text_background(Display *display, Window window, const char *restrict text
 , const struct Font_theme *restrict font_theme, Pixmap background_p, int b_w, int b_h) {
 
+  // Ignore this parameter for now, may revisit later.
+  (void) b_w;
   Screen* screen = DefaultScreenOfDisplay(display);
 
   // We don't need to make menus more than half the width of the screen.
