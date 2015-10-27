@@ -1015,7 +1015,7 @@ main (int argc, char* argv[]) {
             clicked_widget = 0;
           }
 
-          while(XCheckTypedEvent(display, MotionNotify, &event)); //skip foward to the latest move event
+          // while(XCheckTypedEvent(display, MotionNotify, &event)); //skip foward to the latest move event
 
           XQueryPointer(display, root, &mouse_root, &mouse_child, &mouse_root_x, &mouse_root_y, &mouse_child_x, &mouse_child_y, &mask);
           if(!clicked_widget) { /*** Move ***/
