@@ -263,15 +263,8 @@ redrop_frame (Display *display, struct Workspace *frames, int clicked_frame, str
 **/
 Bool
 drop_frame (Display *display, struct Workspace *frames, int clicked_frame,  Bool only_panels, struct Themes *themes) {
-
   struct Frame *frame = frames->list[clicked_frame];
   struct Rectangle_list free_spaces = {0, 8, NULL};
-  double min_displacement = -1;
-  int min = -1;
-  int min_dx = 0;
-  int min_dy = 0;
-  //make the frame into a rectangle for calculating displacement function
-  struct Rectangle window = {frame->x, frame->y, frame->w, frame->h };
 
   #ifdef SHOW_FRAME_DROP
   printf("Attempting to find room for a window\n");
@@ -285,7 +278,6 @@ drop_frame (Display *display, struct Workspace *frames, int clicked_frame,  Bool
   free_spaces = get_free_screen_spaces (display, only_panels, frames, themes);
   frame->mode = temp_mode;
 
-
   if(free_spaces.list == NULL) {
     #ifdef SHOW_FRAME_DROP
     printf("No free spaces\n");
@@ -293,6 +285,20 @@ drop_frame (Display *display, struct Workspace *frames, int clicked_frame,  Bool
     #endif
     return False;
   }
+
+  return drop_frame_into_spaces(display, frame, free_spaces, themes);
+}
+
+Bool
+drop_frame_into_spaces (Display *display,  struct Frame *frame,  struct Rectangle_list free_spaces, struct Themes *themes) {
+
+  double min_displacement = -1;
+  int min = -1;
+  int min_dx = 0;
+  int min_dy = 0;
+  //make the frame into a rectangle for calculating displacement function
+  struct Rectangle window = {frame->x, frame->y, frame->w, frame->h };
+
   #ifdef SHOW_FRAME_DROP
   printf("End result\n");
   #endif
