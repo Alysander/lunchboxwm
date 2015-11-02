@@ -550,7 +550,7 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
     if(workspaces->frame_list[true_frame_index].state != minimized) XMapWindow(display, workspace->list[frame_ref_index]->widgets[frame_parent].widget);
     XMapWindow(display, workspace->list[frame_ref_index]->menu.item);
     if(workspace->list[frame_ref_index]->focussed) {
-      recover_focus(display, &workspaces->list[*current_workspace], themes, atoms);
+      recover_focus(display, &workspaces->list[*current_workspace], atoms);
     }
 
     update_client_list(display, &workspaces->list[*current_workspace], atoms);
@@ -713,7 +713,7 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
   }
   update_client_list(display, workspace, atoms);
   // printf("changing focus to one in new workspace\n");
-  recover_focus(display, workspace, themes, atoms);
+  recover_focus(display, workspace, atoms);
   XFlush(display);
 
 }

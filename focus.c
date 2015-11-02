@@ -152,7 +152,7 @@ void unfocus_frames(Display *display, struct Workspace *frames) {
 @return void
 **/
 
-void recover_focus(Display *display, struct Workspace *frames, struct Themes *themes, struct Atoms *atoms) {
+void recover_focus(Display *display, struct Workspace *frames, struct Atoms *atoms) {
   Window root = DefaultRootWindow(display);
   if(frames->focus.used == 0) return;
   //printf("Recovering focus\n");

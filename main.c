@@ -430,7 +430,7 @@ main (int argc, char* argv[]) {
               //FOCUS
               add_focus(frames->list[i]->framed_window, &frames->focus);
               unfocus_frames(display, frames);
-              recover_focus(display, frames, themes, &atoms);
+              recover_focus(display, frames, &atoms);
             }
 
             if(!last_click_window  ||  last_click_window != event.xbutton.window) {  //this is the first click
@@ -865,7 +865,7 @@ main (int argc, char* argv[]) {
                   remove_focus(frames->list[i]->framed_window, &frames->focus);
                   add_focus(frames->list[i]->framed_window, &frames->focus);
                   unfocus_frames(display, frames);
-                  recover_focus(display, frames, themes, &atoms);
+                  recover_focus(display, frames, &atoms);
                 }
               }
             }
@@ -1200,7 +1200,7 @@ main (int argc, char* argv[]) {
         #ifdef SHOW_FOCUS_EVENT
         printf("Recovering and resetting focus \n");
         #endif
-        recover_focus(display, &workspaces.list[current_workspace], themes, &atoms);
+        recover_focus(display, &workspaces.list[current_workspace], &atoms);
         break;
         case FocusOut:
         #ifdef SHOW_FOCUS_EVENT
