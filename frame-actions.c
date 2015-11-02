@@ -995,8 +995,9 @@ resize_tiling_frame(Display *display, struct Workspace *frames, int index, char 
   int adj_position, adj_size; //position/size in OTHER direction. This is getting enlarged to interesect.
 
   //variables for the index frame and variables for the iterated frame
-  int *min_size, *fmin_size;
-  int *max_size, *fmax_size;
+  // TODO investigate if min/max size is being respected
+  int *fmin_size;
+  int *fmax_size;
   int *s, *fs;  //size of adjacent/aligned frame
   int *p, *fp;  //position of adjacent/aligned frame
   int *fs_adj;  //size of range of values of adjacent/aligned frame in perpendicular axis
@@ -1013,16 +1014,12 @@ resize_tiling_frame(Display *display, struct Workspace *frames, int index, char 
   printf("resize tiling frame %s\n", frames->list[index]->window_name);
   #endif
   if(axis == 'x') {
-    min_size = &frames->list[index]->min_width;
-    max_size = &frames->list[index]->max_width;
     p = &frames->list[index]->x;
     s = &frames->list[index]->w;
     adj_position = frames->list[index]->y;
     adj_size = frames->list[index]->h;
   }
   else if(axis == 'y') {
-    min_size = &frames->list[index]->min_height;
-    max_size = &frames->list[index]->max_height;
     p = &frames->list[index]->y;
     s = &frames->list[index]->h;
     adj_position = frames->list[index]->x;
