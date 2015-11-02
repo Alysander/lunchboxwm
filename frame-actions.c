@@ -250,13 +250,26 @@ change_frame_state (Display *display, struct Frame *frame, enum Window_state sta
 **/
 Bool
 redrop_frame (Display *display, struct Workspace *frames, int clicked_frame, struct Themes *themes) {
+  Bool result = False;
+
   if(frames->list[clicked_frame]->mode == floating) {
     //Floating windows only need to avoid panels
-    return drop_frame(display, frames, clicked_frame, True, themes);
+    result = drop_frame(display, frames, clicked_frame, True, themes);
   } else {
-    return drop_frame(display, frames, clicked_frame, False, themes);
+    result = drop_frame(display, frames, clicked_frame, False, themes);
   }
 
+  // If anything has been moved or resized we need
+  // to check it's ok and reflect the changes
+  // in the window
+  // These *might* make the window smaller
+  if(result) {
+    check_frame_limits(display, frames->list[clicked_frame], themes);
+    resize_frame(display, frames->list[clicked_frame], themes);
+    XFlush(display);
+  }
+
+  return result;
 }
 
 /**
@@ -294,7 +307,11 @@ drop_frame (Display *display, struct Workspace *frames, int clicked_frame,  Bool
     return False;
   }
 
-  return drop_frame_into_spaces(display, frame, free_spaces, themes);
+  Bool ret = drop_frame_into_spaces(display, frame, free_spaces, themes);
+
+  if(free_spaces.list != NULL) free(free_spaces.list);
+
+  return ret;
 }
 
 // Attempt to expand a frame in place if that is possible. Modified frame width and height.
@@ -425,79 +442,61 @@ drop_frame_into_spaces (Display *display,  struct Frame *frame,  struct Rectangl
     #endif
     frame->x += min_dx;
     frame->y += min_dy;
+    //TODO remove this
     XMoveWindow(display, frame->widgets[frame_parent].widget, frame->x, frame->y);
     XFlush(display);
-  }
-  /*The window is too large to fit in any current spaces, calculate a better fit. */
-  else {
+  } else {
+    /*The window is too large to fit in any current spaces, calculate a better fit. */
+
     #ifdef SHOW_FRAME_DROP
     printf("Move failed - finding the nearest size\n");
     #endif
-    double current_over_total = 0;
-    double best_fit = M_DOUBLE_MAX;
-    int best_space = -1;
+    double best_fit = -1;
+    struct Rectangle *best_space = NULL;
+
     for(unsigned int k = 0; k < free_spaces.used; k++) {
-      if(free_spaces.list[k].w == 0
-      || free_spaces.list[k].h == 0) {
-        perror("Error: FOUND ZERO AREA FREE SPACE\n");
+      // Don't use any spaces that have a width less
+      // than the minimum
+      if (free_spaces.list[k].w < frame->min_width
+      || free_spaces.list[k].h < frame->min_height) {
         continue;
       }
-      //int w_over = 1, h_over = 1;
-      if(frame->w >= free_spaces.list[k].w  &&  frame->h >= free_spaces.list[k].h) {
-        current_over_total = frame->w * frame->h - free_spaces.list[k].w * free_spaces.list[k].h;
-      }
 
-      if(frame->w < free_spaces.list[k].w  &&  frame->h >= free_spaces.list[k].h) {
-        current_over_total = frame->w  *  frame->h  - free_spaces.list[k].h;
-      }
+      int effective_height = MIN(frame->h, free_spaces.list[k].h);
+      int effective_width = MIN(frame->w, free_spaces.list[k].w);
 
-      if(frame->h < free_spaces.list[k].h  &&  frame->w >= free_spaces.list[k].w) {
-        current_over_total = frame->h  *  frame->w  - free_spaces.list[k].w;
-      }
+      double effective_area = effective_width * effective_height;
 
       #ifdef SHOW_FRAME_DROP
-      printf("Current total over %f for space %d\n", current_over_total, k);
+      printf("Closest fit %f for space %d\n", effective_area, k);
       #endif
-      if(current_over_total < best_fit
-      && free_spaces.list[k].w >= frame->min_width
-      && free_spaces.list[k].h >= frame->min_height) {
-        best_fit = current_over_total;
-        best_space = k;
+
+      //get the space that reduces the size of the frame the least
+      if(effective_area > best_fit) {
+        best_fit = effective_area;
+        best_space = &free_spaces.list[k];
       }
     }
 
-    if(best_space != -1) {
-      if(free_spaces.list[best_space].w < frame->w) {
-        frame->x = free_spaces.list[best_space].x;
-        frame->w = free_spaces.list[best_space].w;
-        if(frame->y + frame->h > free_spaces.list[best_space].y + free_spaces.list[best_space].h)
-          frame->y = free_spaces.list[best_space].y + free_spaces.list[best_space].h - frame->h;
-        else if(frame->y < free_spaces.list[best_space].y)
-          frame->y = free_spaces.list[best_space].y;
-      }
-      if(free_spaces.list[best_space].h < frame->h) {
-        frame->y = free_spaces.list[best_space].y;
-        frame->h = free_spaces.list[best_space].h;
-        if(frame->x + frame->w > free_spaces.list[best_space].x + free_spaces.list[best_space].w)
-          frame->x = free_spaces.list[best_space].x + free_spaces.list[best_space].w - frame->w;
-        else if(frame->x < free_spaces.list[best_space].x)
-          frame->x = free_spaces.list[best_space].x;
-      }
-      if(frame->w > frame->max_width) frame->w = frame->max_width;
-      if(frame->h > frame->max_height) frame->h = frame->max_height;
-      resize_frame(display, frame, themes);
-    }
-    else {
+    if(best_space != NULL) {
+
+      int effective_height = MIN(frame->h, best_space->h);
+      int effective_width = MIN(frame->w, best_space->w);
+
+      frame->w = effective_width;
+      frame->h = effective_height;
+
+      //It will definitely fit into at least one space now
+      //move it to the nearest one.
+      drop_frame_into_spaces(display, frame, free_spaces, themes);
+    } else {
       #ifdef SHOW_FRAME_DROP
       printf("Couldn't fit window at all: %s\n", frame->window_name);
       #endif
-      if(free_spaces.list != NULL) free(free_spaces.list);
       return False;
     }
-
-
   }
-  if(free_spaces.list != NULL) free(free_spaces.list);
+
   return True;
 }
 

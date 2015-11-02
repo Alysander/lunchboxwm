@@ -1056,8 +1056,6 @@ main (int argc, char* argv[]) {
                 get_frame_hints(display, frame);
                 if(k >= 0) {
                   redrop_frame(display, frames, k, themes);
-                  check_frame_limits(display, frame, themes);
-                  resize_frame(display, frame, themes);
                 }
               }
             }
@@ -1066,7 +1064,6 @@ main (int argc, char* argv[]) {
               int k = find_frame_with_framed_window_in_workspace(event.xproperty.window, &workspaces, current_workspace);
               if(k >= 0) {
                 redrop_frame(display, frames, k, themes);
-                check_frame_limits(display, frame, themes);
               }
               resize_frame(display, frame, themes);
             }
