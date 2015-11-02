@@ -546,7 +546,7 @@ frame_type_settings(Display *display, struct Frame *frame) {
 
 
 void
-make_frame_coordinates_minmax(Display *display, struct Frame *frame) {
+make_frame_coordinates_minmax(struct Frame *frame) {
   frame->max_width = frame->min_width = frame->w;
   frame->max_height = frame->min_height = frame->h;
 }

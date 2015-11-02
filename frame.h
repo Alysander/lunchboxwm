@@ -9,7 +9,7 @@ void free_frame_name        (struct Frame *frame);
 void create_frame_name      (Display *display, struct Popup_menu *window_menu, struct Frame* frame, struct Themes *themes, struct Atoms *atoms);
 void centre_frame           (const int container_width, const int container_height, const int w, const int h, int *x, int *y);
 Bool suitable_for_foreign_workspaces(struct Frame *frame);
-void make_frame_coordinates_minmax(Display *display, struct Frame *frame);
+void make_frame_coordinates_minmax(struct Frame *frame);
 
 //void create_frame_icon_size (Display *display, struct Frame *frame, int new_size);
 //void free_frame_icon_size   (Display *display, struct Frame *frame);
