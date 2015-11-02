@@ -140,16 +140,13 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
   if(mode == floating) {
     frame->mode = floating;
     change_mode_pulldown_text_pixmap(display, frame, mode_dropdown_text_floating, themes);
-  }
-  else
-  if(mode == tiling) {
+  } else if(mode == tiling) {
     frame->mode = tiling;
     change_mode_pulldown_text_pixmap(display, frame, mode_dropdown_text_tiling, themes);
     //cannot drop frame here because it requires access to the whole frame list
-  }
-
-  else
-  if(mode == desktop) {
+    check_frame_limits(display, frame, themes);
+    resize_frame(display, frame, themes);
+  } else if(mode == desktop) {
     change_mode_pulldown_text_pixmap(display, frame, mode_dropdown_text_desktop, themes);
     frame->x = 0 - themes->window_type[frame->theme_type][window].x;
     frame->y = 0 - themes->window_type[frame->theme_type][window].y;
