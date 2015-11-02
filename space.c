@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <X11/Xlib.h>
+#include <limits.h>
 
 #include "lunchbox.h"
 #include "space.h"
@@ -363,9 +364,11 @@ remove_rectangle(struct Rectangle_list *list, struct Rectangle old) {
 }
 
 /**
-@brief    Calculate the displacement squared in each axis and use pythagoras to calculate the net displacement
+@brief    Calculate the displacement squared in each axis
+              and use pythagoras to calculate the net displacement
+
 @pre      Rectangles a and b must not be overlapping.
-@return   -1 if source is larger than dest
+@return   M_DOUBLE_MAX if source is larger than dest
 **/
 double
 calculate_displacement(struct Rectangle source, struct Rectangle dest, int *dx, int *dy) {
@@ -376,7 +379,7 @@ calculate_displacement(struct Rectangle source, struct Rectangle dest, int *dx, 
     #ifdef SHOW_FREE_SPACE_STEPS
     printf("Doesn't fit: source w %d, dest w %d, source h %d, dest h %d\n", source.w, dest.w, source.h, dest.h);
     #endif
-    return -1;
+    return M_DOUBLE_MAX;
   }
 
   if(source.x > dest.x

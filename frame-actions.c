@@ -406,8 +406,7 @@ maximize_tiled_frame_in_place(struct Frame *frame, const char direction, struct 
 Bool
 drop_frame_into_spaces (Display *display,  struct Frame *frame,  struct Rectangle_list free_spaces, struct Themes *themes) {
 
-  double min_displacement = -1;
-  int min = -1;
+  double min_displacement = M_DOUBLE_MAX;
   int min_dx = 0;
   int min_dy = 0;
   //make the frame into a rectangle for calculating displacement function
@@ -418,27 +417,27 @@ drop_frame_into_spaces (Display *display,  struct Frame *frame,  struct Rectangl
   #endif
   /* Try and fit the window into a space. */
   for(unsigned int k = 0; k < free_spaces.used; k++) {
-    double displacement = 0;
     int dx = 0;
     int dy = 0;
-    displacement = calculate_displacement(window, free_spaces.list[k], &dx, &dy);
+    double displacement = calculate_displacement(window, free_spaces.list[k], &dx, &dy);
+
     #ifdef SHOW_FRAME_DROP
     printf("Free space:space %d, x %d, y %d, w %d, h %d, distance %f\n", k
     , free_spaces.list[k].x, free_spaces.list[k].y
-    , free_spaces.list[k].w, free_spaces.list[k].h, (float)displacement);
+    , free_spaces.list[k].w, free_spaces.list[k].h, displacement < M_DOUBLE_MAX ? displacement : -1.00);
     #endif
-    if(displacement >= 0  &&  (min_displacement == -1  ||  displacement < min_displacement)) {
+
+    if(displacement < min_displacement) {
       min_displacement = displacement;
-      min = k;
       min_dx = dx;
       min_dy = dy;
     }
   }
 
 
-  if(min != -1) {
+  if(min_displacement != M_DOUBLE_MAX) {
     #ifdef SHOW_FRAME_DROP
-    printf("Found min_dx %d, min_dy %d, distance %f\n", min_dx, min_dy, (float)min_displacement);
+    printf("Found min_dx %d, min_dy %d, distance %f\n", min_dx, min_dy, min_displacement);
     #endif
     frame->x += min_dx;
     frame->y += min_dy;
