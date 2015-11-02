@@ -112,8 +112,8 @@ enum Window_type {
   modal_dialog, /**< The window forces the user to deal with it before continuing with their task. **/
   utility, /**< The window is for interacting indirectly with another window. **/
   panel,   /**< The window is a panel and is almost unmanaged. **/
-  system_program, /**< must be last, items following this will not be included in the struct Themes */
-  splash /**< this is ignored in the themes as splash screens are not managed **/
+  splash /**< This is ignored in the themes as splash screens are not managed.
+              Must be last in the list. **/
 };
 
 
@@ -158,7 +158,7 @@ struct Font_theme {
 };
 
 struct Themes { //these are all individually malloc'd, and window type is an array of malloc'd arrays
-  struct Widget_theme *window_type[system_program + 1];
+  struct Widget_theme *window_type[splash];
   struct Widget_theme *menubar;
   struct Widget_theme *popup_menu;
   struct Font_theme font_theme[inactive + 1];

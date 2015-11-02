@@ -166,7 +166,7 @@ static void
 create_mode_menu_text(Display *display, struct Themes *themes) {
   /** This is the custom create mode menu LHS section **/
   themes->mode_pulldown_width = get_text_width(display, "Floating", &themes->font_theme[active]) + MODE_ICON_SIZE;
-  for(int i = 0; i <= system_program; i++) {
+  for(int i = 0; i < splash; i++) {
     for(int j = 0; j <= inactive; j++) {
       if(themes->window_type[i] != NULL
       && themes->window_type[i][mode_dropdown_text].state_p[j]) {
@@ -597,7 +597,7 @@ remove_widget_themes (Display *display, struct Widget_theme *themes, int length)
 void
 remove_themes(Display *display, struct Themes *themes) {
 
-  for(int i = 0; i <= system_program; i++)  remove_widget_themes(display, themes->window_type[i], frame_parent + 1);
+  for(int i = 0; i < splash; i++)  remove_widget_themes(display, themes->window_type[i], frame_parent + 1);
   remove_widget_themes(display, themes->popup_menu, popup_menu_parent + 1);
 
   remove_widget_themes(display, themes->menubar, menubar_parent + 1);
