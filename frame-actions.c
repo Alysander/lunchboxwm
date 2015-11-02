@@ -30,6 +30,7 @@
 #include "frame.h"
 #include "space.h"
 #include "frame-actions.h"
+#include "util.h"
 
 /**
 @file     frame-actions.c
@@ -40,6 +41,13 @@
 
 static void
 change_mode_pulldown_text_pixmap(Display *display, struct Frame *frame, int index, struct Themes *themes);
+
+static Bool
+drop_frame_into_spaces (Display *display,  struct Frame *frame,  struct Rectangle_list free_spaces, struct Themes *themes);
+
+//Attempt to expand a frame in place if that is possible
+static Bool
+maximize_tiled_frame_in_place(struct Frame *frame, const char direction, struct Rectangle_list free_spaces);
 
 /**
 @brief    This function ensures that the window is within limits. It sets the frames x,y,w,h to achieve this.
@@ -287,6 +295,95 @@ drop_frame (Display *display, struct Workspace *frames, int clicked_frame,  Bool
   }
 
   return drop_frame_into_spaces(display, frame, free_spaces, themes);
+}
+
+// Attempt to expand a frame in place if that is possible. Modified frame width and height.
+// direction can be 'x', 'y' or 0
+Bool
+maximize_tiled_frame_in_place(struct Frame *frame, const char direction, struct Rectangle_list free_spaces) {
+
+  double max_size = 0;
+
+  //make the frame into a rectangle for calculating displacement function
+  struct Rectangle window = {frame->x, frame->y, frame->w, frame->h };
+
+  struct Rectangle *best_space = NULL;
+
+  #ifdef SHOW_FRAME_DROP
+  printf("Expanding frame\n");
+  #endif
+  /* Try and fit the window into a space in already occupies. */
+  for(unsigned int k = 0; k < free_spaces.used; k++) {
+    //if x,y is inside a space
+    //find the max size it can be.
+    //while including the max width or height
+
+    int effective_width;
+    int effective_height;
+
+    // Don't ever reduce any dimension when maximizing
+    if(frame->h > free_spaces.list[k].h) continue;
+    if(frame->w > free_spaces.list[k].w) continue;
+
+    if(direction == 'x') {
+      effective_height = frame->h;
+      effective_width = MIN(frame->max_width, free_spaces.list[k].w);
+    }
+
+    if(direction == 'y') {
+      effective_height = MIN(frame->max_height, free_spaces.list[k].h);
+      effective_width = frame->w;
+    }
+
+    //maximize in both directions
+    if(!direction) {
+      effective_height = MIN(frame->max_height, free_spaces.list[k].h);
+      effective_width = MIN(frame->max_width, free_spaces.list[k].w);
+    }
+
+    int effective_area = effective_width * effective_height;
+
+    // +-----------+
+    // |           |
+    // |     O----+|
+    // |     |    ||
+    // |     |    ||
+    // |     +----+|
+    // |           |
+    // +-----------+
+
+    // Before a frame is maximized, it will look like the above diagram
+    // With the x1,y1 of the window inside the space.
+    if((window.x >= free_spaces.list[k].x && window.x < free_spaces.list[k].x + free_spaces.list[k].w)
+      && (window.y >= free_spaces.list[k].y && window.y < free_spaces.list[k].y + free_spaces.list[k].h)
+    ) {
+      // There could be more than one overlapping space, so
+      // find the one that allows the frame to be the biggest.
+      if(effective_area > max_size) {
+        max_size = effective_area;
+        best_space = &free_spaces.list[k];
+      }
+    }
+  }
+  if(best_space) {
+
+    if(direction == 'x') {
+      frame->w = best_space->w;
+    }
+
+    if(direction == 'y') {
+      frame->h = best_space->h;
+    }
+
+    //maximize in both directions
+    if(!direction) {
+      frame->w = best_space->w;
+      frame->h = best_space->h;
+    }
+
+    return True;
+  }
+  return False;
 }
 
 Bool
@@ -1203,22 +1300,48 @@ void
 maximize_frame (Display *display, struct Workspace *frames, int clicked_frame, const char direction, struct Themes *themes) {
 
   struct Frame *frame = frames->list[clicked_frame];
-  Screen* screen = DefaultScreenOfDisplay(display);
 
   if(frame->state == fullscreen) return;
 
-  // expand in the direction specified
-  if(direction == 'x' || !direction) {
-    //This ensures the window is larger than the biggest space
-    frame->w = XWidthOfScreen(screen);
-  }
-  if(direction == 'y' || !direction) {
-    frame->h = XHeightOfScreen(screen);
+  if(frame->mode == tiling) {
+    struct Frame *frame = frames->list[clicked_frame];
+    struct Rectangle_list free_spaces = {0, 8, NULL};
+
+    #ifdef SHOW_FRAME_DROP
+    printf("Attempting to maximize window\n");
+    #endif
+
+    enum Window_mode temp_mode = frame->mode;
+    frame->mode = floating; //otherwise the window might try to avoid itself!
+    free_spaces = get_free_screen_spaces (display, False, frames, themes);
+    frame->mode = temp_mode;
+
+    if(free_spaces.list == NULL) {
+      #ifdef SHOW_FRAME_DROP
+      printf("No free spaces\n");
+      printf("Couldn't fit window at all: %s\n", frame->window_name);
+      #endif
+      return;
+    }
+
+    maximize_tiled_frame_in_place(frame, direction, free_spaces);
+
+    #ifdef SHOW_FRAME_DROP
+    printf("Expanding window into space: %s\n", frame->window_name);
+    #endif
+    if(free_spaces.list != NULL) free(free_spaces.list);
+
+  } else {
+    // expand in the direction specified
+    if(direction == 'x' || !direction) {
+      frame->w = frame->max_width;
+    }
+    if(direction == 'y' || !direction) {
+      frame->h = frame->max_height;
+    }
   }
 
-  if(frame->mode == tiling) {
-    redrop_frame(display, frames, clicked_frame, themes);
-  }
+  redrop_frame(display, frames, clicked_frame, themes);
   check_frame_limits(display, frame, themes);
   resize_frame(display, frame, themes);
 }
