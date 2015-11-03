@@ -1,4 +1,5 @@
 void create_menubar        (Display *display, struct Menubar *menubar, struct Separators *seps,  struct Themes *themes, struct Cursors *cursors);
+void resize_menubar        (Display *display, struct Menubar *menubar, const struct Workarea *workarea, struct Themes *themes);
 void create_mode_menu      (Display *display, struct Mode_menu *mode_menu,                       struct Themes *themes, struct Cursors *cursors);
 void create_title_menu     (Display *display, struct Popup_menu *window_menu,                    struct Themes *themes, struct Cursors *cursors);
 void create_workspaces_menu(Display *display, struct Workspace_list *workspaces,                 struct Themes *themes, struct Cursors *cursors);

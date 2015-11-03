@@ -1339,6 +1339,7 @@ main (int argc, char* argv[]) {
         if (event.type == xrandr_event_base + RRScreenChangeNotify) {
             XRRScreenChangeNotifyEvent *ev = (XRRScreenChangeNotifyEvent *) &event;
             update_workarea(ev->width, ev->height, workarea, themes);
+            resize_menubar(display, &menubar, workarea, themes);
             break;
         }
 
