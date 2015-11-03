@@ -1363,10 +1363,10 @@ maximize_frame (Display *display, struct Workspace *frames, int clicked_frame, c
   } else {
     // expand in the direction specified
     if(direction == 'x' || !direction) {
-      frame->w = frame->max_width;
+      frame->w = MIN(frame->max_width, workarea->width);
     }
     if(direction == 'y' || !direction) {
-      frame->h = frame->max_height;
+      frame->h = MIN(frame->max_height, workarea->height);
     }
   }
 

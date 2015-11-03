@@ -23,6 +23,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/Xatom.h>
+#include <limits.h>
 
 #include "xcheck.h"
 #include "lunchbox.h"
@@ -130,11 +131,17 @@ create_frame(Display *display, struct Frame* frame
   frame->hspace = 0 - themes->window_type[frame->theme_type][window].w;
   frame->vspace = 0 - themes->window_type[frame->theme_type][window].h;
 
-  //prevent overly large windows with these sensible defaults
-  frame->max_width  = XWidthOfScreen(screen) + frame->hspace;
-  frame->max_height = XHeightOfScreen(screen) + frame->vspace;
-  frame->min_width  = MINWIDTH + frame->hspace;;
-  frame->min_height = MINHEIGHT + frame->vspace;;
+
+  // This is not set to the something sensive, like the size of the workarea
+  // as it may change and we can't tell if it's a default value or a real
+  // one set by the client.
+  // Instead, always use the MIN of the workarea dimension and these values
+  frame->max_width  = INT_MAX;
+  frame->max_height = INT_MAX;
+
+  //prevent overly small windows with these sensible defaults
+  frame->min_width  = MINWIDTH + frame->hspace;
+  frame->min_height = MINHEIGHT + frame->vspace;
 
   #ifdef ALLOW_OVERSIZE_WINDOWS_WITHOUT_MINIMUM_HINTS
   Screen* screen = DefaultScreenOfDisplay(display);
