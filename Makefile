@@ -1,7 +1,7 @@
 SHELL=/bin/sh
 
 CC=gcc
-LDFLAGS+=-lX11 -lXcursor -lXext -lcairo
+LDFLAGS+=-lX11 -lXcursor -lXext -lcairo -lXrandr
 CFLAGS= -g -Wall -Wextra -pedantic -std=c99 `pkg-config --cflags cairo`
 OBJS=bin/
 COMPILE=${CC} ${CFLAGS} -c $< -o $@

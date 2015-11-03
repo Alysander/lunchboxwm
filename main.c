@@ -28,6 +28,8 @@
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/extensions/shape.h>
 #include <X11/Xatom.h>
+#include <X11/extensions/Xrandr.h>
+
 #include <errno.h>
 #include <unistd.h> //for sleep()
 #include <assert.h>
@@ -56,7 +58,7 @@ void create_cursors   (Display *display, struct Cursors *cursors);
 void create_hints     (Display *display, struct Atoms *atoms);
 void free_cursors     (Display *display, struct Cursors *cursors);
 void create_workarea  (Display *display, struct Workarea *workarea, struct Themes *themes);
-
+void update_workarea  (int width_of_screen, int height_of_screen, struct Workarea *workarea, struct Themes *themes);
 //static XIconSize *create_icon_size (Display *display, int new_size);
 
 /**
@@ -147,6 +149,9 @@ main (int argc, char* argv[]) {
 
   struct Workspace *frames = NULL;  //this is a pointer to the current_workspace. if it is NULL, there is no current workspace.
 
+  //These ints are used in calculating the event type for xrandr events
+  int xrandr_event_base, xrandr_error_base;
+
   if(signal(SIGINT, end_event_loop) == SIG_ERR) {
     perror("\nError: Could not set the error handler\n Is this a POSIX conformant system?\n");
     return EXIT_FAILURE;
@@ -180,6 +185,16 @@ main (int argc, char* argv[]) {
 
   XSelectInput(display, root, SubstructureRedirectMask | ButtonMotionMask
   | ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask | FocusChangeMask);
+
+  //Check if we have the Xrandr extension available
+  if (XRRQueryExtension (display, &xrandr_event_base, &xrandr_error_base)) {
+    XRRSelectInput (display, root, RRScreenChangeNotifyMask);
+  } else {
+    fprintf(stderr, "Error: Could not find XRandr extension.\n\n");
+    return EXIT_FAILURE;
+  }
+
+  XRRSelectInput (display, root, RRScreenChangeNotifyMask);
 
   XSync(display, False);
 
@@ -1318,7 +1333,15 @@ main (int argc, char* argv[]) {
         #endif
       break;
 
+      case RRScreenChangeNotify:
+      break;
       default:
+        if (event.type == xrandr_event_base + RRScreenChangeNotify) {
+            XRRScreenChangeNotifyEvent *ev = (XRRScreenChangeNotifyEvent *) &event;
+            update_workarea(ev->width, ev->height, workarea, themes);
+            break;
+        }
+
         //printf("Warning: Unhandled event %d\n", event.type);
       break;
     }
@@ -1465,11 +1488,19 @@ list_properties(Display *display, Window window) {
 void
 create_workarea(Display *display, struct Workarea *workarea, struct Themes *themes) {
   Screen* screen = DefaultScreenOfDisplay(display);
-  workarea->width = XWidthOfScreen(screen);
-  workarea->height = XHeightOfScreen(screen) - themes->menubar[menubar_parent].h;
 
-  workarea->screen_width = XWidthOfScreen(screen);
-  workarea->screen_height = XHeightOfScreen(screen);
+  update_workarea(XWidthOfScreen(screen), XHeightOfScreen(screen), workarea, themes);
+}
+
+void
+update_workarea(int width_of_screen, int height_of_screen, struct Workarea *workarea, struct Themes *themes) {
+  workarea->width = width_of_screen;
+  workarea->height = height_of_screen - themes->menubar[menubar_parent].h;
+  #ifdef SHOW_XRANDR_EVENTS
+  printf("xrandr width %d, height %d\n", workarea->width , workarea->height );
+  #endif
+  workarea->screen_width = width_of_screen;
+  workarea->screen_height = height_of_screen;
 }
 
 

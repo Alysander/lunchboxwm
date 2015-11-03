@@ -292,7 +292,7 @@ drop_frame (Display *display, struct Workspace *frames, int clicked_frame,  Bool
 
   enum Window_mode temp_mode = frame->mode;
   frame->mode = floating; //otherwise the window might try to avoid itself!
-  free_spaces = get_free_screen_spaces (display, only_panels, frames, themes);
+  free_spaces = get_free_screen_spaces (only_panels, frames, workarea);
   frame->mode = temp_mode;
 
   if(free_spaces.list == NULL) {
@@ -1337,7 +1337,7 @@ maximize_frame (Display *display, struct Workspace *frames, int clicked_frame, c
 
     enum Window_mode temp_mode = frame->mode;
     frame->mode = floating; //otherwise the window might try to avoid itself!
-    free_spaces = get_free_screen_spaces (display, False, frames, themes);
+    free_spaces = get_free_screen_spaces (False, frames, workarea);
     frame->mode = temp_mode;
 
     if(free_spaces.list == NULL) {

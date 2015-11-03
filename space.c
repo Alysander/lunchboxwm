@@ -43,14 +43,12 @@
 @pre      All tiled windows are not overlapping.
 **/
 struct Rectangle_list
-get_free_screen_spaces (Display *display, Bool only_panels, struct Workspace *frames, struct Themes *themes) {
+get_free_screen_spaces (Bool only_panels, struct Workspace *frames, const struct Workarea *workarea) {
   //the start variable is used to skip windows at the start
   //in the handle_frame_retile function these are the intersecting tiled windows.
 
   struct Rectangle_list used_spaces = {.used = 0, .max = 8, .list = NULL};
   struct Rectangle_list free_spaces = {.used = 0, .max = 8, .list = NULL};
-
-  Screen* screen = DefaultScreenOfDisplay(display);
 
   used_spaces.list = malloc(used_spaces.max * sizeof(struct Rectangle));
   if(used_spaces.list == NULL) {
@@ -88,9 +86,9 @@ get_free_screen_spaces (Display *display, Bool only_panels, struct Workspace *fr
     }
   }
   #ifdef SHOW_FREE_SPACE_STEPS
-  printf("Finding free spaces. Width %d, Height %d\n", XWidthOfScreen(screen), XHeightOfScreen(screen) - themes->menubar[menubar_parent].h);
+  printf("Finding free spaces. Width %d, Height %d\n", workarea->width, workarea->height);
   #endif
-  free_spaces = largest_available_spaces(&used_spaces, XWidthOfScreen(screen), XHeightOfScreen(screen) - themes->menubar[menubar_parent].h);
+  free_spaces = largest_available_spaces(&used_spaces, workarea->width, workarea->height);
   return free_spaces;
 }
 

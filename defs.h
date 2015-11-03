@@ -32,6 +32,7 @@
 //  #define SHOW_WORKSPACE
 //  #define SHOW_STATES
 //  #define SHOW_FRAME_STATE
+//  #define SHOW_XRANDR_EVENTS
    #define SHOW_WELCOME_MESSAGE
 /**** Configure behaviour *****/
 
