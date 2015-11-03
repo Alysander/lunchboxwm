@@ -198,15 +198,6 @@ create_workspace(Display *display, struct Workspace_list* workspaces, char *work
 
   frames->states = calloc(sizeof(struct Saved_frame_state), workspaces->max_frames);
   if(!frames->states) { perror("Error: not enough memory to allocate frame save states in a new workspace"); return -1; }
-  //Create the background window
-  //frames->virtual_desktop = XCreateSimpleWindow(display, root, 0, 0
-  //, XWidthOfScreen(screen), XHeightOfScreen(screen), 0, black, black);
-  //attributes.cursor = cursors->normal;
-  //attributes.override_redirect = True;
-  //attributes.background_pixmap = ParentRelative;
-  //XChangeWindowAttributes(display, frames->virtual_desktop
-  //, CWOverrideRedirect | CWBackPixmap | CWCursor , &attributes);
-  //XLowerWindow(display, frames->virtual_desktop);
 
   //TODO when a workspace is added to the list, it must also be resized to the width of that list.
   unsigned int width = workspaces->workspace_menu.inner_width;
@@ -294,8 +285,7 @@ remove_workspace(Display *display, struct Workspace_list* workspaces, int index)
   }
 
   workspaces->used_workspaces--;
-  //close the background window
-  //XDestroyWindow(display, frames->virtual_desktop);
+
   //remove the entry in the program menu
   XDestroyWindow(display, frames->workspace_menu.item);
   //keep the open workspaces in order
@@ -625,7 +615,6 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
 
   if(*current_workspace < workspaces->used_workspaces /*this function is sometimes called to change from an invalid workspace that has been closed */
   &&  *current_workspace >= 0) {
-    //XUnmapWindow(display, workspace->virtual_desktop);
     for(int i = 0; i < workspace->used; i++) {
       //So we can figure out where to save the frame state we need to calculate the pointer offset.
       int real_frame_index = get_offset_in_array(workspace->list[i], workspaces->frame_list, sizeof(struct Frame));
@@ -651,7 +640,6 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
 
   workspace = &workspaces->list[*current_workspace];
   *frames = workspace;
-  //XMapWindow(display, workspace->virtual_desktop);
 
   workspace->max = DEFAULT_STARTING_FRAMES;
   workspace->list = malloc(sizeof(struct Frames *) * workspace->max );

@@ -274,7 +274,6 @@ struct Workspace {
 
   struct Menu_item workspace_menu; /**< this the workspaces menu item **/
 
-  //Window virtual_desktop; /**< The background of this is the same as the root, so it's an easy way to get the root to redraw by mapping and unmapping this **/
 };
 
 /**
