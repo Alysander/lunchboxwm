@@ -288,6 +288,13 @@ struct Workspace_list {
   struct Frame* frame_list; /**< frame_list contains all the frames structures **/
 };
 
+struct Workarea {
+  int width;
+  int height;
+  int screen_width;
+  int screen_height;
+};
+
 /**
 @brief this struct contains references to XCursors that are used to change the mouse pointer when the user grabs or presses certain widgets.
 **/

@@ -23,6 +23,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/Xatom.h>
+#include <limits.h>
 
 #include "xcheck.h"
 #include "lunchbox.h"
@@ -52,7 +53,7 @@ static void
 get_frame_wm_hints      (Display *display, struct Frame *frame);
 
 static void
-frame_type_settings     (Display *display, struct Frame *frame);
+frame_type_settings     (Display *display, struct Frame *frame, const struct Workarea *workarea);
 
 static void
 save_frame_initial_state(struct Frame *frame);
@@ -89,9 +90,8 @@ save_frame_initial_state(struct Frame *frame) {
 **/
 int
 create_frame(Display *display, struct Frame* frame
-, Window framed_window, struct Popup_menu *window_menu, struct Separators *seps, struct Themes *themes
+, Window framed_window, struct Popup_menu *window_menu, struct Separators *seps, const struct Workarea *workarea, struct Themes *themes
 , struct Cursors *cursors, struct Atoms *atoms) {
-  Screen* screen = DefaultScreenOfDisplay(display);
   XWindowAttributes get_attributes;
 
   //printf("Creating frames->list[%d] with window %lu, connection %lu\n"
@@ -130,11 +130,17 @@ create_frame(Display *display, struct Frame* frame
   frame->hspace = 0 - themes->window_type[frame->theme_type][window].w;
   frame->vspace = 0 - themes->window_type[frame->theme_type][window].h;
 
-  //prevent overly large windows with these sensible defaults
-  frame->max_width  = XWidthOfScreen(screen) + frame->hspace;
-  frame->max_height = XHeightOfScreen(screen) + frame->vspace;
-  frame->min_width  = MINWIDTH + frame->hspace;;
-  frame->min_height = MINHEIGHT + frame->vspace;;
+
+  // This is not set to the something sensive, like the size of the workarea
+  // as it may change and we can't tell if it's a default value or a real
+  // one set by the client.
+  // Instead, always use the MIN of the workarea dimension and these values
+  frame->max_width  = INT_MAX;
+  frame->max_height = INT_MAX;
+
+  //prevent overly small windows with these sensible defaults
+  frame->min_width  = MINWIDTH + frame->hspace;
+  frame->min_height = MINHEIGHT + frame->vspace;
 
   #ifdef ALLOW_OVERSIZE_WINDOWS_WITHOUT_MINIMUM_HINTS
   Screen* screen = DefaultScreenOfDisplay(display);
@@ -152,7 +158,7 @@ create_frame(Display *display, struct Frame* frame
   /* This requires hspace and vspace to be set as well as the incremental hints */
   get_frame_hints(display, frame);
 
-  frame_type_settings(display, frame);
+  frame_type_settings(display, frame, workarea);
 
   //Don't manage splash screens, they just cause the workspace to be created and instantly destroyed
   if(frame->type == splash) {
@@ -181,7 +187,7 @@ create_frame(Display *display, struct Frame* frame
 
   XSetWindowBorderWidth(display, framed_window, 0);
 
-  change_frame_mode(display, frame, unset, themes);
+  change_frame_mode(display, frame, unset, workarea, themes);
 
   #ifdef CRASH_ON_BUG
   XGrabServer(display);
@@ -219,11 +225,11 @@ create_frame(Display *display, struct Frame* frame
   frame->w += frame->hspace;
   frame->h += frame->vspace;
 
-  check_frame_limits(display, frame, themes);
+  check_frame_limits(display, frame, workarea, themes);
 
   resize_frame(display, frame, themes);
   stack_frame(display, frame, seps);
-  change_frame_state(display, frame, frame->state, seps, themes, atoms);
+  change_frame_state(display, frame, frame->state, seps, workarea, themes, atoms);
   XMoveResizeWindow(display, framed_window, 0, 0, frame->w - frame->hspace, frame->h - frame->vspace);
   XMoveWindow(display, framed_window, 0, 0);
   XMapWindow(display, framed_window);
@@ -509,8 +515,7 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
 @return  void
 **/
 static void
-frame_type_settings(Display *display, struct Frame *frame) {
-  Screen* screen = DefaultScreenOfDisplay(display);
+frame_type_settings(Display *display, struct Frame *frame, const struct Workarea *workarea) {
 
   /* Centre transient windows on top of their parents */
   /* This is a bit of a hack in that it uses some slow round trips but reduces coupling with other modules */
@@ -536,10 +541,10 @@ frame_type_settings(Display *display, struct Frame *frame) {
         }
       }
     }
-    else centre_frame(XWidthOfScreen(screen), XHeightOfScreen(screen), frame->w, frame->h, &(frame->x), &(frame->y));
+    else centre_frame(workarea->width, workarea->height, frame->w, frame->h, &(frame->x), &(frame->y));
   }
   else if(frame->type == dialog  ||  frame->type == splash  ) {
-    centre_frame(XWidthOfScreen(screen), XHeightOfScreen(screen), frame->w, frame->h, &(frame->x), &(frame->y));
+    centre_frame(workarea->width, workarea->height, frame->w, frame->h, &(frame->x), &(frame->y));
   }
 }
 
@@ -1035,22 +1040,22 @@ suitable_for_foreign_workspaces(struct Frame *frame) {
 @return void
 **/
 void
-recover_frame(Display *display, struct Workspace *frames, int i /*index*/, struct Separators *seps, struct Themes *themes) {
+recover_frame(Display *display, struct Workspace *frames, int i /*index*/, struct Separators *seps, const struct Workarea *workarea, struct Themes *themes) {
   //allow desktop windows to be recovered/tiled.  Otherwise the user has no way to recover a desktop window.
   if(frames->list[i]->mode == desktop) {
-    if(drop_frame(display, frames, i, False, themes))  {
-      change_frame_mode(display, frames->list[i], tiling, themes);
+    if(drop_frame(display, frames, i, False, workarea, themes))  {
+      change_frame_mode(display, frames->list[i], tiling,  workarea, themes);
       resize_frame(display, frames->list[i], themes);
     }
   }
   else if(frames->list[i]->mode == tiling) {
-    if(drop_frame(display, frames, i, False, themes))  {
+    if(drop_frame(display, frames, i, False, workarea, themes))  {
       XMapWindow(display, frames->list[i]->widgets[frame_parent].widget);
       frames->list[i]->state = none;
     }
   }
   else if(frames->list[i]->mode == floating) {
-    if(drop_frame(display, frames, i, True, themes)) {
+    if(drop_frame(display, frames, i, True, workarea, themes)) {
       XMapWindow(display, frames->list[i]->widgets[frame_parent].widget);
       frames->list[i]->state = none;
     }

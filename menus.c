@@ -36,6 +36,17 @@
 **/
 
 
+// Called when the screen changes resolution
+void
+resize_menubar(Display *display, struct Menubar *menubar, const struct Workarea *workarea, struct Themes *themes) {
+    int spacing = (workarea->width - themes->menubar[program_menu].w )/4;
+    XMoveResizeWindow(display, menubar->widgets[menubar_parent].widget, 0, workarea->height, workarea->width, themes->menubar[menubar_parent].h);
+    for(int i = 0; i < menubar_parent; i++) {
+      XMoveResizeWindow(display, menubar->widgets[i].widget, spacing*i, 0, themes->menubar[i].w, themes->menubar[i].h);
+    }
+    XFlush(display);
+}
+
 /**
 @pre      display is valid, menubar is not null but not initialized, seps is valid, themes is valid, cursors is valid.
 @post     Menubar created and mapped.

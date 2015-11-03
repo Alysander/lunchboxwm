@@ -25,16 +25,19 @@ Bool
 create_startup_workspaces(Display *display, struct Workspace_list *workspaces
 , int *current_workspace, struct Workspace **frames
 , struct Separators *seps
-, struct Popup_menu *window_menu, struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms);
+, struct Popup_menu *window_menu
+, const struct Workarea *workarea
+, struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms);
 
 int
 add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window window, int *current_workspace, struct Workspace **frames
 , struct Popup_menu *window_menu
 , struct Separators *seps
+, const struct Workarea *workarea
 , struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms);
 
 void
-change_to_workspace(Display *display, struct Workspace_list *workspaces, int *current_workspace, struct Workspace **frames, int index, struct Separators *seps, struct Themes *themes, struct Atoms *atoms);
+change_to_workspace(Display *display, struct Workspace_list *workspaces, int *current_workspace, struct Workspace **frames, int index, struct Separators *seps, const struct Workarea *workarea, struct Themes *themes, struct Atoms *atoms);
 
 void
 update_client_list(Display *display, struct Workspace *frames, struct Atoms *atoms);
