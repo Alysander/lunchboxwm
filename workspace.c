@@ -366,7 +366,7 @@ load_frame_state(Display *display, struct Saved_frame_state* save, struct Frame 
     frame->y = save->y;
     frame->w = save->w;
     frame->h = save->h;
-    change_frame_state(display, frame, save->state, seps, themes, atoms);
+    change_frame_state(display, frame, save->state, seps, workarea, themes, atoms);
     change_frame_mode(display, frame, save->mode, workarea, themes);
     #ifdef SHOW_STATES
     printf("Loading x %d, y %d, w %d, h %d, state %d.  %s\n", frame->x, frame->y, frame->w, frame->h, frame->state, frame->window_name);
@@ -508,12 +508,12 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
         if(workspaces->frame_list[true_frame_index].mode == tiling  &&  home_w != *current_workspace) {
           workspaces->list[workspace_index].states[true_frame_index].need_to_tile = 1;
         }
-        change_frame_state(display, &workspaces->frame_list[true_frame_index], original_state, seps, themes, atoms);
+        change_frame_state(display, &workspaces->frame_list[true_frame_index], original_state, seps, workarea, themes, atoms);
         save_frame_state(&workspaces->list[workspace_index].states[true_frame_index], &workspaces->frame_list[true_frame_index]);
       }
       else if (show_in_other_workspaces) {
         workspaces->list[workspace_index].states[true_frame_index].available = 2;
-        change_frame_state(display, &workspaces->frame_list[true_frame_index], minimized, seps, themes, atoms);
+        change_frame_state(display, &workspaces->frame_list[true_frame_index], minimized, seps, workarea, themes, atoms);
         save_frame_state(&workspaces->list[workspace_index].states[true_frame_index], &workspaces->frame_list[true_frame_index]);
       }
 
@@ -529,10 +529,10 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
     workspace->list[frame_ref_index] = &workspaces->frame_list[true_frame_index];
     workspace->used++;
 
-    change_frame_state(display, &workspaces->frame_list[true_frame_index], original_state, seps, themes, atoms);
+    change_frame_state(display, &workspaces->frame_list[true_frame_index], original_state, seps, workarea, themes, atoms);
     if(workspace->list[frame_ref_index]->mode == tiling  &&  workspace->list[frame_ref_index]->state != fullscreen) {
       if(!redrop_frame(display, workspace, frame_ref_index, workarea, themes)) {
-        change_frame_state(display, workspace->list[frame_ref_index], minimized, seps, themes, atoms);
+        change_frame_state(display, workspace->list[frame_ref_index], minimized, seps, workarea, themes, atoms);
       }
     }
     #ifdef SHOW_MAP_REQUEST_EVENT
@@ -657,7 +657,7 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
         change_frame_mode(display, frame, tiling, workarea, themes);
       }
       else {
-        change_frame_state(display, frame, minimized, seps, themes, atoms);
+        change_frame_state(display, frame, minimized, seps, workarea, themes, atoms);
         fprintf(stderr, "Couldn't tile panel! It is called %s\n", frame->window_name);
       }
       resize_frame(display, frame, themes);
@@ -682,14 +682,14 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
           change_frame_mode(display, frame, tiling, workarea, themes);
         }
         else {
-          change_frame_state(display, frame, minimized, seps, themes, atoms);
+          change_frame_state(display, frame, minimized, seps, workarea, themes, atoms);
           //TODO set urgency hint
         }
         workspace->states[i].need_to_tile = 0;
       }
       else if(frame->mode == floating) {
         if(!drop_frame(display, workspace, ref_index, True, workarea, themes)) {
-          change_frame_state(display, frame, minimized, seps, themes, atoms);
+          change_frame_state(display, frame, minimized, seps, workarea, themes, atoms);
           //TODO set urgency hint
         }
       }

@@ -71,7 +71,12 @@ check_frame_limits(Display *display, struct Frame *frame, const struct Workarea 
   else
   if(frame->h > frame->max_height) frame->h = frame->max_height;
 
-  if(frame->mode != desktop) {
+  if(frame->mode == desktop) {
+    frame->x = 0 - themes->window_type[frame->theme_type][window].x;
+    frame->y = 0 - themes->window_type[frame->theme_type][window].y;
+    frame->w = workarea->width + frame->hspace;
+    frame->h = workarea->height + frame->vspace;
+  } else {
     if(frame->w > workarea->width)
       frame->w = workarea->width;
 
@@ -145,11 +150,6 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
     resize_frame(display, frame, themes);
   } else if(mode == desktop) {
     change_mode_pulldown_text_pixmap(display, frame, mode_dropdown_text_desktop, themes);
-    frame->x = 0 - themes->window_type[frame->theme_type][window].x;
-    frame->y = 0 - themes->window_type[frame->theme_type][window].y;
-
-    frame->w = XWidthOfScreen(screen) + frame->hspace;
-    frame->h = XHeightOfScreen(screen) - themes->menubar[menubar_parent].h + frame->vspace;
 
     frame->mode = desktop;
     check_frame_limits(display, frame, workarea, themes);
@@ -184,18 +184,18 @@ change_mode_pulldown_text_pixmap(Display *display, struct Frame *frame, int inde
 **/
 void
 change_frame_state (Display *display, struct Frame *frame, enum Window_state state
-, struct Separators *seps, struct Themes *themes, struct Atoms *atoms) {
-  Screen* screen = DefaultScreenOfDisplay(display);
+, struct Separators *seps, const struct Workarea *workarea, struct Themes *themes, struct Atoms *atoms) {
 
   if(state == fullscreen) {
     int x = frame->x;
     int y = frame->y;
     int w = frame->w;
     int h = frame->h;
+    //Make the window look fullscreen and then swap the variables back
     frame->x = 0 - themes->window_type[frame->type][window].x;
     frame->y = 0 - themes->window_type[frame->type][window].y;
-    frame->w = XWidthOfScreen(screen)  + frame->hspace;
-    frame->h = XHeightOfScreen(screen) + frame->vspace;
+    frame->w = workarea->screen_width  + frame->hspace;
+    frame->h = workarea->screen_height + frame->vspace;
 
     frame->state = none;
     resize_frame(display, frame, themes);

@@ -375,7 +375,7 @@ main (int argc, char* argv[]) {
               pointer_start_y = event.xbutton.y - frames->list[i]->y;
 
               if(frames->list[i]->state == fullscreen) { //cancel the fullscreen
-                change_frame_state(display, frames->list[i], none, &seps, themes, &atoms);
+                change_frame_state(display, frames->list[i], none, &seps, workarea, themes, &atoms);
               }
             }
             break;
@@ -857,7 +857,7 @@ main (int argc, char* argv[]) {
                   change_frame_mode(display, frames->list[i], floating, workarea, themes);
                   stack_frame(display, frames->list[i], &seps);
                 } else if(event.xbutton.window == mode_menu.items[hidden].item) {
-                  change_frame_state(display, frames->list[i], minimized, &seps, themes, &atoms);
+                  change_frame_state(display, frames->list[i], minimized, &seps, workarea, themes, &atoms);
                   XUnmapWindow(display, frames->list[i]->widgets[frame_parent].widget);
                   //FOCUS
                   remove_focus(frames->list[i]->framed_window, &frames->focus);
@@ -1281,7 +1281,7 @@ main (int argc, char* argv[]) {
             struct Frame *frame = &workspaces.frame_list[i];
             if(event.xclient.data.l[0] == 1 ) {
               if((Atom)event.xclient.data.l[1] == atoms.wm_state_fullscreen) {
-                change_frame_state(display, frame, fullscreen, &seps, themes, &atoms);
+                change_frame_state(display, frame, fullscreen, &seps, workarea, themes, &atoms);
               }
               #ifdef SHOW_CLIENT_MESSAGE
               printf("Adding state\n");
@@ -1289,7 +1289,7 @@ main (int argc, char* argv[]) {
             }
             else if(event.xclient.data.l[0] == 0) {
               if((Atom)event.xclient.data.l[1] == atoms.wm_state_fullscreen) {
-                change_frame_state(display, frame, none, &seps, themes, &atoms);
+                change_frame_state(display, frame, none, &seps, workarea, themes, &atoms);
               }
               #ifdef SHOW_CLIENT_MESSAGE
               printf("Removing state\n");
@@ -1298,10 +1298,10 @@ main (int argc, char* argv[]) {
             else if(event.xclient.data.l[0] == 2) {
               if((Atom)event.xclient.data.l[1] == atoms.wm_state_fullscreen) {
                 if(frame->state == none) {
-                  change_frame_state(display, frame, fullscreen, &seps, themes, &atoms);
+                  change_frame_state(display, frame, fullscreen, &seps, workarea, themes, &atoms);
                 }
                 else if (frame->state == fullscreen) {
-                  change_frame_state(display, frame, none, &seps, themes, &atoms);
+                  change_frame_state(display, frame, none, &seps, workarea, themes, &atoms);
                 }
               }
               #ifdef SHOW_CLIENT_MESSAGE
@@ -1340,6 +1340,7 @@ main (int argc, char* argv[]) {
             XRRScreenChangeNotifyEvent *ev = (XRRScreenChangeNotifyEvent *) &event;
             update_workarea(ev->width, ev->height, workarea, themes);
             resize_menubar(display, &menubar, workarea, themes);
+            //TODO, resize desktop windows, fullscreen windows
             break;
         }
 

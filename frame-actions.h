@@ -1,6 +1,6 @@
 void check_frame_limits     (Display *display, struct Frame *frame, const struct Workarea *workarea,  struct Themes *themes);
 void change_frame_mode      (Display *display, struct Frame *frame, enum Window_mode mode,  const struct Workarea *workarea,  struct Themes *themes);
-void change_frame_state     (Display *display, struct Frame *frame, enum Window_state state, struct Separators *seps, struct Themes *themes, struct Atoms *atoms);
+void change_frame_state     (Display *display, struct Frame *frame, enum Window_state state, struct Separators *seps, const struct Workarea *workarea, struct Themes *themes, struct Atoms *atoms);
 Bool redrop_frame           (Display *display, struct Workspace *frames, int clicked_frame, const struct Workarea *workarea,  struct Themes *themes);
 
 Bool drop_frame             (Display *display, struct Workspace *frames, int clicked_frame, Bool only_panels, const struct Workarea *workarea, struct Themes *themes);

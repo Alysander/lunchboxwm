@@ -230,7 +230,7 @@ create_frame(Display *display, struct Frame* frame
 
   resize_frame(display, frame, themes);
   stack_frame(display, frame, seps);
-  change_frame_state(display, frame, frame->state, seps, themes, atoms);
+  change_frame_state(display, frame, frame->state, seps, workarea, themes, atoms);
   XMoveResizeWindow(display, framed_window, 0, 0, frame->w - frame->hspace, frame->h - frame->vspace);
   XMoveWindow(display, framed_window, 0, 0);
   XMapWindow(display, framed_window);
