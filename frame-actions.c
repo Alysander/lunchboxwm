@@ -58,16 +58,7 @@ maximize_tiled_frame_in_place(struct Frame *frame, const char direction, struct 
 **/
 void
 check_frame_limits(Display *display, struct Frame *frame, const struct Workarea *workarea, struct Themes *themes) {
-  Screen* screen = DefaultScreenOfDisplay(display);
   if(frame->state == fullscreen) return;
-
-  if(frame->mode != desktop) {
-    if(frame->w > XWidthOfScreen(screen))
-      frame->w = XWidthOfScreen(screen);
-
-    if(frame->h > XHeightOfScreen(screen) - themes->menubar[menubar_parent].h)
-     frame->h = XHeightOfScreen(screen) - themes->menubar[menubar_parent].h;
-  }
 
   frame->w -= (frame->w - frame->hspace) % frame->width_inc  - frame->w_inc_offset;
   frame->h -= (frame->h - frame->vspace) % frame->height_inc - frame->h_inc_offset;
@@ -81,13 +72,19 @@ check_frame_limits(Display *display, struct Frame *frame, const struct Workarea 
   if(frame->h > frame->max_height) frame->h = frame->max_height;
 
   if(frame->mode != desktop) {
+    if(frame->w > workarea->width)
+      frame->w = workarea->width;
+
+    if(frame->h > workarea->height)
+     frame->h = workarea->height;
+
     if(frame->x < 0 ) frame->x = 0;
     if(frame->y < 0 ) frame->y = 0;
 
-    if(frame->x + frame->w > XWidthOfScreen(screen))
-      frame->x = XWidthOfScreen(screen) - frame->w;
-    if(frame->y + frame->h > XHeightOfScreen(screen) - themes->menubar[menubar_parent].h)
-      frame->y = XHeightOfScreen(screen)- frame->h   - themes->menubar[menubar_parent].h;
+    if(frame->x + frame->w > workarea->width)
+      frame->x = workarea->width - frame->w;
+    if(frame->y + frame->h > workarea->height)
+      frame->y = workarea->height - frame->h;
   }
 }
 
@@ -702,12 +699,12 @@ resize_using_frame_grip (Display *display, struct Workspace *frames, int clicked
   }
 
   if(frame->mode != desktop) {
-    if(new_x + new_width > XWidthOfScreen(screen)) {
-      new_width = XWidthOfScreen(screen) - new_x;
+    if(new_x + new_width > workarea->width) {
+      new_width = workarea->width - new_x;
       NEW_X_INC
     }
-    if(new_y + new_height > XHeightOfScreen(screen) - themes->menubar[menubar_parent].h) {
-      new_height = XHeightOfScreen(screen)- new_y - themes->menubar[menubar_parent].h;
+    if(new_y + new_height > workarea->height) {
+      new_height = workarea->height - new_y;
       NEW_Y_INC
     }
   }
@@ -763,7 +760,7 @@ resize_using_frame_grip (Display *display, struct Workspace *frames, int clicked
 void
 move_frame (Display *display, struct Frame *frame
 , int *pointer_start_x, int *pointer_start_y, int mouse_root_x, int mouse_root_y
-, int *resize_x_direction, int *resize_y_direction, struct Themes *themes) {
+, int *resize_x_direction, int *resize_y_direction, const struct Workarea *workarea, struct Themes *themes) {
 
   //the pointer start variables may be updated as the window is squished against the LHS or top of the screen
   //because of the changing relative co-ordinates of the pointer on the window.
@@ -773,8 +770,6 @@ move_frame (Display *display, struct Frame *frame
   // the resize_x/y_direction variables are used to identify when a squish resize has occured
   // and this is then used to decide when to stretch the window from the edge.
 
-  Screen* screen = DefaultScreenOfDisplay(display);
-
   int new_width = 0;
   int new_height = 0;
   int new_x = mouse_root_x - *pointer_start_x;
@@ -783,14 +778,14 @@ move_frame (Display *display, struct Frame *frame
   if(frame->state == fullscreen) return;
 
   //do not attempt to resize if the window is larger than the screen
-  if(frame->min_width <= XWidthOfScreen(screen)
-  && frame->min_height <= XHeightOfScreen(screen) - themes->menubar[menubar_parent].h
+  if(frame->min_width <= workarea->width
+  && frame->min_height <= workarea->height
   && frame->mode != desktop) {
 
-    if((new_x + frame->w > XWidthOfScreen(screen)) //window moving off RHS
+    if((new_x + frame->w > workarea->width ) //window moving off RHS
     || (*resize_x_direction == -1)) {
       *resize_x_direction = -1;
-      new_width = XWidthOfScreen(screen) - new_x;
+      new_width = workarea->width - new_x;
     }
 
     if((new_x < 0) //window moving off LHS
@@ -801,10 +796,10 @@ move_frame (Display *display, struct Frame *frame
       *pointer_start_x = mouse_root_x;
     }
 
-    if((new_y + frame->h > XHeightOfScreen(screen) - themes->menubar[menubar_parent].h) //window moving off the bottom
+    if((new_y + frame->h > workarea->height) //window moving off the bottom
     || (*resize_y_direction == -1)) {
       *resize_y_direction = -1;
-      new_height = XHeightOfScreen(screen) - themes->menubar[menubar_parent].h - new_y;
+      new_height = workarea->height - new_y;
     }
 
     if((new_y < 0) //window moving off the top of the screen
@@ -817,7 +812,7 @@ move_frame (Display *display, struct Frame *frame
 
     if(new_width != 0  &&  new_width < frame->min_width) {
       new_width = frame->min_width;
-      if(*resize_x_direction == -1) new_x = XWidthOfScreen(screen) - frame->min_width;
+      if(*resize_x_direction == -1) new_x = workarea->width - frame->min_width;
       //don't move the window off the RHS if it has reached it's minimum size
       //LHS not considered because x has already been set to 0
 
@@ -827,7 +822,7 @@ move_frame (Display *display, struct Frame *frame
       new_height = frame->min_height;
       //don't move the window off the bottom if it has reached it's minimum size
       //Top not considered because y has already been set to 0
-      if(*resize_y_direction == -1) new_y = XHeightOfScreen(screen) - frame->min_height - themes->menubar[menubar_parent].h;
+      if(*resize_y_direction == -1) new_y = workarea->height - frame->min_height;
     }
 
     //limit resizes to max width

@@ -53,7 +53,7 @@ static void
 get_frame_wm_hints      (Display *display, struct Frame *frame);
 
 static void
-frame_type_settings     (Display *display, struct Frame *frame);
+frame_type_settings     (Display *display, struct Frame *frame, const struct Workarea *workarea);
 
 static void
 save_frame_initial_state(struct Frame *frame);
@@ -159,7 +159,7 @@ create_frame(Display *display, struct Frame* frame
   /* This requires hspace and vspace to be set as well as the incremental hints */
   get_frame_hints(display, frame);
 
-  frame_type_settings(display, frame);
+  frame_type_settings(display, frame, workarea);
 
   //Don't manage splash screens, they just cause the workspace to be created and instantly destroyed
   if(frame->type == splash) {
@@ -516,8 +516,7 @@ get_frame_hints(Display* display, struct Frame* frame) { //use themes
 @return  void
 **/
 static void
-frame_type_settings(Display *display, struct Frame *frame) {
-  Screen* screen = DefaultScreenOfDisplay(display);
+frame_type_settings(Display *display, struct Frame *frame, const struct Workarea *workarea) {
 
   /* Centre transient windows on top of their parents */
   /* This is a bit of a hack in that it uses some slow round trips but reduces coupling with other modules */
@@ -543,10 +542,10 @@ frame_type_settings(Display *display, struct Frame *frame) {
         }
       }
     }
-    else centre_frame(XWidthOfScreen(screen), XHeightOfScreen(screen), frame->w, frame->h, &(frame->x), &(frame->y));
+    else centre_frame(workarea->width, workarea->height, frame->w, frame->h, &(frame->x), &(frame->y));
   }
   else if(frame->type == dialog  ||  frame->type == splash  ) {
-    centre_frame(XWidthOfScreen(screen), XHeightOfScreen(screen), frame->w, frame->h, &(frame->x), &(frame->y));
+    centre_frame(workarea->width, workarea->height, frame->w, frame->h, &(frame->x), &(frame->y));
   }
 }
 

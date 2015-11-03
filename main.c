@@ -1026,7 +1026,7 @@ main (int argc, char* argv[]) {
           if(!clicked_widget) { /*** Move ***/
             move_frame(display, frames->list[clicked_frame]
             , &pointer_start_x, &pointer_start_y, mouse_root_x, mouse_root_y
-            , &resize_x_direction, &resize_y_direction, themes);
+            , &resize_x_direction, &resize_y_direction, workarea, themes);
             //TODO consider deadzone here too
             last_click_window = 0;
             last_click_time = CurrentTime;

@@ -14,7 +14,7 @@ void resize_using_frame_grip (Display *display, struct Workspace *frames, int cl
 
 void move_frame             (Display *display, struct Frame *frame
 , int *pointer_start_x, int *pointer_start_y, int mouse_root_x, int mouse_root_y
-, int *resize_x_direction, int *resize_y_direction, struct Themes *themes);
+, int *resize_x_direction, int *resize_y_direction, const struct Workarea *workarea, struct Themes *themes);
 
 void resize_tiling_frame    (Display *display, struct Workspace* frames, int index, char axis, int position, int size, const struct Workarea *workarea, struct Themes *themes);
 void stack_frame            (Display *display, struct Frame *frame, struct Separators *seps);
