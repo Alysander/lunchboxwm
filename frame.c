@@ -92,7 +92,6 @@ int
 create_frame(Display *display, struct Frame* frame
 , Window framed_window, struct Popup_menu *window_menu, struct Separators *seps, const struct Workarea *workarea, struct Themes *themes
 , struct Cursors *cursors, struct Atoms *atoms) {
-  Screen* screen = DefaultScreenOfDisplay(display);
   XWindowAttributes get_attributes;
 
   //printf("Creating frames->list[%d] with window %lu, connection %lu\n"
