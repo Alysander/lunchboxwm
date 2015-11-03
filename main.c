@@ -55,6 +55,8 @@ void create_separators(Display *display, struct Separators *seps);
 void create_cursors   (Display *display, struct Cursors *cursors);
 void create_hints     (Display *display, struct Atoms *atoms);
 void free_cursors     (Display *display, struct Cursors *cursors);
+void create_workarea  (Display *display, struct Workarea *workarea, struct Themes *themes);
+
 //static XIconSize *create_icon_size (Display *display, int new_size);
 
 /**
@@ -123,8 +125,11 @@ main (int argc, char* argv[]) {
   struct Mode_menu mode_menu;  //this menu is created and reused for all framed windows.
   struct Popup_menu title_menu;//this menu is created and reused across workspaces and framed windows.
 
-  int do_click_to_focus = 0;   //used by EnterNotify and ButtonPress to determine when to set focus
-                               //TODO currently requires num_lock to be off
+  struct Workarea workarea_static;     //This tracks the screen size and also allocates space for docks and menubars.
+  struct Workarea *workarea = &workarea_static; //This doesn't need to be allocated on the heap
+
+  int do_click_to_focus = 0;    //used by EnterNotify and ButtonPress to determine when to set focus
+                                //TODO currently requires num_lock to be off
 
   int grab_move = 0;           //used by EnterNotfy, LeaveNotify and ButtonPress to allow alt+click moves of windows
 
@@ -199,9 +204,9 @@ main (int argc, char* argv[]) {
   create_menubar(display, &menubar, &seps, themes, &cursors);
   create_mode_menu(display, &mode_menu, themes, &cursors);
   create_title_menu(display, &title_menu, themes, &cursors);
-  create_startup_workspaces(display, &workspaces, &current_workspace, &frames, &seps, &title_menu, themes, &cursors, &atoms);
-
-  change_to_workspace(display, &workspaces, &current_workspace, &frames, -1, &seps, themes, &atoms);
+  create_workarea(display, workarea, themes);
+  create_startup_workspaces(display, &workspaces, &current_workspace, &frames, &seps, &title_menu, workarea, themes, &cursors, &atoms);
+  change_to_workspace(display, &workspaces, &current_workspace, &frames, -1, &seps, workarea, themes, &atoms);
 
   /* Passive grab for alt+click moving windows. Mod2Mask is assumed to be numlock. */
   XGrabButton(display, Button1, Mod1Mask | Mod2Mask, root, False, ButtonPressMask | ButtonMotionMask
@@ -290,7 +295,7 @@ main (int argc, char* argv[]) {
                 #endif
                 //ensure the current_workspace offset is still valid
                 remove_workspace(display, &workspaces, j);
-                if(current_workspace == j) change_to_workspace(display, &workspaces, &current_workspace, &frames, -1, &seps, themes, &atoms);
+                if(current_workspace == j) change_to_workspace(display, &workspaces, &current_workspace, &frames, -1, &seps, workarea, themes, &atoms);
                 else if(current_workspace > j) current_workspace--;
               }
             }
@@ -314,7 +319,7 @@ main (int argc, char* argv[]) {
           XWindowAttributes attributes;
           XGetWindowAttributes(display, event.xmaprequest.window, &attributes);
           if(attributes.override_redirect == False) {
-            add_frame_to_workspace(display, &workspaces, event.xmaprequest.window, &current_workspace, &frames, &title_menu, &seps, themes, &cursors, &atoms);
+            add_frame_to_workspace(display, &workspaces, event.xmaprequest.window, &current_workspace, &frames, &title_menu, &seps, workarea, themes, &cursors, &atoms);
           }
         }
       break;
@@ -445,14 +450,14 @@ main (int argc, char* argv[]) {
                 switch(found_widget) {
                   case l_edge:
                   case r_edge:
-                    maximize_frame(display, frames, i, 'x', themes);
+                    maximize_frame(display, frames, i, 'x', workarea, themes);
                   break;
                   case b_edge:
                   case t_edge:
-                    maximize_frame(display, frames, i, 'y', themes);
+                    maximize_frame(display, frames, i, 'y', workarea, themes);
                   break;
                   default:
-                  maximize_frame(display, frames, i, 0, themes);
+                  maximize_frame(display, frames, i, 0, workarea, themes);
                 }
                 XFlush(display);
               }
@@ -679,7 +684,7 @@ main (int argc, char* argv[]) {
 
           if(clicked_frame != -1
           &&  current_workspace != -1) {
-            redrop_frame(display, frames, clicked_frame, themes);
+            redrop_frame(display, frames, clicked_frame, workarea, themes);
           }
           clicked_frame = -1;
         }
@@ -807,7 +812,7 @@ main (int argc, char* argv[]) {
               #ifdef SHOW_BUTTON_RELEASE_EVENT
               printf("Recovering window %s\n", frames->list[i]->window_name);
               #endif
-              recover_frame(display, frames, i, &seps, themes);
+              recover_frame(display, frames, i, &seps, workarea, themes);
             }
           }
           /* Change the workspace with the program menu */
@@ -822,7 +827,7 @@ main (int argc, char* argv[]) {
               #ifdef SHOW_BUTTON_RELEASE_EVENT
               printf("Changing to workspace %s\n", workspaces.list[k].workspace_name);
               #endif
-              change_to_workspace(display, &workspaces, &current_workspace, &frames, k, &seps, themes, &atoms);
+              change_to_workspace(display, &workspaces, &current_workspace, &frames, k, &seps, workarea, themes, &atoms);
             }
           }
           //This loop determines if any frame's mode_dropdown or title_menu items have been pressed
@@ -834,7 +839,7 @@ main (int argc, char* argv[]) {
               stack_frame(display, frames->list[i], &seps);
               if(clicked_widget == frames->list[i]->widgets[mode_dropdown_hotspot].widget) {
                 if(event.xbutton.window == mode_menu.items[floating].item) {
-                  change_frame_mode(display, frames->list[i], floating, themes);
+                  change_frame_mode(display, frames->list[i], floating, workarea, themes);
                   stack_frame(display, frames->list[i], &seps);
                 } else if(event.xbutton.window == mode_menu.items[hidden].item) {
                   change_frame_state(display, frames->list[i], minimized, &seps, themes, &atoms);
@@ -846,12 +851,12 @@ main (int argc, char* argv[]) {
                   #ifdef SHOW_BUTTON_RELEASE_EVENT
                   printf("retiling frame\n");
                   #endif
-                  if(drop_frame(display, frames, clicked_frame, False, themes)) {
-                    change_frame_mode(display, frames->list[i], tiling, themes);
+                  if(drop_frame(display, frames, clicked_frame, False, workarea, themes)) {
+                    change_frame_mode(display, frames->list[i], tiling, workarea, themes);
                     stack_frame(display, frames->list[i], &seps);
                   }
                 } else if(event.xbutton.window == mode_menu.items[desktop].item) {
-                  change_frame_mode(display, frames->list[i], desktop, themes);
+                  change_frame_mode(display, frames->list[i], desktop, workarea, themes);
                   stack_frame(display, frames->list[i], &seps);
                 }
               }
@@ -861,7 +866,7 @@ main (int argc, char* argv[]) {
 
                 //Now we need to identify which window to put here.
                 if(j >= 0) {
-                  replace_frame(display, frames->list[i], frames->list[j], &seps, themes);
+                  replace_frame(display, frames->list[i], frames->list[j], &seps, workarea, themes);
                   remove_focus(frames->list[i]->framed_window, &frames->focus);
                   add_focus(frames->list[i]->framed_window, &frames->focus);
                   unfocus_frames(display, frames);
@@ -950,7 +955,7 @@ main (int argc, char* argv[]) {
           #ifdef SHOW_BUTTON_RELEASE_EVENT
           printf("retiling frame\n");
           #endif
-          redrop_frame(display, frames, clicked_frame, themes);
+          redrop_frame(display, frames, clicked_frame, workarea, themes);
         }
 
         if(clicked_widget) {
@@ -1030,7 +1035,7 @@ main (int argc, char* argv[]) {
             //clicked_widget is set to one of the grips.
             resize_using_frame_grip(display, frames, clicked_frame
             , pointer_start_x, pointer_start_y, mouse_root_x, mouse_root_y
-            , r_edge_dx, b_edge_dy, clicked_widget, themes);
+            , r_edge_dx, b_edge_dy, clicked_widget, workarea, themes);
             //TODO consider deadzone here too
             last_click_window = 0;
             last_click_time = CurrentTime;
@@ -1055,7 +1060,7 @@ main (int argc, char* argv[]) {
               if(clicked_frame != k  ||  k < 0) {
                 get_frame_hints(display, frame);
                 if(k >= 0) {
-                  redrop_frame(display, frames, k, themes);
+                  redrop_frame(display, frames, k, workarea, themes);
                 }
               }
             }
@@ -1063,7 +1068,7 @@ main (int argc, char* argv[]) {
               get_frame_strut_hints_as_normal_hints(display, frame, &atoms);
               int k = find_frame_with_framed_window_in_workspace(event.xproperty.window, &workspaces, current_workspace);
               if(k >= 0) {
-                redrop_frame(display, frames, k, themes);
+                redrop_frame(display, frames, k, workarea, themes);
               }
               resize_frame(display, frame, themes);
             }
@@ -1127,7 +1132,7 @@ main (int argc, char* argv[]) {
               make_frame_coordinates_minmax(frame);
             }
             if(k >= 0 && clicked_frame != k) {
-              redrop_frame(display, frames, k, themes);
+              redrop_frame(display, frames, k, workarea, themes);
             }
 
             #ifdef SHOW_CONFIGURE_REQUEST_EVENT
@@ -1141,7 +1146,7 @@ main (int argc, char* argv[]) {
               #endif
 
               if(frame->state == minimized  &&  (k >= 0)  &&  frames->states[i].available == 1 /*Don't raise in foreign workspace */ ) {
-                if(redrop_frame(display, frames, i, themes)) {
+                if(redrop_frame(display, frames, i, workarea, themes)) {
                   XMapWindow(display, frame->widgets[frame_parent].widget);
                   frame->state = none;
                   reset_frame_titlebar(display, frame);
@@ -1150,7 +1155,7 @@ main (int argc, char* argv[]) {
               stack_frame(display, frame, &seps);
             }
 
-            check_frame_limits(display, frame, themes);
+            check_frame_limits(display, frame, workarea, themes);
             resize_frame(display, frame, themes);
           }
           //frame not found in any workspace because this window hasn't been mapped yet, let it update it's size and position
@@ -1231,7 +1236,7 @@ main (int argc, char* argv[]) {
           #endif
           int k = find_frame_with_framed_window_in_workspace(event.xclient.window, &workspaces, current_workspace);
           if(k >= 0) {
-            recover_frame(display, frames, k, &seps, themes);
+            recover_frame(display, frames, k, &seps, workarea, themes);
           }
         }
 
@@ -1456,6 +1461,17 @@ list_properties(Display *display, Window window) {
   }
   if(list) XFree(list);
 }
+
+void
+create_workarea(Display *display, struct Workarea *workarea, struct Themes *themes) {
+  Screen* screen = DefaultScreenOfDisplay(display);
+  workarea->width = XWidthOfScreen(screen);
+  workarea->height = XHeightOfScreen(screen) - themes->menubar[menubar_parent].h;
+
+  workarea->screen_width = XWidthOfScreen(screen);
+  workarea->screen_height = XHeightOfScreen(screen);
+}
+
 
 /**
 @brief    Gets the atoms that are used to identify hints for both the ICCCM and EWMH standards.  Sets

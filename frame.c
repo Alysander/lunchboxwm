@@ -89,7 +89,7 @@ save_frame_initial_state(struct Frame *frame) {
 **/
 int
 create_frame(Display *display, struct Frame* frame
-, Window framed_window, struct Popup_menu *window_menu, struct Separators *seps, struct Themes *themes
+, Window framed_window, struct Popup_menu *window_menu, struct Separators *seps, const struct Workarea *workarea, struct Themes *themes
 , struct Cursors *cursors, struct Atoms *atoms) {
   Screen* screen = DefaultScreenOfDisplay(display);
   XWindowAttributes get_attributes;
@@ -181,7 +181,7 @@ create_frame(Display *display, struct Frame* frame
 
   XSetWindowBorderWidth(display, framed_window, 0);
 
-  change_frame_mode(display, frame, unset, themes);
+  change_frame_mode(display, frame, unset, workarea, themes);
 
   #ifdef CRASH_ON_BUG
   XGrabServer(display);
@@ -219,7 +219,7 @@ create_frame(Display *display, struct Frame* frame
   frame->w += frame->hspace;
   frame->h += frame->vspace;
 
-  check_frame_limits(display, frame, themes);
+  check_frame_limits(display, frame, workarea, themes);
 
   resize_frame(display, frame, themes);
   stack_frame(display, frame, seps);
@@ -1035,22 +1035,22 @@ suitable_for_foreign_workspaces(struct Frame *frame) {
 @return void
 **/
 void
-recover_frame(Display *display, struct Workspace *frames, int i /*index*/, struct Separators *seps, struct Themes *themes) {
+recover_frame(Display *display, struct Workspace *frames, int i /*index*/, struct Separators *seps, const struct Workarea *workarea, struct Themes *themes) {
   //allow desktop windows to be recovered/tiled.  Otherwise the user has no way to recover a desktop window.
   if(frames->list[i]->mode == desktop) {
-    if(drop_frame(display, frames, i, False, themes))  {
-      change_frame_mode(display, frames->list[i], tiling, themes);
+    if(drop_frame(display, frames, i, False, workarea, themes))  {
+      change_frame_mode(display, frames->list[i], tiling,  workarea, themes);
       resize_frame(display, frames->list[i], themes);
     }
   }
   else if(frames->list[i]->mode == tiling) {
-    if(drop_frame(display, frames, i, False, themes))  {
+    if(drop_frame(display, frames, i, False, workarea, themes))  {
       XMapWindow(display, frames->list[i]->widgets[frame_parent].widget);
       frames->list[i]->state = none;
     }
   }
   else if(frames->list[i]->mode == floating) {
-    if(drop_frame(display, frames, i, True, themes)) {
+    if(drop_frame(display, frames, i, True, workarea, themes)) {
       XMapWindow(display, frames->list[i]->widgets[frame_parent].widget);
       frames->list[i]->state = none;
     }

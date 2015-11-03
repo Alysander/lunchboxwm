@@ -39,7 +39,7 @@ static void
 save_frame_state(struct Saved_frame_state* save, struct Frame *frame);
 
 static void
-load_frame_state(Display *display, struct Saved_frame_state* save, struct Frame *frame, struct Separators *seps, struct Themes *themes, struct Atoms *atoms);
+load_frame_state(Display *display, struct Saved_frame_state* save, struct Frame *frame, struct Separators *seps, const struct Workarea *workarea, struct Themes *themes, struct Atoms *atoms);
 
 static void
 load_initial_states(struct Saved_frame_state* save, struct Frame *frame);
@@ -360,14 +360,14 @@ load_initial_states(struct Saved_frame_state* save, struct Frame *frame) {
 @return  void
 **/
 static void
-load_frame_state(Display *display, struct Saved_frame_state* save, struct Frame *frame, struct Separators *seps, struct Themes *themes, struct Atoms *atoms) {
+load_frame_state(Display *display, struct Saved_frame_state* save, struct Frame *frame, struct Separators *seps, const struct Workarea *workarea, struct Themes *themes, struct Atoms *atoms) {
   if(save->sticky == False) { //if the window has been sticky (but isn't any more), the saved details are wrong so just ignore them and keep the existing stuff.
     frame->x = save->x;
     frame->y = save->y;
     frame->w = save->w;
     frame->h = save->h;
     change_frame_state(display, frame, save->state, seps, themes, atoms);
-    change_frame_mode(display, frame, save->mode, themes);
+    change_frame_mode(display, frame, save->mode, workarea, themes);
     #ifdef SHOW_STATES
     printf("Loading x %d, y %d, w %d, h %d, state %d.  %s\n", frame->x, frame->y, frame->w, frame->h, frame->state, frame->window_name);
     #endif
@@ -441,6 +441,7 @@ int
 add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Window framed_window, int *current_workspace, struct Workspace **frames
 , struct Popup_menu *window_menu
 , struct Separators *seps
+, const struct Workarea *workarea
 , struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
 
   int home_w;  //index of the home workspace of the frame
@@ -475,7 +476,7 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
   if(ensure_empty_frame_reference_slots(&workspaces->list[home_w]) == False) return -1;
 
   true_frame_index = workspaces->used_frames;
-  if(!create_frame(display, &workspaces->frame_list[true_frame_index], framed_window, window_menu, seps, themes, cursors, atoms)) {
+  if(!create_frame(display, &workspaces->frame_list[true_frame_index], framed_window, window_menu, seps, workarea, themes, cursors, atoms)) {
     //if the window wasn't created, and the workspace is now empty, remove the workspace
     if(new_workspace) { remove_workspace(display, workspaces, home_w);  }
     return -1;
@@ -530,7 +531,7 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
 
     change_frame_state(display, &workspaces->frame_list[true_frame_index], original_state, seps, themes, atoms);
     if(workspace->list[frame_ref_index]->mode == tiling  &&  workspace->list[frame_ref_index]->state != fullscreen) {
-      if(!redrop_frame(display, workspace, frame_ref_index, themes)) {
+      if(!redrop_frame(display, workspace, frame_ref_index, workarea, themes)) {
         change_frame_state(display, workspace->list[frame_ref_index], minimized, seps, themes, atoms);
       }
     }
@@ -547,7 +548,7 @@ add_frame_to_workspace(Display *display, struct Workspace_list *workspaces, Wind
   }
 
   if(home_w != *current_workspace) {
-    change_to_workspace(display, workspaces, current_workspace, frames, home_w, seps, themes, atoms);
+    change_to_workspace(display, workspaces, current_workspace, frames, home_w, seps, workarea, themes, atoms);
   }
 
   XFlush(display);
@@ -562,7 +563,7 @@ Bool
 create_startup_workspaces(Display *display, struct Workspace_list *workspaces
 , int *current_workspace, struct Workspace **frames
 , struct Separators *seps
-, struct Popup_menu *window_menu, struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
+, struct Popup_menu *window_menu, const struct Workarea *workarea, struct Themes *themes, struct Cursors *cursors, struct Atoms *atoms) {
 
   unsigned int windows_length;
   Window root, parent, children, *windows;
@@ -582,7 +583,7 @@ create_startup_workspaces(Display *display, struct Workspace_list *workspaces
       if(attributes.map_state == IsViewable && !attributes.override_redirect)  {
 
         add_frame_to_workspace(display, workspaces, windows[i], current_workspace, frames, window_menu
-        , seps, themes, cursors, atoms);
+        , seps, workarea, themes, cursors, atoms);
       }
     }
     XFree(windows);
@@ -601,7 +602,7 @@ create_startup_workspaces(Display *display, struct Workspace_list *workspaces
 @return   void
 **/
 void
-change_to_workspace(Display *display, struct Workspace_list *workspaces, int *current_workspace, struct Workspace **frames, int index, struct Separators *seps, struct Themes *themes, struct Atoms *atoms) {
+change_to_workspace(Display *display, struct Workspace_list *workspaces, int *current_workspace, struct Workspace **frames, int index, struct Separators *seps, const struct Workarea *workarea, struct Themes *themes, struct Atoms *atoms) {
 
   struct Workspace *workspace = &workspaces->list[*current_workspace];
   if(*current_workspace != -1) *frames = workspace;
@@ -652,8 +653,8 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
 
       int ref_index = workspace->used;
       struct Frame *frame = workspace->list[ref_index] = &workspaces->frame_list[i];
-      if(drop_frame(display, workspace, ref_index, False, themes)) { //this should be easy as they should already be non-overlapping
-        change_frame_mode(display, frame, tiling, themes);
+      if(drop_frame(display, workspace, ref_index, False, workarea, themes)) { //this should be easy as they should already be non-overlapping
+        change_frame_mode(display, frame, tiling, workarea, themes);
       }
       else {
         change_frame_state(display, frame, minimized, seps, themes, atoms);
@@ -675,10 +676,10 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
       int ref_index = workspace->used;
       struct Frame *frame = workspace->list[ref_index] = &workspaces->frame_list[i];
 
-      load_frame_state(display, frame_state, frame, seps, themes, atoms);
+      load_frame_state(display, frame_state, frame, seps, workarea, themes, atoms);
       if(workspace->states[i].need_to_tile) {
-        if(drop_frame(display, workspace, ref_index, False, themes)) { //this should be easy as they should already be non-overlapping
-          change_frame_mode(display, frame, tiling, themes);
+        if(drop_frame(display, workspace, ref_index, False, workarea, themes)) { //this should be easy as they should already be non-overlapping
+          change_frame_mode(display, frame, tiling, workarea, themes);
         }
         else {
           change_frame_state(display, frame, minimized, seps, themes, atoms);
@@ -687,7 +688,7 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
         workspace->states[i].need_to_tile = 0;
       }
       else if(frame->mode == floating) {
-        if(!drop_frame(display, workspace, ref_index, True, themes)) {
+        if(!drop_frame(display, workspace, ref_index, True, workarea, themes)) {
           change_frame_state(display, frame, minimized, seps, themes, atoms);
           //TODO set urgency hint
         }
