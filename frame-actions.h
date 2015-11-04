@@ -6,7 +6,7 @@ Bool redrop_frame           (Display *display, struct Workspace *frames, int cli
 Bool drop_frame             (struct Workspace *frames, int clicked_frame, Bool only_panels, const struct Workarea *workarea);
 
 void change_frame_widget_state(Display* display, struct Frame* frame, enum Frame_widget widget, enum Widget_state state);
-void resize_frame           (Display *display, struct Frame *frame, struct Themes *themes);
+void resize_frame           (Display *display, struct Frame *frame, const struct Workarea *workarea, struct Themes *themes);
 
 void resize_using_frame_grip (Display *display, struct Workspace *frames, int clicked_frame
 , int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y
@@ -16,7 +16,7 @@ void move_frame             (Display *display, struct Frame *frame
 , int *pointer_start_x, int *pointer_start_y, int mouse_root_x, int mouse_root_y
 , int *resize_x_direction, int *resize_y_direction, const struct Workarea *workarea, struct Themes *themes);
 
-void resize_tiling_frame    (Display *display, struct Workspace* frames, int index, char axis, int position, int size, struct Themes *themes);
+void resize_tiling_frame    (Display *display, struct Workspace* frames, int index, char axis, int position, int size, const struct Workarea *workarea, struct Themes *themes);
 void stack_frame            (Display *display, struct Frame *frame, struct Separators *seps);
 
 int replace_frame           (Display *display, struct Frame *target

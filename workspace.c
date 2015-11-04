@@ -99,6 +99,15 @@ find_frame_with_framed_window(Window window, struct Workspace_list* workspaces) 
 }
 
 
+void
+check_all_frame_limits(Display *display, struct Workspace *frames, const struct Workarea *workarea, struct Themes *themes) {
+  for(int i = 0; i < frames->used; i += 1) {
+    //This will expand desktop windows to fit the new workarea
+    check_frame_limits(frames->list[i], workarea, themes);
+    resize_frame(display, frames->list[i], workarea, themes);
+  }
+}
+
 /**
 @brief    Find a frame with a particular framed_window in a specified workspace
 @return   1 if found, -1 otherwise.
@@ -660,7 +669,7 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
         change_frame_state(display, frame, minimized, seps, workarea, themes, atoms);
         fprintf(stderr, "Couldn't tile panel! It is called %s\n", frame->window_name);
       }
-      resize_frame(display, frame, themes);
+      resize_frame(display, frame, workarea, themes);
       stack_frame(display, frame, seps);
       XMapWindow(display, frame->widgets[frame_parent].widget);  //Actually only needs to be mapped the first time but doesn't matter
       workspace->used++;
@@ -693,7 +702,7 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
           //TODO set urgency hint
         }
       }
-      resize_frame(display, frame, themes);
+      resize_frame(display, frame, workarea, themes);
       stack_frame(display, frame, seps);
       if(frame->state != minimized) XMapWindow(display, frame->widgets[frame_parent].widget);
       XMapWindow(display, workspace->list[ref_index]->menu.item);

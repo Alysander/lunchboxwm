@@ -1065,7 +1065,7 @@ main (int argc, char* argv[]) {
             struct Frame *frame = &workspaces.frame_list[i];
             if(event.xproperty.atom == XA_WM_NAME  ||  event.xproperty.atom == atoms.name) {
               create_frame_name(display, &title_menu, frame, themes, &atoms);
-              resize_frame(display, frame, themes);
+              resize_frame(display, frame, workarea, themes);
             }
             else if (event.xproperty.atom == XA_WM_NORMAL_HINTS) {
               /* Ignore normal hints notification for a resizing window. */
@@ -1085,7 +1085,7 @@ main (int argc, char* argv[]) {
               if(k >= 0) {
                 redrop_frame(display, frames, k, workarea, themes);
               }
-              resize_frame(display, frame, themes);
+              resize_frame(display, frame, workarea, themes);
             }
           }
         }
@@ -1171,7 +1171,7 @@ main (int argc, char* argv[]) {
             }
 
             check_frame_limits(frame, workarea, themes);
-            resize_frame(display, frame, themes);
+            resize_frame(display, frame, workarea, themes);
           }
           //frame not found in any workspace because this window hasn't been mapped yet, let it update it's size and position
           else {
@@ -1340,7 +1340,10 @@ main (int argc, char* argv[]) {
             XRRScreenChangeNotifyEvent *ev = (XRRScreenChangeNotifyEvent *) &event;
             update_workarea(ev->width, ev->height, workarea, themes);
             resize_menubar(display, &menubar, workarea, themes);
-            //TODO, resize desktop windows, fullscreen windows
+
+            if(!frames) break;
+            check_all_frame_limits(display, frames, workarea, themes);
+            XFlush(display);
             break;
         }
 

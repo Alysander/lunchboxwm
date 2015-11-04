@@ -41,7 +41,7 @@
 **/
 
 static void
-create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *themes, struct Cursors *cursors);
+create_frame_subwindows (Display *display, struct Frame *frame, const struct Workarea *workarea, struct Themes *themes, struct Cursors *cursors);
 
 static void
 get_frame_type_and_mode (Display *display, struct Frame *frame, struct Atoms *atoms, struct Themes *themes);
@@ -169,7 +169,7 @@ create_frame(Display *display, struct Frame* frame
 
 
   get_frame_state(display, frame, atoms);
-  create_frame_subwindows(display, frame, themes, cursors);
+  create_frame_subwindows(display, frame, workarea, themes, cursors);
   create_frame_name(display, window_menu, frame, themes, atoms);
 
   get_frame_wm_hints(display, frame);  //this might need to change the focus, it's mode (to hidden) and so on
@@ -227,7 +227,7 @@ create_frame(Display *display, struct Frame* frame
 
   check_frame_limits(frame, workarea, themes);
 
-  resize_frame(display, frame, themes);
+  resize_frame(display, frame, workarea, themes);
   stack_frame(display, frame, seps);
   change_frame_state(display, frame, frame->state, seps, workarea, themes, atoms);
   XMoveResizeWindow(display, framed_window, 0, 0, frame->w - frame->hspace, frame->h - frame->vspace);
@@ -763,7 +763,7 @@ get_frame_state(Display *display, struct Frame *frame, struct Atoms *atoms) {
 @return  void
 **/
 static void
-create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *themes, struct Cursors *cursors) {
+create_frame_subwindows (Display *display, struct Frame *frame, const struct Workarea *workarea, struct Themes *themes, struct Cursors *cursors) {
   Window root = DefaultRootWindow(display);
   Screen* screen = DefaultScreenOfDisplay(display);
   int black = BlackPixelOfScreen(screen);
@@ -803,9 +803,9 @@ create_frame_subwindows (Display *display, struct Frame *frame, struct Themes *t
       , x, y, w, h, 0, black, black);
       XFlush(display);
       if(i != window) { //don't create state windows for the framed window
-        //OPTIMIZATION: This makes the cropped state windows large so that they don't need to be resized
-        if(themes->window_type[frame->theme_type][i].w <= 0 || i == mode_dropdown_text) w = XWidthOfScreen(screen);
-        if(themes->window_type[frame->theme_type][i].h <= 0) h = XWidthOfScreen(screen);
+        //OPTIMIZATION: This makes cropped state windows large so they are not resized with normal frame resize operations.
+        if(themes->window_type[frame->theme_type][i].w <= 0 || i == mode_dropdown_text) w = workarea->screen_width;
+        if(themes->window_type[frame->theme_type][i].h <= 0) h = workarea->screen_height;
         for(int j = 0; j <= inactive; j++) {
           frame->widgets[i].state[j] = XCreateSimpleWindow(display, frame->widgets[i].widget
           , 0, 0, w, h, 0, black, black);
@@ -1045,7 +1045,7 @@ recover_frame(Display *display, struct Workspace *frames, int i /*index*/, struc
   if(frames->list[i]->mode == desktop) {
     if(drop_frame(frames, i, False, workarea))  {
       change_frame_mode(display, frames->list[i], tiling,  workarea, themes);
-      resize_frame(display, frames->list[i], themes);
+      resize_frame(display, frames->list[i], workarea, themes);
     }
   }
   else if(frames->list[i]->mode == tiling) {
