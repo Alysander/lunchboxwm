@@ -225,7 +225,7 @@ create_frame(Display *display, struct Frame* frame
   frame->w += frame->hspace;
   frame->h += frame->vspace;
 
-  check_frame_limits(display, frame, workarea, themes);
+  check_frame_limits(frame, workarea, themes);
 
   resize_frame(display, frame, themes);
   stack_frame(display, frame, seps);
@@ -1043,19 +1043,19 @@ void
 recover_frame(Display *display, struct Workspace *frames, int i /*index*/, struct Separators *seps, const struct Workarea *workarea, struct Themes *themes) {
   //allow desktop windows to be recovered/tiled.  Otherwise the user has no way to recover a desktop window.
   if(frames->list[i]->mode == desktop) {
-    if(drop_frame(display, frames, i, False, workarea, themes))  {
+    if(drop_frame(frames, i, False, workarea))  {
       change_frame_mode(display, frames->list[i], tiling,  workarea, themes);
       resize_frame(display, frames->list[i], themes);
     }
   }
   else if(frames->list[i]->mode == tiling) {
-    if(drop_frame(display, frames, i, False, workarea, themes))  {
+    if(drop_frame(frames, i, False, workarea))  {
       XMapWindow(display, frames->list[i]->widgets[frame_parent].widget);
       frames->list[i]->state = none;
     }
   }
   else if(frames->list[i]->mode == floating) {
-    if(drop_frame(display, frames, i, True, workarea, themes)) {
+    if(drop_frame(frames, i, True, workarea)) {
       XMapWindow(display, frames->list[i]->widgets[frame_parent].widget);
       frames->list[i]->state = none;
     }

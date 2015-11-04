@@ -866,7 +866,7 @@ main (int argc, char* argv[]) {
                   #ifdef SHOW_BUTTON_RELEASE_EVENT
                   printf("retiling frame\n");
                   #endif
-                  if(drop_frame(display, frames, clicked_frame, False, workarea, themes)) {
+                  if(drop_frame(frames, clicked_frame, False, workarea)) {
                     change_frame_mode(display, frames->list[i], tiling, workarea, themes);
                     stack_frame(display, frames->list[i], &seps);
                   }
@@ -1170,7 +1170,7 @@ main (int argc, char* argv[]) {
               stack_frame(display, frame, &seps);
             }
 
-            check_frame_limits(display, frame, workarea, themes);
+            check_frame_limits(frame, workarea, themes);
             resize_frame(display, frame, themes);
           }
           //frame not found in any workspace because this window hasn't been mapped yet, let it update it's size and position

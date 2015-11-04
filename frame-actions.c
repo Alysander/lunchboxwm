@@ -57,7 +57,7 @@ maximize_tiled_frame_in_place(struct Frame *frame, const char direction, struct 
 @return   void
 **/
 void
-check_frame_limits(Display *display, struct Frame *frame, const struct Workarea *workarea, struct Themes *themes) {
+check_frame_limits(struct Frame *frame, const struct Workarea *workarea, struct Themes *themes) {
   if(frame->state == fullscreen) return;
 
   frame->w -= (frame->w - frame->hspace) % frame->width_inc  - frame->w_inc_offset;
@@ -120,7 +120,6 @@ reset_frame_titlebar(Display *display, struct Frame *frame) {
 **/
 void
 change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, const struct Workarea *workarea, struct Themes *themes) {
-  Screen* screen = DefaultScreenOfDisplay(display);
 
   /**** Set the initial frame mode to whatever frame mode currently. This is done when the frame is created. ***/
   if(mode == unset) {
@@ -130,7 +129,7 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
   else {
     if(frame->mode == desktop) {
       frame->mode = mode;
-      check_frame_limits(display, frame, workarea, themes);
+      check_frame_limits(frame, workarea, themes);
       resize_frame(display, frame, themes);
     }
   }
@@ -146,13 +145,13 @@ change_frame_mode(Display *display, struct Frame *frame, enum Window_mode mode, 
     frame->mode = tiling;
     change_mode_pulldown_text_pixmap(display, frame, mode_dropdown_text_tiling, themes);
     //cannot drop frame here because it requires access to the whole frame list
-    check_frame_limits(display, frame, workarea, themes);
+    check_frame_limits(frame, workarea, themes);
     resize_frame(display, frame, themes);
   } else if(mode == desktop) {
     change_mode_pulldown_text_pixmap(display, frame, mode_dropdown_text_desktop, themes);
 
     frame->mode = desktop;
-    check_frame_limits(display, frame, workarea, themes);
+    check_frame_limits(frame, workarea, themes);
     resize_frame(display, frame, themes);
   }
   reset_frame_titlebar(display, frame);
@@ -251,9 +250,9 @@ redrop_frame (Display *display, struct Workspace *frames, int clicked_frame, con
 
   if(frames->list[clicked_frame]->mode == floating) {
     //Floating windows only need to avoid panels
-    result = drop_frame(display, frames, clicked_frame, True, workarea, themes);
+    result = drop_frame(frames, clicked_frame, True, workarea);
   } else {
-    result = drop_frame(display, frames, clicked_frame, False, workarea, themes);
+    result = drop_frame(frames, clicked_frame, False, workarea);
   }
 
   // If anything has been moved or resized we need
@@ -261,7 +260,7 @@ redrop_frame (Display *display, struct Workspace *frames, int clicked_frame, con
   // in the window
   // These *might* make the window smaller
   if(result) {
-    check_frame_limits(display, frames->list[clicked_frame], workarea, themes);
+    check_frame_limits(frames->list[clicked_frame], workarea, themes);
     resize_frame(display, frames->list[clicked_frame], themes);
     XFlush(display);
   }
@@ -280,7 +279,7 @@ redrop_frame (Display *display, struct Workspace *frames, int clicked_frame, con
 @return   True if it was able to tile the frame, False otherwise.
 **/
 Bool
-drop_frame (Display *display, struct Workspace *frames, int clicked_frame,  Bool only_panels, const struct Workarea *workarea, struct Themes *themes) {
+drop_frame (struct Workspace *frames, int clicked_frame,  Bool only_panels, const struct Workarea *workarea) {
   struct Frame *frame = frames->list[clicked_frame];
   struct Rectangle_list free_spaces = {0, 8, NULL};
 
@@ -634,7 +633,6 @@ resize_using_frame_grip (Display *display, struct Workspace *frames, int clicked
   #define NEW_X_INC if((W_INC_REM) &&  new_width  != frame->w) { new_x += W_INC_REM; }
   #define NEW_Y_INC if((H_INC_REM) &&  new_height != frame->h) { new_y += H_INC_REM; }
 
-  Screen* screen = DefaultScreenOfDisplay(display);
   struct Frame *frame = frames->list[clicked_frame];
   int new_width = frame->w;
   int new_height = frame->h;
@@ -737,8 +735,8 @@ resize_using_frame_grip (Display *display, struct Workspace *frames, int clicked
 
   //commit height changes
   if(frame->mode == tiling) {
-    if(new_height != frame->h) resize_tiling_frame(display, frames, clicked_frame, 'y', new_y, new_height, workarea, themes);
-    if(new_width != frame->w)  resize_tiling_frame(display, frames, clicked_frame, 'x', new_x, new_width, workarea, themes);
+    if(new_height != frame->h) resize_tiling_frame(display, frames, clicked_frame, 'y', new_y, new_height, themes);
+    if(new_width != frame->w)  resize_tiling_frame(display, frames, clicked_frame, 'x', new_x, new_width, themes);
   }
   else {
     frame->x = new_x;
@@ -1001,7 +999,7 @@ stack_frame(Display *display, struct Frame *frame, struct Separators *seps) {
 **/
 void
 resize_tiling_frame(Display *display, struct Workspace *frames, int index, char axis
-, int position, int size, const struct Workarea *workarea, struct Themes *themes) {
+, int position, int size, struct Themes *themes) {
 
 
   int shrink_margin = 1;
@@ -1366,7 +1364,7 @@ maximize_frame (Display *display, struct Workspace *frames, int clicked_frame, c
   }
 
   redrop_frame(display, frames, clicked_frame, workarea, themes);
-  check_frame_limits(display, frame, workarea, themes);
+  check_frame_limits(frame, workarea, themes);
   resize_frame(display, frame, themes);
 }
 

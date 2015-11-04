@@ -653,7 +653,7 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
 
       int ref_index = workspace->used;
       struct Frame *frame = workspace->list[ref_index] = &workspaces->frame_list[i];
-      if(drop_frame(display, workspace, ref_index, False, workarea, themes)) { //this should be easy as they should already be non-overlapping
+      if(drop_frame(workspace, ref_index, False, workarea)) { //this should be easy as they should already be non-overlapping
         change_frame_mode(display, frame, tiling, workarea, themes);
       }
       else {
@@ -678,7 +678,7 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
 
       load_frame_state(display, frame_state, frame, seps, workarea, themes, atoms);
       if(workspace->states[i].need_to_tile) {
-        if(drop_frame(display, workspace, ref_index, False, workarea, themes)) { //this should be easy as they should already be non-overlapping
+        if(drop_frame(workspace, ref_index, False, workarea)) { //this should be easy as they should already be non-overlapping
           change_frame_mode(display, frame, tiling, workarea, themes);
         }
         else {
@@ -688,7 +688,7 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
         workspace->states[i].need_to_tile = 0;
       }
       else if(frame->mode == floating) {
-        if(!drop_frame(display, workspace, ref_index, True, workarea, themes)) {
+        if(!drop_frame(workspace, ref_index, True, workarea)) {
           change_frame_state(display, frame, minimized, seps, workarea, themes, atoms);
           //TODO set urgency hint
         }
