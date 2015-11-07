@@ -99,6 +99,15 @@ find_frame_with_framed_window(Window window, struct Workspace_list* workspaces) 
 }
 
 
+void
+check_all_frame_limits(Display *display, struct Workspace *frames, const struct Workarea *workarea, struct Themes *themes) {
+  for(int i = 0; i < frames->used; i += 1) {
+    //This will expand desktop windows to fit the new workarea
+    check_frame_limits(frames->list[i], workarea, themes);
+    resize_frame_after_screen_size_change(display, frames->list[i], workarea, themes);
+  }
+}
+
 /**
 @brief    Find a frame with a particular framed_window in a specified workspace
 @return   1 if found, -1 otherwise.
@@ -653,14 +662,14 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
 
       int ref_index = workspace->used;
       struct Frame *frame = workspace->list[ref_index] = &workspaces->frame_list[i];
-      if(drop_frame(display, workspace, ref_index, False, workarea, themes)) { //this should be easy as they should already be non-overlapping
+      if(drop_frame(workspace, ref_index, False, workarea)) { //this should be easy as they should already be non-overlapping
         change_frame_mode(display, frame, tiling, workarea, themes);
       }
       else {
         change_frame_state(display, frame, minimized, seps, workarea, themes, atoms);
         fprintf(stderr, "Couldn't tile panel! It is called %s\n", frame->window_name);
       }
-      resize_frame(display, frame, themes);
+      resize_frame(display, frame, workarea, themes);
       stack_frame(display, frame, seps);
       XMapWindow(display, frame->widgets[frame_parent].widget);  //Actually only needs to be mapped the first time but doesn't matter
       workspace->used++;
@@ -678,7 +687,7 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
 
       load_frame_state(display, frame_state, frame, seps, workarea, themes, atoms);
       if(workspace->states[i].need_to_tile) {
-        if(drop_frame(display, workspace, ref_index, False, workarea, themes)) { //this should be easy as they should already be non-overlapping
+        if(drop_frame(workspace, ref_index, False, workarea)) { //this should be easy as they should already be non-overlapping
           change_frame_mode(display, frame, tiling, workarea, themes);
         }
         else {
@@ -688,12 +697,12 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
         workspace->states[i].need_to_tile = 0;
       }
       else if(frame->mode == floating) {
-        if(!drop_frame(display, workspace, ref_index, True, workarea, themes)) {
+        if(!drop_frame(workspace, ref_index, True, workarea)) {
           change_frame_state(display, frame, minimized, seps, workarea, themes, atoms);
           //TODO set urgency hint
         }
       }
-      resize_frame(display, frame, themes);
+      resize_frame(display, frame, workarea, themes);
       stack_frame(display, frame, seps);
       if(frame->state != minimized) XMapWindow(display, frame->widgets[frame_parent].widget);
       XMapWindow(display, workspace->list[ref_index]->menu.item);

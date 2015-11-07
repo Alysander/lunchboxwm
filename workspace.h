@@ -41,3 +41,6 @@ change_to_workspace(Display *display, struct Workspace_list *workspaces, int *cu
 
 void
 update_client_list(Display *display, struct Workspace *frames, struct Atoms *atoms);
+
+void
+check_all_frame_limits(Display *display, struct Workspace *frames, const struct Workarea *workarea, struct Themes *themes);

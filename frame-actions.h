@@ -1,12 +1,12 @@
-void check_frame_limits     (Display *display, struct Frame *frame, const struct Workarea *workarea,  struct Themes *themes);
+void check_frame_limits     (struct Frame *frame, const struct Workarea *workarea,  struct Themes *themes);
 void change_frame_mode      (Display *display, struct Frame *frame, enum Window_mode mode,  const struct Workarea *workarea,  struct Themes *themes);
 void change_frame_state     (Display *display, struct Frame *frame, enum Window_state state, struct Separators *seps, const struct Workarea *workarea, struct Themes *themes, struct Atoms *atoms);
 Bool redrop_frame           (Display *display, struct Workspace *frames, int clicked_frame, const struct Workarea *workarea,  struct Themes *themes);
 
-Bool drop_frame             (Display *display, struct Workspace *frames, int clicked_frame, Bool only_panels, const struct Workarea *workarea, struct Themes *themes);
+Bool drop_frame             (struct Workspace *frames, int clicked_frame, Bool only_panels, const struct Workarea *workarea);
 
 void change_frame_widget_state(Display* display, struct Frame* frame, enum Frame_widget widget, enum Widget_state state);
-void resize_frame           (Display *display, struct Frame *frame, struct Themes *themes);
+void resize_frame           (Display *display, struct Frame *frame, const struct Workarea *workarea, struct Themes *themes);
 
 void resize_using_frame_grip (Display *display, struct Workspace *frames, int clicked_frame
 , int pointer_start_x, int pointer_start_y, int mouse_root_x, int mouse_root_y
