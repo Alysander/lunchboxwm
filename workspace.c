@@ -104,7 +104,7 @@ check_all_frame_limits(Display *display, struct Workspace *frames, const struct 
   for(int i = 0; i < frames->used; i += 1) {
     //This will expand desktop windows to fit the new workarea
     check_frame_limits(frames->list[i], workarea, themes);
-    resize_frame(display, frames->list[i], workarea, themes);
+    resize_frame_after_screen_size_change(display, frames->list[i], workarea, themes);
   }
 }
 

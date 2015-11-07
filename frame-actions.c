@@ -52,6 +52,8 @@ fit_frame_into_spaces(struct Frame *frame,  struct Rectangle_list free_spaces);
 static Bool
 maximize_tiled_frame_in_place(struct Frame *frame, const char direction, struct Rectangle_list free_spaces);
 
+static void
+_resize_frame(Display* display, struct Frame* frame, const struct Workarea *workarea, struct Themes *themes, Bool enlarge_background_frames);
 /**
 @brief    This function ensures that the window is within limits. It sets the frames x,y,w,h to achieve this.
 @return   void
@@ -539,11 +541,25 @@ change_frame_widget_state(Display* display, struct Frame* frame, enum Frame_widg
 }
 
 /**
-@brief    Moves and resizes the subwindows of the frame
+@brief    Resizes the subwindows of the frame after screen size changes occur so as not to expose black borders.
 @return   void
 **/
 void
+resize_frame_after_screen_size_change(Display* display, struct Frame* frame, const struct Workarea *workarea, struct Themes *themes) {
+  _resize_frame(display, frame, workarea, themes, True);
+}
+
+
+/**
+@brief    Moves and resizes the subwindows of the frame
+@return   void
+**/
 resize_frame(Display* display, struct Frame* frame, const struct Workarea *workarea, struct Themes *themes) {
+  _resize_frame(display, frame, workarea, themes, False);
+}
+
+void
+_resize_frame(Display* display, struct Frame* frame, const struct Workarea *workarea, struct Themes *themes, Bool enlarge_background_frames) {
   /*Do not move or resize fullscreen windows */
   if(frame->state == fullscreen) return;
 
@@ -613,12 +629,13 @@ resize_frame(Display* display, struct Frame* frame, const struct Workarea *worka
 
       // These windows aren't resized normally, but will need to be when the screen resolution has changed
       // Othwerwise there will be black borders around a window
-      // if(i != window) { //don't create state windows for the framed window
-      //   if(themes->window_type[frame->theme_type][i].w <= 0 || i == mode_dropdown_text) w = workarea->screen_width;
-      //   if(themes->window_type[frame->theme_type][i].h <= 0) h = workarea->screen_hieght;
-      //   for(int j = 0; j <= inactive; j++) {
-      // frame->widgets[i].state[j] <---- Windows that are based off the width of the screen
-      // XResizeWindow(display, frame->widgets[i].widget, x, y, w, h);
+      if(enlarge_background_frames && i != window) { //don't create state windows for the framed window
+        if(themes->window_type[frame->theme_type][i].w <= 0) w = workarea->screen_width;
+        if(themes->window_type[frame->theme_type][i].h <= 0) h = workarea->screen_height;
+        for(int j = 0; j <= inactive; j++) {
+          XResizeWindow(display, frame->widgets[i].state[j], w, h);
+        }
+      }
     }
   }
   XFlush(display);
